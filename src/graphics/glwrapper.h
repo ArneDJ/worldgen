@@ -30,7 +30,7 @@ struct mesh create_cube(void);
 
 void delete_mesh(const struct mesh *m);
 
-GLuint bind_texture(const struct rawimage *image, GLenum internalformat, GLenum format, GLenum type);
+GLuint bind_texture(const struct floatimage *image, GLenum internalformat, GLenum format, GLenum type);
 
 GLuint bind_mipmap_texture(struct byteimage *image, GLenum internalformat, GLenum format, GLenum type);
 

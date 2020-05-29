@@ -13,7 +13,7 @@ enum {
 	RGBA_CHANNEL = 4
 };
 
-static inline float sample_height(int x, int y, const struct rawimage *image)
+static inline float sample_height(int x, int y, const struct floatimage *image)
 {
 	if (x < 0 || y < 0 || x > (image->width-1) || y > (image->height-1)) {
 		return 0.f; 
@@ -25,7 +25,7 @@ static inline float sample_height(int x, int y, const struct rawimage *image)
 	return image->data[index];
 }
 
-static glm::vec3 filter_normal(int x, int y, const struct rawimage *image)
+static glm::vec3 filter_normal(int x, int y, const struct floatimage *image)
 {
 	const float strength = 32.f; // sobel filter strength
 
@@ -53,7 +53,7 @@ static glm::vec3 filter_normal(int x, int y, const struct rawimage *image)
 	return normal;
 }
 
-float sample_image(int x, int y, const struct rawimage *image, unsigned int channel)
+float sample_image(int x, int y, const struct floatimage *image, unsigned int channel)
 {
 	if (image->data == nullptr) {
 		std::cerr << "error: no image data\n";
@@ -73,9 +73,9 @@ float sample_image(int x, int y, const struct rawimage *image, unsigned int chan
 	return image->data[index+channel];
 }
 
-struct rawimage gen_normalmap(const struct rawimage *heightmap)
+struct floatimage gen_normalmap(const struct floatimage *heightmap)
 {
-	struct rawimage normalmap = {
+	struct floatimage normalmap = {
 		.data = new float[heightmap->width * heightmap->height * RGB_CHANNEL],
 		.nchannels = RGB_CHANNEL,
 		.width = heightmap->width,
@@ -122,6 +122,32 @@ void billow_3D_image(unsigned char *image, size_t sidelength, float frequency, f
 		}
 	}
 
+}
+
+void heightmap_image(struct byteimage *image)
+{
+	if (image->data == nullptr) {
+		std::cerr << "no memory present\n";
+		return;
+	}
+
+	FastNoise noise;
+	noise.SetSeed(404);
+	noise.SetNoiseType(FastNoise::SimplexFractal);
+	noise.SetFractalType(FastNoise::FBM);
+	noise.SetFrequency(0.01f);
+	noise.SetFractalOctaves(5);
+	noise.SetFractalLacunarity(2.f);
+	noise.SetGradientPerturbAmp(30.f);
+
+	unsigned int index = 0;
+	for (int i = 0; i < image->width; i++) {
+		for (int j = 0; j < image->height; j++) {
+			float height = (noise.GetNoise(i, j) + 1.f) / 2.f;
+			height = glm::clamp(height, 0.f, 1.f);
+			image->data[index++] = 255.f * height;
+		}
+	}
 }
 
 void terrain_image(float *image, size_t sidelength, long seed, float freq, float mountain_amp, float field_amp)

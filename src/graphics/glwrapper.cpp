@@ -69,7 +69,7 @@ struct mesh gen_quad(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d)
 	struct mesh quads = {
 		.VAO = 0, .VBO = 0, .EBO = 0,
 		.mode = GL_TRIANGLE_STRIP,
-		.ecount = 0,
+		.ecount = 4,
 		.indexed = false
 	};
 
@@ -81,9 +81,9 @@ struct mesh gen_quad(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d)
 	};
 
 	const GLfloat texcoords[] = {
-		1.0, 1.0,
 		0.0, 1.0,
 		0.0, 0.0,
+		1.0, 1.0,
 		1.0, 0.0,
 	};
 
@@ -279,7 +279,7 @@ void delete_mesh(const struct mesh *m)
 	glDeleteVertexArrays(1, &m->VAO);
 }
 
-GLuint bind_texture(const struct rawimage *image, GLenum internalformat, GLenum format, GLenum type)
+GLuint bind_texture(const struct floatimage *image, GLenum internalformat, GLenum format, GLenum type)
 {
 	GLuint texture;
 

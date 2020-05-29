@@ -54,6 +54,22 @@ void Skybox::display(void) const
 	glDepthFunc(GL_LESS);
 };
 
+GLuint bind_byte_texture(const struct byteimage *image, GLenum internalformat, GLenum format, GLenum type)
+{
+	GLuint texture;
+
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexStorage2D(GL_TEXTURE_2D, 1, internalformat, image->width, image->height);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height, format, type, image->data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return texture;
+}
+
 Shader base_shader(const char *vertpath, const char *fragpath)
 {
 	struct shaderinfo pipeline[] = {
@@ -145,12 +161,30 @@ static void init_imgui(SDL_Window *window, SDL_GLContext glcontext)
 	ImGui_ImplOpenGL3_Init("#version 430");
 }
 
+GLuint height_texture(void)
+{
+	struct byteimage image = {
+		.data = new unsigned char[512*512],
+		.nchannels = 1,
+		.width = 512,
+		.height = 512,
+	};
+	heightmap_image(&image);
+
+	GLuint texture = bind_byte_texture(&image, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
+
+	return texture;
+}
+
 void run_worldgen(SDL_Window *window)
 {
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 
 	Skybox skybox = init_skybox();
 	Shader skybox_program = skybox_shader();
+	Shader map_program = base_shader("shaders/map.vert", "shaders/map.frag");
+
+	GLuint heightmap = height_texture();
 
 	Camera cam = { 
 		glm::vec3(8.f, 8.f, 8.f),
@@ -159,6 +193,8 @@ void run_worldgen(SDL_Window *window)
 		NEAR_CLIP,
 		FAR_CLIP
 	};
+
+	struct mesh map = gen_quad(glm::vec3(0.f, 10.f, 0.f), glm::vec3(10.f, 10.f, 0.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(10.f, 0.f, 0.f));
 
 	float start = 0.f;
  	float end = 0.f;
@@ -179,7 +215,16 @@ void run_worldgen(SDL_Window *window)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
+		glm::mat4 VP = cam.project * cam.view;
 		skybox_program.uniform_mat4("view", cam.view);
+		map_program.uniform_mat4("VIEW_PROJECT", VP);
+
+		glDisable(GL_CULL_FACE);
+		map_program.bind();
+		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, heightmap);
+		glBindVertexArray(map.VAO);
+		glDrawArrays(map.mode, 0, map.ecount);
+		glEnable(GL_CULL_FACE);
 
 		skybox_program.bind();
 		skybox.display();
