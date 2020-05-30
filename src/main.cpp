@@ -62,8 +62,8 @@ GLuint bind_byte_texture(const struct byteimage *image, GLenum internalformat, G
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexStorage2D(GL_TEXTURE_2D, 1, internalformat, image->width, image->height);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height, format, type, image->data);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -163,15 +163,40 @@ static void init_imgui(SDL_Window *window, SDL_GLContext glcontext)
 
 GLuint height_texture(void)
 {
+	const size_t size = 256;
+
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<long> dis;
+	long seed = dis(gen);
+
 	struct byteimage image = {
-		.data = new unsigned char[512*512],
+		.data = new unsigned char[size*size],
 		.nchannels = 1,
-		.width = 512,
-		.height = 512,
+		.width = size,
+		.height = size,
 	};
-	heightmap_image(&image);
+	heightmap_image(&image, seed);
 
 	GLuint texture = bind_byte_texture(&image, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
+
+	return texture;
+}
+
+GLuint voronoi_texture(void)
+{
+	const size_t size = 512;
+
+	struct byteimage image = {
+		.data = new unsigned char[size*size*3],
+		.nchannels = 3,
+		.width = size,
+		.height = size,
+	};
+
+	do_voronoi(&image);
+
+	GLuint texture = bind_byte_texture(&image, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
 
 	return texture;
 }
@@ -185,6 +210,7 @@ void run_worldgen(SDL_Window *window)
 	Shader map_program = base_shader("shaders/map.vert", "shaders/map.frag");
 
 	GLuint heightmap = height_texture();
+	GLuint voronoi = voronoi_texture();
 
 	Camera cam = { 
 		glm::vec3(8.f, 8.f, 8.f),
@@ -201,13 +227,16 @@ void run_worldgen(SDL_Window *window)
 	unsigned long frames = 0;
 	unsigned int msperframe = 0;
 
+	bool running = true;
 	SDL_Event event;
-	while (event.type != SDL_QUIT) {
+	while (running == true) {
 		start = 0.001f * float(SDL_GetTicks());
 		const float delta = start - end;
 
 		while(SDL_PollEvent(&event));
   		const Uint8 *keystates = SDL_GetKeyboardState(NULL);
+		if (event.type == SDL_QUIT) { running = false; }
+		if (keystates[SDL_SCANCODE_ESCAPE]) { running = false; }
 
 		cam.update_center(delta);
 		cam.update_view();
@@ -221,8 +250,13 @@ void run_worldgen(SDL_Window *window)
 
 		glDisable(GL_CULL_FACE);
 		map_program.bind();
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, heightmap);
 		glBindVertexArray(map.VAO);
+		glDrawArrays(map.mode, 0, map.ecount);
+
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(10.f, 0.f, 0.f)));
+		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, voronoi);
 		glDrawArrays(map.mode, 0, map.ecount);
 		glEnable(GL_CULL_FACE);
 

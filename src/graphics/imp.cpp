@@ -1,8 +1,12 @@
 #include <iostream>
+	#include <random>
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
 
 #include "../external/fastnoise/FastNoise.h"
+
+#define JC_VORONOI_IMPLEMENTATION
+#include "../external/voronoi/jc_voronoi.h"
 
 #include "imp.h"
 
@@ -124,7 +128,7 @@ void billow_3D_image(unsigned char *image, size_t sidelength, float frequency, f
 
 }
 
-void heightmap_image(struct byteimage *image)
+void heightmap_image(struct byteimage *image, long seed)
 {
 	if (image->data == nullptr) {
 		std::cerr << "no memory present\n";
@@ -132,19 +136,31 @@ void heightmap_image(struct byteimage *image)
 	}
 
 	FastNoise noise;
-	noise.SetSeed(404);
-	noise.SetNoiseType(FastNoise::SimplexFractal);
+	noise.SetSeed(seed);
+	noise.SetNoiseType(FastNoise::PerlinFractal);
 	noise.SetFractalType(FastNoise::FBM);
-	noise.SetFrequency(0.01f);
-	noise.SetFractalOctaves(5);
+	noise.SetFrequency(0.015f);
+	noise.SetFractalOctaves(6);
 	noise.SetFractalLacunarity(2.f);
-	noise.SetGradientPerturbAmp(30.f);
+	noise.SetGradientPerturbAmp(25.f);
 
+	const glm::vec2 center = glm::vec2(0.5f*float(image->width), 0.5f*float(image->height));
 	unsigned int index = 0;
 	for (int i = 0; i < image->width; i++) {
 		for (int j = 0; j < image->height; j++) {
-			float height = (noise.GetNoise(i, j) + 1.f) / 2.f;
+			float x = i; float y = j;
+			noise.GradientPerturbFractal(x, y);
+
+			float height = (noise.GetNoise(x, y) + 1.f) / 2.f;
 			height = glm::clamp(height, 0.f, 1.f);
+
+			float mask = glm::distance(0.5f*float(image->width), float(y)) / (0.5f*float(image->width));
+			mask = 1.f - glm::clamp(mask, 0.f, 1.f);
+			mask = glm::smoothstep(0.2f, 0.5f, sqrtf(mask));
+			height *= mask;
+
+			if (height < 0.48f) { height = 0.1f; }
+
 			image->data[index++] = 255.f * height;
 		}
 	}
@@ -224,4 +240,114 @@ void terrain_image(float *image, size_t sidelength, long seed, float freq, float
 			}
 		}
 	}
+}
+
+// http://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/
+static inline int orient(float x0, float y0, float x1, float y1, float x2, float y2)
+{
+	return ((int)x1 - (int)x0)*((int)y2 - (int)y0) - ((int)y1 - (int)y0)*((int)x2 - (int)x0);
+}
+
+static inline int min3(int a, int b, int c)
+{
+	return std::min(a, std::min(b, c));
+}
+
+static inline int max3(int a, int b, int c)
+{
+	return std::max(a, std::max(b, c));
+}
+
+void plot(int x, int y, unsigned char *image, int width, int height, int nchannels, unsigned char *color)
+{
+	if (x < 0 || y < 0 || x > (width-1) || y > (height-1)) {
+		return;
+	}
+
+	int index = y * width * nchannels + x * nchannels;
+
+	for (int i = 0; i < nchannels; i++) {
+		image[index+i] = color[i];
+	}
+}
+
+void draw_triangle(float x0, float y0, float x1, float y1, float x2, float y2, unsigned char *image, int width, int height, int nchannel, unsigned char *color)
+{
+	int area = orient(x0, y0, x1, y1, x2, y2);
+	if (area == 0) { return; }
+
+	// Compute triangle bounding box
+	int minX = min3((int)x0, (int)x1, (int)x2);
+	int minY = min3((int)y0, (int)y1, (int)y2);
+	int maxX = max3((int)x0, (int)x1, (int)x2);
+	int maxY = max3((int)y0, (int)y1, (int)y2);
+
+	// Clip against screen bounds
+	minX = std::max(minX, 0);
+	minY = std::max(minY, 0);
+	maxX = std::min(maxX, width - 1);
+	maxY = std::min(maxY, height - 1);
+
+	// Rasterize
+	float px, py;
+	for (py = minY; py <= maxY; py++) {
+		for (px = minX; px <= maxX; px++) {
+			// Determine barycentric coordinates
+			int w0 = orient(x1, y1, x2, y2, px, py);
+			int w1 = orient(x2, y2, x0, y0, px, py);
+			int w2 = orient(x0, y0, x1, y1, px, py);
+
+			// If p is on or inside all edges, render pixel.
+			if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+				plot((int)px, (int)py, image, width, height, nchannel, color);
+			}
+		}
+	}
+}
+
+#define NSITES 1024
+void do_voronoi(struct byteimage *image)
+{
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<float> dis(0, image->width);
+
+	jcv_point site[NSITES];
+
+	for (int i = 0; i < NSITES; i++) {
+		site[i].x = dis(gen);
+		site[i].y = dis(gen);
+	}
+
+	jcv_diagram diagram;
+	memset(&diagram, 0, sizeof(jcv_diagram));
+	jcv_diagram_generate(NSITES, site, 0, 0, &diagram);
+
+	// plot the sites
+	unsigned char sitecolor[3] = {255, 255, 255};
+	const jcv_site *sites = jcv_diagram_get_sites(&diagram);
+	for (int i = 0; i < diagram.numsites; i++) {
+		const jcv_site *site = &sites[i];
+		jcv_point p = site->p;
+		plot((int)p.x, (int)p.y, image->data, image->width, image->height, image->nchannels, sitecolor);
+	}
+
+	// fill the cells
+	const jcv_site *cells = jcv_diagram_get_sites(&diagram);
+	for (int i = 0; i < diagram.numsites; i++) {
+		unsigned char rcolor[3];
+		unsigned char basecolor = 120;
+		rcolor[0] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+		rcolor[1] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+		rcolor[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+		const jcv_site *site = &cells[i];
+		const jcv_graphedge *e = site->edges;
+
+		while (e) {
+			draw_triangle(site->p.x, site->p.y, e->pos[0].x, e->pos[0].y, e->pos[1].x, e->pos[1].y, image->data, image->width, image->height, image->nchannels, rcolor);
+			e = e->next;
+		}
+	}
+
+	jcv_diagram_free(&diagram);
 }
