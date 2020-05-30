@@ -161,9 +161,9 @@ static void init_imgui(SDL_Window *window, SDL_GLContext glcontext)
 	ImGui_ImplOpenGL3_Init("#version 430");
 }
 
-GLuint height_texture(void)
+struct byteimage height_texture(void)
 {
-	const size_t size = 256;
+	const size_t size = 1024;
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -178,14 +178,12 @@ GLuint height_texture(void)
 	};
 	heightmap_image(&image, seed);
 
-	GLuint texture = bind_byte_texture(&image, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
-
-	return texture;
+	return image;
 }
 
-GLuint voronoi_texture(void)
+GLuint voronoi_texture(const struct byteimage *heightimage)
 {
-	const size_t size = 512;
+	const size_t size = 4096;
 
 	struct byteimage image = {
 		.data = new unsigned char[size*size*3],
@@ -194,7 +192,7 @@ GLuint voronoi_texture(void)
 		.height = size,
 	};
 
-	do_voronoi(&image);
+	do_voronoi(&image, heightimage);
 
 	GLuint texture = bind_byte_texture(&image, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
 
@@ -209,8 +207,10 @@ void run_worldgen(SDL_Window *window)
 	Shader skybox_program = skybox_shader();
 	Shader map_program = base_shader("shaders/map.vert", "shaders/map.frag");
 
-	GLuint heightmap = height_texture();
-	GLuint voronoi = voronoi_texture();
+	struct byteimage heightimage = height_texture();
+	GLuint heightmap = bind_byte_texture(&heightimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
+
+	GLuint voronoi = voronoi_texture(&heightimage);
 
 	Camera cam = { 
 		glm::vec3(8.f, 8.f, 8.f),
@@ -220,7 +220,7 @@ void run_worldgen(SDL_Window *window)
 		FAR_CLIP
 	};
 
-	struct mesh map = gen_quad(glm::vec3(0.f, 10.f, 0.f), glm::vec3(10.f, 10.f, 0.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(10.f, 0.f, 0.f));
+	struct mesh map = gen_quad(glm::vec3(0.f, 100.f, 0.f), glm::vec3(100.f, 100.f, 0.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(100.f, 0.f, 0.f));
 
 	float start = 0.f;
  	float end = 0.f;
@@ -255,8 +255,9 @@ void run_worldgen(SDL_Window *window)
 		glBindVertexArray(map.VAO);
 		glDrawArrays(map.mode, 0, map.ecount);
 
-		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(10.f, 0.f, 0.f)));
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(100.f, 0.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, voronoi);
+		activate_texture(GL_TEXTURE1, GL_TEXTURE_2D, heightmap);
 		glDrawArrays(map.mode, 0, map.ecount);
 		glEnable(GL_CULL_FACE);
 

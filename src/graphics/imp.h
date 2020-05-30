@@ -22,4 +22,4 @@ void billow_3D_image(unsigned char *image, size_t sidelength, float frequency, f
 
 void heightmap_image(struct byteimage *image, long seed);
 
-void do_voronoi(struct byteimage *image);
+void do_voronoi(struct byteimage *image, const struct byteimage *heightimage);

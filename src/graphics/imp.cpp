@@ -29,6 +29,17 @@ static inline float sample_height(int x, int y, const struct floatimage *image)
 	return image->data[index];
 }
 
+static inline float sample_byte_height(int x, int y, const struct byteimage *image)
+{
+	if (x < 0 || y < 0 || x > (image->width-1) || y > (image->height-1)) {
+		return 0.f; 
+	}
+
+	int index = y * image->width * image->nchannels + x * image->nchannels;
+
+	return image->data[index] / 255.f;
+}
+
 static glm::vec3 filter_normal(int x, int y, const struct floatimage *image)
 {
 	const float strength = 32.f; // sobel filter strength
@@ -139,10 +150,10 @@ void heightmap_image(struct byteimage *image, long seed)
 	noise.SetSeed(seed);
 	noise.SetNoiseType(FastNoise::PerlinFractal);
 	noise.SetFractalType(FastNoise::FBM);
-	noise.SetFrequency(0.015f);
+	noise.SetFrequency(0.00375f);
 	noise.SetFractalOctaves(6);
 	noise.SetFractalLacunarity(2.f);
-	noise.SetGradientPerturbAmp(25.f);
+	noise.SetGradientPerturbAmp(50.f);
 
 	const glm::vec2 center = glm::vec2(0.5f*float(image->width), 0.5f*float(image->height));
 	unsigned int index = 0;
@@ -305,23 +316,68 @@ void draw_triangle(float x0, float y0, float x1, float y1, float x2, float y2, u
 	}
 }
 
-#define NSITES 1024
-void do_voronoi(struct byteimage *image)
+void relax_points(const jcv_diagram* diagram, std::vector<jcv_point> &points)
+{
+	const jcv_site* sites = jcv_diagram_get_sites(diagram);
+	for( int i = 0; i < diagram->numsites; ++i ) {
+		const jcv_site* site = &sites[i];
+		jcv_point sum = site->p;
+		int count = 1;
+
+		const jcv_graphedge* edge = site->edges;
+
+		while (edge) {
+			sum.x += edge->pos[0].x;
+			sum.y += edge->pos[0].y;
+			++count;
+			edge = edge->next;
+		}
+
+		jcv_point point;
+		point.x = sum.x / count;
+		point.y = sum.y / count;
+		points.push_back(point);
+	}
+}
+
+#define NSITES 256*256
+void do_voronoi(struct byteimage *image, const struct byteimage *heightimage)
 {
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::uniform_real_distribution<float> dis(0, image->width);
 
-	jcv_point site[NSITES];
+	std::vector<jcv_point> points;
 
+	const float ratio = float(image->width) / float(heightimage->width);
 	for (int i = 0; i < NSITES; i++) {
-		site[i].x = dis(gen);
-		site[i].y = dis(gen);
+		jcv_point point;
+		point.x = dis(gen);
+		point.y = dis(gen);
+		int x = point.x / ratio;
+		int y = point.y / ratio;
+		float height = sample_byte_height(x, y, heightimage);
+		if (height > 0.48f && height < 0.6f) {
+			height = 1.f;
+		} else if (height < 0.48f) {
+			height = 0.05f;
+		} else {
+			height = 0.25f;
+		}
+		std::bernoulli_distribution d(height);
+		if (d(gen) == true) {
+			points.push_back(point);
+		}
 	}
 
 	jcv_diagram diagram;
 	memset(&diagram, 0, sizeof(jcv_diagram));
-	jcv_diagram_generate(NSITES, site, 0, 0, &diagram);
+	jcv_diagram_generate(points.size(), points.data(), 0, 0, &diagram);
+
+	std::vector<jcv_point> relaxed_points;
+	relax_points(&diagram, relaxed_points);
+
+	jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), 0, 0, &diagram);
 
 	// plot the sites
 	unsigned char sitecolor[3] = {255, 255, 255};
@@ -342,6 +398,20 @@ void do_voronoi(struct byteimage *image)
 		rcolor[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
 		const jcv_site *site = &cells[i];
 		const jcv_graphedge *e = site->edges;
+		const jcv_point p = site->p;
+		int x = p.x / ratio;
+		int y = p.y / ratio;
+		float height = sample_byte_height(x, y, heightimage);
+		if (height > 0.48f && height < 0.6f) {
+			height = 0.8f;
+		} else if (height < 0.48f) {
+			height = 0.05f;
+		} else {
+			height = 0.95f;
+		}
+		rcolor[0] *= height;
+		rcolor[1] *= height;
+		rcolor[2] *= height;
 
 		while (e) {
 			draw_triangle(site->p.x, site->p.y, e->pos[0].x, e->pos[0].y, e->pos[1].x, e->pos[1].y, image->data, image->width, image->height, image->nchannels, rcolor);
