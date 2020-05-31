@@ -25,3 +25,7 @@ void heightmap_image(struct byteimage *image, long seed, float frequency, float 
 void do_voronoi(struct byteimage *image, const struct byteimage *heightimage);
 
 void gradient_image(struct byteimage *image, long seed, float perturb);
+
+void gauss_blur_image(struct byteimage *image, float sigma);
+
+void perturb_image(struct byteimage *image, long seed, float perturb);

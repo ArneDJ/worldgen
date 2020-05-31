@@ -8,6 +8,9 @@
 #define JC_VORONOI_IMPLEMENTATION
 #include "../external/voronoi/jc_voronoi.h"
 
+#define IIR_GAUSS_BLUR_IMPLEMENTATION
+#include "../external/gauss/iir_gauss_blur.h"
+
 #include "imp.h"
 
 enum {
@@ -359,6 +362,40 @@ void relax_points(const jcv_diagram* diagram, std::vector<jcv_point> &points)
 		point.x = sum.x / count;
 		point.y = sum.y / count;
 		points.push_back(point);
+	}
+}
+
+void gauss_blur_image(struct byteimage *image, float sigma)
+{
+	if (image->data == nullptr) {
+		std::cerr << "no memory present\n";
+		return;
+	}
+
+	iir_gauss_blur(image->width, image->height, image->nchannels, image->data, sigma);
+}
+
+void perturb_image(struct byteimage *image, long seed, float perturb)
+{
+	if (image->data == nullptr) {
+		std::cerr << "no memory present\n";
+		return;
+	}
+
+	FastNoise noise;
+	noise.SetSeed(seed);
+	noise.SetNoiseType(FastNoise::Perlin);
+	noise.SetFrequency(0.005);
+	noise.SetGradientPerturbAmp(perturb);
+
+	unsigned int index = 0;
+	for (int i = 0; i < image->width; i++) {
+		for (int j = 0; j < image->height; j++) {
+			float y = i; float x = j;
+			noise.GradientPerturbFractal(x, y);
+			float height = sample_byte_height(x, y, image);
+			image->data[index++] = 255.f * height;
+		}
 	}
 }
 

@@ -194,7 +194,7 @@ GLuint voronoi_texture(const struct byteimage *heightimage)
 	return texture;
 }
 
-GLuint temperature_texture(long seed)
+struct byteimage temperature_texture(long seed)
 {
 	const size_t size = 1024;
 
@@ -206,6 +206,60 @@ GLuint temperature_texture(long seed)
 	};
 
 	gradient_image(&image, seed, 100.f);
+
+	return image;
+}
+
+GLuint continent_texture(const struct byteimage *heightimage)
+{
+	struct byteimage image = {
+		.data = new unsigned char[heightimage->width*heightimage->height],
+		.nchannels = heightimage->nchannels,
+		.width = heightimage->width,
+		.height = heightimage->height,
+	};
+
+	size_t index = 0;
+	for (int i = 0; i < heightimage->height; i++) {
+		for (int j = 0; j < heightimage->width; j++) {
+			float height = heightimage->data[index] / 255.f;
+			height = height < 0.5f ? 0.f : 1.f;
+			image.data[index++] = 255.f * height;
+		}
+	}
+
+	GLuint texture = bind_byte_texture(&image, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
+
+	return texture;
+}
+
+GLuint rainfall_texture(const struct byteimage *tempimage, long seed)
+{
+	const size_t size = tempimage->width * tempimage->height * tempimage->nchannels;
+
+	struct byteimage image = {
+		.data = new unsigned char[size],
+		.nchannels = tempimage->nchannels,
+		.width = tempimage->width,
+		.height = tempimage->height,
+	};
+
+	heightmap_image(&image, seed, 0.002f, 250.f);
+
+	size_t index = 0;
+	for (auto i = 0; i < size; i++) {
+			float height = image.data[index] / 255.f;
+			height = (1.f - height) < 0.4f ? 0.f : 1.f;
+			image.data[index++] = 255.f * height;
+	}
+
+	gauss_blur_image(&image, 50.f);
+
+	index = 0;
+	for (auto i = 0; i < size; i++) {
+			float temperature = 1.f - (tempimage->data[index] / 255.f);
+			image.data[index++] *= sqrtf(temperature);
+	}
 
 	GLuint texture = bind_byte_texture(&image, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
@@ -228,7 +282,11 @@ void run_worldgen(SDL_Window *window)
 	struct byteimage heightimage = height_texture(seed);
 	GLuint heightmap = bind_byte_texture(&heightimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
-	GLuint temperature = temperature_texture(seed);
+	GLuint continent = continent_texture(&heightimage);
+	struct byteimage temperatureimage = temperature_texture(seed);
+	GLuint temperature = bind_byte_texture(&temperatureimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
+
+	GLuint rainfall = rainfall_texture(&temperatureimage, seed);
 	//GLuint voronoi = voronoi_texture(&heightimage);
 
 	Camera cam = { 
@@ -275,6 +333,14 @@ void run_worldgen(SDL_Window *window)
 		glDrawArrays(map.mode, 0, map.ecount);
 
 		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(100.f, 0.f, 0.f)));
+		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, continent);
+		glDrawArrays(map.mode, 0, map.ecount);
+		glEnable(GL_CULL_FACE);
+
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(200.f, 0.f, 0.f)));
+		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, rainfall);
+		glDrawArrays(map.mode, 0, map.ecount);
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(300.f, 0.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, temperature);
 		glDrawArrays(map.mode, 0, map.ecount);
 		glEnable(GL_CULL_FACE);
