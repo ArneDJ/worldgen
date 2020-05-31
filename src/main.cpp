@@ -176,7 +176,7 @@ struct byteimage height_texture(void)
 		.width = size,
 		.height = size,
 	};
-	heightmap_image(&image, seed);
+	heightmap_image(&image, seed, 0.002f, 100.f);
 
 	return image;
 }

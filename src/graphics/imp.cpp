@@ -139,44 +139,6 @@ void billow_3D_image(unsigned char *image, size_t sidelength, float frequency, f
 
 }
 
-void heightmap_image(struct byteimage *image, long seed)
-{
-	if (image->data == nullptr) {
-		std::cerr << "no memory present\n";
-		return;
-	}
-
-	FastNoise noise;
-	noise.SetSeed(seed);
-	noise.SetNoiseType(FastNoise::PerlinFractal);
-	noise.SetFractalType(FastNoise::FBM);
-	noise.SetFrequency(0.00375f);
-	noise.SetFractalOctaves(6);
-	noise.SetFractalLacunarity(2.f);
-	noise.SetGradientPerturbAmp(50.f);
-
-	const glm::vec2 center = glm::vec2(0.5f*float(image->width), 0.5f*float(image->height));
-	unsigned int index = 0;
-	for (int i = 0; i < image->width; i++) {
-		for (int j = 0; j < image->height; j++) {
-			float x = i; float y = j;
-			noise.GradientPerturbFractal(x, y);
-
-			float height = (noise.GetNoise(x, y) + 1.f) / 2.f;
-			height = glm::clamp(height, 0.f, 1.f);
-
-			float mask = glm::distance(0.5f*float(image->width), float(y)) / (0.5f*float(image->width));
-			mask = 1.f - glm::clamp(mask, 0.f, 1.f);
-			mask = glm::smoothstep(0.2f, 0.5f, sqrtf(mask));
-			height *= mask;
-
-			if (height < 0.48f) { height = 0.1f; }
-
-			image->data[index++] = 255.f * height;
-		}
-	}
-}
-
 void terrain_image(float *image, size_t sidelength, long seed, float freq, float mountain_amp, float field_amp)
 {
 	// detail
@@ -249,6 +211,41 @@ void terrain_image(float *image, size_t sidelength, long seed, float freq, float
 				//image[index++] = height * 255.f;
 				image[index++] = height;
 			}
+		}
+	}
+}
+
+void heightmap_image(struct byteimage *image, long seed, float frequency, float perturb)
+{
+	if (image->data == nullptr) {
+		std::cerr << "no memory present\n";
+		return;
+	}
+
+	FastNoise noise;
+	noise.SetSeed(seed);
+	noise.SetNoiseType(FastNoise::SimplexFractal);
+	noise.SetFractalType(FastNoise::FBM);
+	noise.SetFrequency(frequency);
+	noise.SetFractalOctaves(5);
+	noise.SetGradientPerturbAmp(perturb);
+
+	const glm::vec2 center = glm::vec2(0.5f*float(image->width), 0.5f*float(image->height));
+	unsigned int index = 0;
+	for (int i = 0; i < image->width; i++) {
+		for (int j = 0; j < image->height; j++) {
+			float x = i; float y = j;
+			noise.GradientPerturbFractal(x, y);
+
+			float height = (noise.GetNoise(x, y) + 1.f) / 2.f;
+			height = glm::clamp(height, 0.f, 1.f);
+
+			float mask = glm::distance(0.5f*float(image->width), float(y)) / (0.5f*float(image->width));
+			mask = 1.f - glm::clamp(mask, 0.f, 1.f);
+			mask = glm::smoothstep(0.2f, 0.5f, sqrtf(mask));
+			height *= sqrtf(mask);
+
+			image->data[index++] = 255.f * height;
 		}
 	}
 }
@@ -340,6 +337,8 @@ void relax_points(const jcv_diagram* diagram, std::vector<jcv_point> &points)
 	}
 }
 
+#define SEA_LEVEL 0.5
+#define MOUNTAIN_LEVEL 0.7
 #define NSITES 256*256
 void do_voronoi(struct byteimage *image, const struct byteimage *heightimage)
 {
@@ -357,9 +356,9 @@ void do_voronoi(struct byteimage *image, const struct byteimage *heightimage)
 		int x = point.x / ratio;
 		int y = point.y / ratio;
 		float height = sample_byte_height(x, y, heightimage);
-		if (height > 0.48f && height < 0.6f) {
+		if (height > SEA_LEVEL && height < MOUNTAIN_LEVEL) {
 			height = 1.f;
-		} else if (height < 0.48f) {
+		} else if (height < SEA_LEVEL) {
 			height = 0.05f;
 		} else {
 			height = 0.25f;
@@ -379,32 +378,23 @@ void do_voronoi(struct byteimage *image, const struct byteimage *heightimage)
 
 	jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), 0, 0, &diagram);
 
-	// plot the sites
-	unsigned char sitecolor[3] = {255, 255, 255};
-	const jcv_site *sites = jcv_diagram_get_sites(&diagram);
-	for (int i = 0; i < diagram.numsites; i++) {
-		const jcv_site *site = &sites[i];
-		jcv_point p = site->p;
-		plot((int)p.x, (int)p.y, image->data, image->width, image->height, image->nchannels, sitecolor);
-	}
-
 	// fill the cells
 	const jcv_site *cells = jcv_diagram_get_sites(&diagram);
 	for (int i = 0; i < diagram.numsites; i++) {
 		unsigned char rcolor[3];
-		unsigned char basecolor = 120;
-		rcolor[0] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-		rcolor[1] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-		rcolor[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
+		unsigned char basecolor = 255;
+		rcolor[0] = basecolor;
+		rcolor[1] = basecolor;
+		rcolor[2] = basecolor;
 		const jcv_site *site = &cells[i];
 		const jcv_graphedge *e = site->edges;
 		const jcv_point p = site->p;
 		int x = p.x / ratio;
 		int y = p.y / ratio;
 		float height = sample_byte_height(x, y, heightimage);
-		if (height > 0.48f && height < 0.6f) {
+		if (height > SEA_LEVEL && height < MOUNTAIN_LEVEL) {
 			height = 0.8f;
-		} else if (height < 0.48f) {
+		} else if (height < SEA_LEVEL) {
 			height = 0.05f;
 		} else {
 			height = 0.95f;

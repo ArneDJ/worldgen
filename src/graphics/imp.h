@@ -20,6 +20,6 @@ float sample_image(int x, int y, const struct floatimage *image, unsigned int ch
 
 void billow_3D_image(unsigned char *image, size_t sidelength, float frequency, float cloud_distance);
 
-void heightmap_image(struct byteimage *image, long seed);
+void heightmap_image(struct byteimage *image, long seed, float frequency, float perturb);
 
 void do_voronoi(struct byteimage *image, const struct byteimage *heightimage);
