@@ -250,6 +250,31 @@ void heightmap_image(struct byteimage *image, long seed, float frequency, float 
 	}
 }
 
+void gradient_image(struct byteimage *image, long seed, float perturb)
+{
+	if (image->data == nullptr) {
+		std::cerr << "no memory present\n";
+		return;
+	}
+
+	FastNoise noise;
+	noise.SetSeed(seed);
+	noise.SetNoiseType(FastNoise::Perlin);
+	noise.SetFrequency(0.005);
+	noise.SetGradientPerturbAmp(perturb);
+
+	const float height = float(image->height);
+	unsigned int index = 0;
+	for (int i = 0; i < image->width; i++) {
+		for (int j = 0; j < image->height; j++) {
+			float y = i; float x = j;
+			noise.GradientPerturbFractal(x, y);
+			float lattitude = 1.f - (y / height);
+			image->data[index++] = 255.f * glm::clamp(lattitude, 0.f, 1.f);
+		}
+	}
+}
+
 // http://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/
 static inline int orient(float x0, float y0, float x1, float y1, float x2, float y2)
 {

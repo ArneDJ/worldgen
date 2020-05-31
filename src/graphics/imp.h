@@ -23,3 +23,5 @@ void billow_3D_image(unsigned char *image, size_t sidelength, float frequency, f
 void heightmap_image(struct byteimage *image, long seed, float frequency, float perturb);
 
 void do_voronoi(struct byteimage *image, const struct byteimage *heightimage);
+
+void gradient_image(struct byteimage *image, long seed, float perturb);
