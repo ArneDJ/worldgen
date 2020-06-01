@@ -23,6 +23,7 @@
 #include "graphics/glwrapper.h"
 #include "graphics/shader.h"
 #include "graphics/camera.h"
+#include "graphics/voronoi.h"
 
 #define WINDOW_WIDTH 1920
 #define WINDOW_HEIGHT 1080
@@ -187,7 +188,8 @@ GLuint voronoi_texture(const struct byteimage *heightimage)
 		.height = size,
 	};
 
-	do_voronoi(&image, heightimage);
+	//do_voronoi(&image, heightimage);
+	gen_cells(&image);
 
 	GLuint texture = bind_byte_texture(&image, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
 
@@ -223,7 +225,7 @@ GLuint continent_texture(const struct byteimage *heightimage)
 	for (int i = 0; i < heightimage->height; i++) {
 		for (int j = 0; j < heightimage->width; j++) {
 			float height = heightimage->data[index] / 255.f;
-			height = height < 0.5f ? 0.f : 1.f;
+			height = height < 0.45f ? 0.f : 1.f;
 			image.data[index++] = 255.f * height;
 		}
 	}
@@ -244,7 +246,7 @@ GLuint rainfall_texture(const struct byteimage *tempimage, long seed)
 		.height = tempimage->height,
 	};
 
-	heightmap_image(&image, seed, 0.002f, 250.f);
+	heightmap_image(&image, seed, 0.002f, 200.f);
 
 	size_t index = 0;
 	for (auto i = 0; i < size; i++) {
@@ -253,12 +255,14 @@ GLuint rainfall_texture(const struct byteimage *tempimage, long seed)
 			image.data[index++] = 255.f * height;
 	}
 
-	gauss_blur_image(&image, 50.f);
+	gauss_blur_image(&image, 40.f);
 
 	index = 0;
 	for (auto i = 0; i < size; i++) {
 			float temperature = 1.f - (tempimage->data[index] / 255.f);
-			image.data[index++] *= sqrtf(temperature);
+			float rainfall = image.data[index] / 255.f;
+			//image.data[index++] *= sqrtf(temperature);
+			image.data[index++] = 255.f * glm::mix(rainfall, temperature*temperature, 1.f - temperature);
 	}
 
 	GLuint texture = bind_byte_texture(&image, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
@@ -287,7 +291,7 @@ void run_worldgen(SDL_Window *window)
 	GLuint temperature = bind_byte_texture(&temperatureimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
 	GLuint rainfall = rainfall_texture(&temperatureimage, seed);
-	//GLuint voronoi = voronoi_texture(&heightimage);
+	GLuint voronoi = voronoi_texture(&heightimage);
 
 	Camera cam = { 
 		glm::vec3(8.f, 8.f, 8.f),
@@ -342,6 +346,9 @@ void run_worldgen(SDL_Window *window)
 		glDrawArrays(map.mode, 0, map.ecount);
 		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(300.f, 0.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, temperature);
+		glDrawArrays(map.mode, 0, map.ecount);
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(400.f, 0.f, 0.f)));
+		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, voronoi);
 		glDrawArrays(map.mode, 0, map.ecount);
 		glEnable(GL_CULL_FACE);
 

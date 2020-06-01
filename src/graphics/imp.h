@@ -22,10 +22,12 @@ void billow_3D_image(unsigned char *image, size_t sidelength, float frequency, f
 
 void heightmap_image(struct byteimage *image, long seed, float frequency, float perturb);
 
-void do_voronoi(struct byteimage *image, const struct byteimage *heightimage);
-
 void gradient_image(struct byteimage *image, long seed, float perturb);
 
 void gauss_blur_image(struct byteimage *image, float sigma);
 
-void perturb_image(struct byteimage *image, long seed, float perturb);
+void draw_triangle(float x0, float y0, float x1, float y1, float x2, float y2, unsigned char *image, int width, int height, int nchannel, unsigned char *color);
+
+void plot(int x, int y, unsigned char *image, int width, int height, int nchannels, unsigned char *color);
+
+void draw_line(int x0, int y0, int x1, int y1, unsigned char *image, int width, int height, int nchannels, unsigned char *color);

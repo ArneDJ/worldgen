@@ -1,12 +1,10 @@
 #include <iostream>
 	#include <random>
+	#include <cstring>
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
 
 #include "../external/fastnoise/FastNoise.h"
-
-#define JC_VORONOI_IMPLEMENTATION
-#include "../external/voronoi/jc_voronoi.h"
 
 #define IIR_GAUSS_BLUR_IMPLEMENTATION
 #include "../external/gauss/iir_gauss_blur.h"
@@ -307,6 +305,22 @@ void plot(int x, int y, unsigned char *image, int width, int height, int nchanne
 	}
 }
 
+// http://members.chello.at/~easyfilter/bresenham.html
+void draw_line(int x0, int y0, int x1, int y1, unsigned char *image, int width, int height, int nchannels, unsigned char *color)
+{
+	int dx =  abs(x1-x0), sx = x0<x1 ? 1 : -1;
+	int dy = -abs(y1-y0), sy = y0<y1 ? 1 : -1;
+	int err = dx+dy, e2; // error value e_xy
+
+	for(;;) {
+		plot(x0,y0, image, width, height, nchannels, color);
+		if (x0==x1 && y0==y1) { break; }
+		e2 = 2*err;
+		if (e2 >= dy) { err += dy; x0 += sx; } // e_xy+e_x > 0
+		if (e2 <= dx) { err += dx; y0 += sy; } // e_xy+e_y < 0
+	}
+}
+
 void draw_triangle(float x0, float y0, float x1, float y1, float x2, float y2, unsigned char *image, int width, int height, int nchannel, unsigned char *color)
 {
 	int area = orient(x0, y0, x1, y1, x2, y2);
@@ -341,30 +355,6 @@ void draw_triangle(float x0, float y0, float x1, float y1, float x2, float y2, u
 	}
 }
 
-void relax_points(const jcv_diagram* diagram, std::vector<jcv_point> &points)
-{
-	const jcv_site* sites = jcv_diagram_get_sites(diagram);
-	for( int i = 0; i < diagram->numsites; ++i ) {
-		const jcv_site* site = &sites[i];
-		jcv_point sum = site->p;
-		int count = 1;
-
-		const jcv_graphedge* edge = site->edges;
-
-		while (edge) {
-			sum.x += edge->pos[0].x;
-			sum.y += edge->pos[0].y;
-			++count;
-			edge = edge->next;
-		}
-
-		jcv_point point;
-		point.x = sum.x / count;
-		point.y = sum.y / count;
-		points.push_back(point);
-	}
-}
-
 void gauss_blur_image(struct byteimage *image, float sigma)
 {
 	if (image->data == nullptr) {
@@ -375,101 +365,3 @@ void gauss_blur_image(struct byteimage *image, float sigma)
 	iir_gauss_blur(image->width, image->height, image->nchannels, image->data, sigma);
 }
 
-void perturb_image(struct byteimage *image, long seed, float perturb)
-{
-	if (image->data == nullptr) {
-		std::cerr << "no memory present\n";
-		return;
-	}
-
-	FastNoise noise;
-	noise.SetSeed(seed);
-	noise.SetNoiseType(FastNoise::Perlin);
-	noise.SetFrequency(0.005);
-	noise.SetGradientPerturbAmp(perturb);
-
-	unsigned int index = 0;
-	for (int i = 0; i < image->width; i++) {
-		for (int j = 0; j < image->height; j++) {
-			float y = i; float x = j;
-			noise.GradientPerturbFractal(x, y);
-			float height = sample_byte_height(x, y, image);
-			image->data[index++] = 255.f * height;
-		}
-	}
-}
-
-#define SEA_LEVEL 0.5
-#define MOUNTAIN_LEVEL 0.7
-#define NSITES 256*256
-void do_voronoi(struct byteimage *image, const struct byteimage *heightimage)
-{
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_real_distribution<float> dis(0, image->width);
-
-	std::vector<jcv_point> points;
-
-	const float ratio = float(image->width) / float(heightimage->width);
-	for (int i = 0; i < NSITES; i++) {
-		jcv_point point;
-		point.x = dis(gen);
-		point.y = dis(gen);
-		int x = point.x / ratio;
-		int y = point.y / ratio;
-		float height = sample_byte_height(x, y, heightimage);
-		if (height > SEA_LEVEL && height < MOUNTAIN_LEVEL) {
-			height = 1.f;
-		} else if (height < SEA_LEVEL) {
-			height = 0.05f;
-		} else {
-			height = 0.25f;
-		}
-		std::bernoulli_distribution d(height);
-		if (d(gen) == true) {
-			points.push_back(point);
-		}
-	}
-
-	jcv_diagram diagram;
-	memset(&diagram, 0, sizeof(jcv_diagram));
-	jcv_diagram_generate(points.size(), points.data(), 0, 0, &diagram);
-
-	std::vector<jcv_point> relaxed_points;
-	relax_points(&diagram, relaxed_points);
-
-	jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), 0, 0, &diagram);
-
-	// fill the cells
-	const jcv_site *cells = jcv_diagram_get_sites(&diagram);
-	for (int i = 0; i < diagram.numsites; i++) {
-		unsigned char rcolor[3];
-		unsigned char basecolor = 255;
-		rcolor[0] = basecolor;
-		rcolor[1] = basecolor;
-		rcolor[2] = basecolor;
-		const jcv_site *site = &cells[i];
-		const jcv_graphedge *e = site->edges;
-		const jcv_point p = site->p;
-		int x = p.x / ratio;
-		int y = p.y / ratio;
-		float height = sample_byte_height(x, y, heightimage);
-		if (height > SEA_LEVEL && height < MOUNTAIN_LEVEL) {
-			height = 0.8f;
-		} else if (height < SEA_LEVEL) {
-			height = 0.05f;
-		} else {
-			height = 0.95f;
-		}
-		rcolor[0] *= height;
-		rcolor[1] *= height;
-		rcolor[2] *= height;
-
-		while (e) {
-			draw_triangle(site->p.x, site->p.y, e->pos[0].x, e->pos[0].y, e->pos[1].x, e->pos[1].y, image->data, image->width, image->height, image->nchannels, rcolor);
-			e = e->next;
-		}
-	}
-
-	jcv_diagram_free(&diagram);
-}
