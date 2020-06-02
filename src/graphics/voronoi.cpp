@@ -61,8 +61,10 @@ struct corner {
 };
 
 struct border {
-	glm::vec2 a;
-	glm::vec2 b;
+	//glm::vec2 a;
+	//glm::vec2 b;
+	const jcv_edge *edge;
+	std::vector<const jcv_edge*> neighbors;
 };
 
 struct mycell {
@@ -142,6 +144,64 @@ void gen_cells(struct byteimage *image)
 		}
 	}
 
+	// get neighbor edges
+/*
+struct border {
+	//glm::vec2 a;
+	//glm::vec2 b;
+	const jcv_edge *edge;
+	std::vector<const jcv_edge*> neighbors;
+};
+*/
+	std::vector<struct border> borders;
+	const jcv_edge *edge = jcv_diagram_get_edges(&diagram);
+	while (edge) {
+		struct border b;
+		b.edge = edge;
+
+		jcv_site *site0 = edge->sites[0];
+		jcv_site *site1 = edge->sites[1];
+
+		if (site0 != nullptr) {
+			const jcv_graphedge *edge = site0->edges;
+			while (edge) {
+				const jcv_site *neighbor = edge->neighbor;
+				if (neighbor != nullptr) {
+					const jcv_graphedge *e = neighbor->edges;
+					while (e) {
+						if (e->neighbor == site1) {
+							b.neighbors.push_back(e->edge);
+						}
+						e = e->next;
+					}
+				}
+				edge = edge->next;
+			}
+			
+		}
+		if (site1 != nullptr) {
+			const jcv_graphedge *edge = site1->edges;
+			while (edge) {
+				const jcv_site *neighbor = edge->neighbor;
+				if (neighbor != nullptr) {
+					const jcv_graphedge *e = neighbor->edges;
+					while (e) {
+						if (e->neighbor == site0) {
+							b.neighbors.push_back(e->edge);
+						}
+						e = e->next;
+					}
+				}
+				edge = edge->next;
+			}
+			
+		}
+
+		borders.push_back(b);
+
+		edge = jcv_diagram_get_next_edge(edge);
+	}
+
 	// get delaunay graph
 	std::vector<struct delaunay> graph;
 	for (int i = 0; i < diagram.numsites; i++) { 
@@ -184,12 +244,14 @@ void gen_cells(struct byteimage *image)
 		}
 	}
 
-	// If all you need are the edges
-	const jcv_edge* edge = jcv_diagram_get_edges(&diagram);
-	while( edge ) {
-		draw_line(edge->pos[0].x, edge->pos[0].y, edge->pos[1].x, edge->pos[1].y, image->data, image->width, image->height, image->nchannels, delacolor);
-		edge = jcv_diagram_get_next_edge(edge);
+
+	struct border bor = borders[60];
+	draw_line(bor.edge->pos[0].x, bor.edge->pos[0].y, bor.edge->pos[1].x, bor.edge->pos[1].y, image->data, image->width, image->height, image->nchannels, delacolor);
+	for (auto &neighbor : bor.neighbors) {
+		draw_line(neighbor->pos[0].x, neighbor->pos[0].y, neighbor->pos[1].x, neighbor->pos[1].y, image->data, image->width, image->height, image->nchannels, delacolor);
+
 	}
+
 
 	delete [] cells;
 	jcv_diagram_free(&diagram);
