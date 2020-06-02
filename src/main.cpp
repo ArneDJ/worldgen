@@ -179,7 +179,7 @@ struct byteimage height_texture(long seed)
 
 GLuint voronoi_texture(const struct byteimage *heightimage)
 {
-	const size_t size = 4096;
+	const size_t size = 512;
 
 	struct byteimage image = {
 		.data = new unsigned char[size*size*3],
