@@ -49,6 +49,12 @@ void relax_points(const jcv_diagram* diagram, std::vector<jcv_point> &points)
 	}
 }
 
+struct delaunay {
+	const jcv_site *a;
+	const jcv_site *b;
+	const jcv_site *c;
+};
+
 struct corner {
 	glm::vec2 vertex;
 	struct corner *adjacent[3];
@@ -62,8 +68,8 @@ struct border {
 struct mycell {
 	glm::vec2 center;
 	std::vector<glm::vec4> borders;
-	//std::vector<jcv_site*> neighbors;
 	std::vector<struct mycell*> neighbors;
+	// std::vector<struct corner*> corners;
 };
 
 void gen_cells(struct byteimage *image)
@@ -83,9 +89,9 @@ void gen_cells(struct byteimage *image)
 		points.push_back(point);
 	}
 
-	   jcv_point dimensions;
-    dimensions.x = (jcv_real)image->width;
-    dimensions.y = (jcv_real)image->height;
+	jcv_point dimensions;
+	dimensions.x = (jcv_real)image->width;
+	dimensions.y = (jcv_real)image->height;
 	jcv_diagram diagram;
 	memset(&diagram, 0, sizeof(jcv_diagram));
 	jcv_diagram_generate(points.size(), points.data(), 0, 0, &diagram);
@@ -95,23 +101,12 @@ void gen_cells(struct byteimage *image)
 
 	jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), 0, 0, &diagram);
 
-	std::vector<glm::vec2> centers;
-	// get each cell center
 	const jcv_site *sites = jcv_diagram_get_sites(&diagram);
-	for (int i = 0; i < diagram.numsites; i++) {
-		const jcv_site *site = &sites[i];
-		struct mycell cell;
-		jcv_point p = site->p;
-		centers.push_back(glm::vec2(p.x, p.y));
-	}
 
 	unsigned char sitecolor[3] = {255, 255, 255};
 	unsigned char linecolor[3] = {255, 255, 255};
-	for (auto &center : centers) {
-		plot((int)center.x, (int)center.y, image->data, image->width, image->height, image->nchannels, sitecolor);
-	}
+	unsigned char delacolor[3] = {255, 0, 0};
 
-	//std::vector<struct mycell> cells;
 	struct mycell *cells = new struct mycell[diagram.numsites];
 	// get each cell
 	for (int i = 0; i < diagram.numsites; i++) {
@@ -119,8 +114,12 @@ void gen_cells(struct byteimage *image)
 		struct mycell cell;
 		jcv_point p = site->p;
 		cell.center = glm::vec2(p.x, p.y);
+		const jcv_graphedge *edge = site->edges;
+		while (edge) {
+			cell.borders.push_back(glm::vec4(edge->pos[0].x, edge->pos[0].y, edge->pos[1].x, edge->pos[1].y));
+			edge = edge->next;
+		}
 		cells[site->index] = cell;
-		//cells.insert(cells.begin() + site->index, cell);
 	}
 
 	// get neighbor cells
@@ -128,7 +127,6 @@ void gen_cells(struct byteimage *image)
 		const jcv_site *site = &sites[i];
 		const jcv_graphedge *edge = site->edges;
 		while (edge) {
-			cells[site->index].borders.push_back(glm::vec4(edge->pos[0].x, edge->pos[0].y, edge->pos[1].x, edge->pos[1].y));
 			const jcv_site *neighbor;
 			 if (edge->edge->sites[0] == site) {
 			 	neighbor = edge->edge->sites[1];
@@ -144,8 +142,36 @@ void gen_cells(struct byteimage *image)
 		}
 	}
 
-	mycell cell = cells[50];
-	plot(int(cell.center.x), int(cell.center.y), image->data, image->width, image->height, image->nchannels, sitecolor);
+	// get delaunay graph
+	std::vector<struct delaunay> graph;
+	for (int i = 0; i < diagram.numsites; i++) { 
+		const jcv_site *site = &sites[i];
+		const jcv_graphedge *edge = site->edges;
+		while (edge) {
+			const jcv_site *neighbor0 = edge->neighbor;
+			const jcv_site *neighbor1 = (edge->next == nullptr) ? site->edges->neighbor : edge->next->neighbor;
+
+			if (neighbor0 != nullptr && neighbor1 != nullptr) {
+			struct delaunay dela = {
+				.a = site,
+				.b = neighbor0,
+				.c = neighbor1,
+			};
+			graph.push_back(dela);
+			}
+
+			edge = edge->next;
+		}
+	}
+	struct delaunay g = graph[61];
+	//for (auto &g : graph) {
+		plot((int)g.a->p.x, (int)g.a->p.y, image->data, image->width, image->height, image->nchannels, sitecolor);
+		plot((int)g.b->p.x, (int)g.b->p.y, image->data, image->width, image->height, image->nchannels, sitecolor);
+		plot((int)g.c->p.x, (int)g.c->p.y, image->data, image->width, image->height, image->nchannels, sitecolor);
+	//}
+
+	mycell cell = cells[28];
+	//plot(int(cell.center.x), int(cell.center.y), image->data, image->width, image->height, image->nchannels, sitecolor);
 	for (auto &neighbor : cell.neighbors) {
 		unsigned char rcolor[3];
 		unsigned char basecolor = 100;
@@ -154,84 +180,20 @@ void gen_cells(struct byteimage *image)
 		rcolor[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
 
 		for (auto &border : neighbor->borders) {
-			draw_triangle(neighbor->center.x, neighbor->center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, rcolor);
+			//draw_triangle(neighbor->center.x, neighbor->center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, rcolor);
 		}
 	}
 
+	// If all you need are the edges
+	const jcv_edge* edge = jcv_diagram_get_edges(&diagram);
+	while( edge ) {
+		draw_line(edge->pos[0].x, edge->pos[0].y, edge->pos[1].x, edge->pos[1].y, image->data, image->width, image->height, image->nchannels, delacolor);
+		edge = jcv_diagram_get_next_edge(edge);
+	}
 
 	delete [] cells;
 	jcv_diagram_free(&diagram);
 }
-
-/*
-void gen_cells(struct byteimage *image)
-{
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_real_distribution<float> dis(0, image->width);
-
-	std::vector<jcv_point> points;
-
-	for (int i = 0; i < MAX_SITES; i++) {
-		jcv_point point;
-		point.x = dis(gen);
-		point.y = dis(gen);
-		int x = point.x;
-		int y = point.y;
-		points.push_back(point);
-	}
-
-	jcv_diagram diagram;
-	memset(&diagram, 0, sizeof(jcv_diagram));
-	jcv_diagram_generate(points.size(), points.data(), 0, 0, &diagram);
-
-	std::vector<jcv_point> relaxed_points;
-	relax_points(&diagram, relaxed_points);
-
-	jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), 0, 0, &diagram);
-
-	std::vector<struct mycell> cells;
-	// get each cell
-	const jcv_site *sites = jcv_diagram_get_sites(&diagram);
-	for (int i = 0; i < diagram.numsites; i++) {
-		const jcv_site *site = &sites[i];
-		struct mycell cell;
-		jcv_point p = site->p;
-		cell.center = glm::vec2(p.x, p.y);
-		cells.push_back(cell);
-	}
-
-	// get neighbor cells
-	for (int i = 0; i < diagram.numsites; i++) { 
-		const jcv_site *site = &sites[i];
-		jcv_graphedge *edge = site->edges;
-		while (edge) {
-			cells[i].borders.push_back(glm::vec4(edge->pos[0].x, edge->pos[0].y, edge->pos[1].x, edge->pos[1].y));
-			jcv_site *neighbor = edge->neighbor;
-			if (neighbor != NULL) {
-				cells[i].neighbors.push_back(neighbor);
-			}
-			edge = edge->next;
-		}
-	}
-
-	unsigned char sitecolor[3] = {255, 255, 255};
-	mycell cell = cells[500];
-	plot(int(cell.center.x), int(cell.center.y), image->data, image->width, image->height, image->nchannels, sitecolor);
-	for (auto &neighbor : cell.neighbors) {
-		unsigned char rcolor[3];
-		unsigned char basecolor = 100;
-		rcolor[0] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-		rcolor[1] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-		rcolor[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-		const jcv_graphedge *edge = neighbor->edges;
-		while( edge ) {
-			draw_triangle(neighbor->p.x, neighbor->p.y, edge->pos[0].x, edge->pos[0].y, edge->pos[1].x, edge->pos[1].y, image->data, image->width, image->height, image->nchannels, rcolor);
-			edge = edge->next;
-		}
-	}
-}
-*/
 
 void do_voronoi(struct byteimage *image, const struct byteimage *heightimage)
 {

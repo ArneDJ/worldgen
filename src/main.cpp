@@ -294,7 +294,7 @@ void run_worldgen(SDL_Window *window)
 	GLuint voronoi = voronoi_texture(&heightimage);
 
 	Camera cam = { 
-		glm::vec3(8.f, 8.f, 8.f),
+		glm::vec3(300.f, 8.f, 8.f),
 		FOV,
 		float(WINDOW_WIDTH) / float(WINDOW_HEIGHT),
 		NEAR_CLIP,
