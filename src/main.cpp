@@ -177,6 +177,26 @@ struct byteimage height_texture(long seed)
 	return image;
 }
 
+#define SEA_LEVEL 0.5
+#define MOUNTAIN_LEVEL 0.7
+#define NSITES 256*256
+#define MAX_SITES 100
+void gen_cells(struct byteimage *image)
+{
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<float> dis(0, image->width);
+
+	std::vector<glm::vec2> points;
+
+	for (int i = 0; i < MAX_SITES; i++) {
+		glm::vec2 point = glm::vec2(dis(gen), dis(gen));
+		points.push_back(point);
+	}
+
+	gen_diagram(image, points);
+}
+
 GLuint voronoi_texture(const struct byteimage *heightimage)
 {
 	const size_t size = 512;
