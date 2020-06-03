@@ -50,12 +50,6 @@ void relax_points(const jcv_diagram* diagram, std::vector<jcv_point> &points)
 	}
 }
 
-struct corner {
-	int index;
-	const jcv_vertex *vertex;
-	std::vector<const jcv_vertex*> neighbors;
-};
-
 struct border {
 	//glm::vec2 a;
 	//glm::vec2 b;
@@ -169,39 +163,22 @@ void gen_cells(struct byteimage *image)
 
 	// generate the vertices and vertex_edges
 	jcv_diagram_generate_vertices(&diagram);
-	std::vector<struct corner> corners;
 
-	{
-	int index = 0;
+	struct mycorner *mycorners = new struct mycorner[diagram.internal->numvertices];
+
 	const jcv_vertex *vertex = jcv_diagram_get_vertices(&diagram);
 	while (vertex) {
-		struct corner c;
-		c.index = index++;
-		c.vertex = vertex;
-		printf("%d\n", vertex->index);
+		struct mycorner c;
+		c.index = vertex->index;
+		c.position = glm::vec2(vertex->pos.x, vertex->pos.y);
 		jcv_vertex_edge *edges = vertex->edges; // The half edges owned by the vertex
 		while (edges) {
 			jcv_vertex *neighbor = edges->neighbor;
 			edges = edges->next;
-			c.neighbors.push_back(neighbor);
+			c.neighbors.push_back(&mycorners[neighbor->index]);
 		}
-		corners.push_back(c);
+		mycorners[vertex->index] = c;
 		vertex = jcv_diagram_get_next_vertex(vertex);
-	}
-	}
-
-	struct mycorner *mycorners = new struct mycorner[corners.size()];
-	for (auto &corn : corners) {
-		struct mycorner mycorn;
-		mycorn.position = glm::vec2(corn.vertex->pos.x, corn.vertex->pos.y);
-		mycorn.index = corn.vertex->index;
-		mycorners[mycorn.index] = mycorn;
-		//mycorners.push_back(mycorn);
-	}
-	for (auto &corn : corners) {
-		for (auto &neighbor : corn.neighbors) {
-			mycorners[corn.vertex->index].neighbors.push_back(&mycorners[neighbor->index]);
-		}
 	}
 
 	struct mycorner c = mycorners[40];
@@ -215,72 +192,3 @@ void gen_cells(struct byteimage *image)
 	delete [] mycorners;
 	jcv_diagram_free(&diagram);
 }
-
-/*
-void do_voronoi(struct byteimage *image, const struct byteimage *heightimage)
-{
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_real_distribution<float> dis(0, image->width);
-
-	std::vector<jcv_point> points;
-
-	const float ratio = float(image->width) / float(heightimage->width);
-	for (int i = 0; i < NSITES; i++) {
-		jcv_point point;
-		point.x = dis(gen);
-		point.y = dis(gen);
-		int x = point.x / ratio;
-		int y = point.y / ratio;
-		points.push_back(point);
-	}
-
-	jcv_diagram diagram;
-	memset(&diagram, 0, sizeof(jcv_diagram));
-	jcv_diagram_generate(points.size(), points.data(), 0, 0, &diagram);
-
-	std::vector<jcv_point> relaxed_points;
-	relax_points(&diagram, relaxed_points);
-
-	jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), 0, 0, &diagram);
-
-	// fill the cells
-	const jcv_site *cells = jcv_diagram_get_sites(&diagram);
-	for (int i = 0; i < diagram.numsites; i++) {
-		unsigned char rcolor[3];
-		unsigned char basecolor = 100;
-		rcolor[0] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-		rcolor[1] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-		rcolor[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-		const jcv_site *site = &cells[i];
-		const jcv_graphedge *e = site->edges;
-		const jcv_point p = site->p;
-		int x = p.x / ratio;
-		int y = p.y / ratio;
-
-		while (e) {
-			draw_triangle(site->p.x, site->p.y, e->pos[0].x, e->pos[0].y, e->pos[1].x, e->pos[1].y, image->data, image->width, image->height, image->nchannels, rcolor);
-			e = e->next;
-		}
-	}
-
-	unsigned char linecolor[3] = {0, 0, 0};
-	// If all you need are the edges
-	const jcv_edge* edge = jcv_diagram_get_edges(&diagram);
-	while( edge ) {
-		draw_line(edge->pos[0].x, edge->pos[0].y, edge->pos[1].x, edge->pos[1].y, image->data, image->width, image->height, image->nchannels, linecolor);
-		edge = jcv_diagram_get_next_edge(edge);
-	}
-
-	// plot the sites
-	unsigned char sitecolor[3] = {0, 0, 0};
-	const jcv_site *sites = jcv_diagram_get_sites(&diagram);
-	for (int i = 0; i < diagram.numsites; i++) {
-		const jcv_site *site = &sites[i];
-		jcv_point p = site->p;
-		plot((int)p.x, (int)p.y, image->data, image->width, image->height, image->nchannels, sitecolor);
-	}
-
-	jcv_diagram_free(&diagram);
-}
-*/
