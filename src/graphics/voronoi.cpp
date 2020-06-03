@@ -1,3 +1,4 @@
+#include <iostream>
 #include <random>
 #include <vector>
 #include <algorithm>
@@ -19,10 +20,10 @@
 // Remaps the point from the input space to image space
 static inline jcv_point remap(const jcv_point* pt, const jcv_point* min, const jcv_point* max, const jcv_point* scale)
 {
-    jcv_point p;
-    p.x = (pt->x - min->x)/(max->x - min->x) * scale->x;
-    p.y = (pt->y - min->y)/(max->y - min->y) * scale->y;
-    return p;
+	jcv_point p;
+	p.x = (pt->x - min->x)/(max->x - min->x) * scale->x;
+	p.y = (pt->y - min->y)/(max->y - min->y) * scale->y;
+	return p;
 }
 
 void relax_points(const jcv_diagram* diagram, std::vector<jcv_point> &points)
@@ -49,15 +50,10 @@ void relax_points(const jcv_diagram* diagram, std::vector<jcv_point> &points)
 	}
 }
 
-struct delaunay {
-	const jcv_site *a;
-	const jcv_site *b;
-	const jcv_site *c;
-};
-
 struct corner {
-	glm::vec2 vertex;
-	std::vector<struct corner*> adjacent;
+	int index;
+	const jcv_vertex *vertex;
+	std::vector<const jcv_vertex*> neighbors;
 };
 
 struct border {
@@ -73,6 +69,13 @@ struct mycell {
 	std::vector<struct mycell*> neighbors;
 	// std::vector<struct corner*> corners;
 };
+
+struct mycorner {
+	int index;
+	glm::vec2 position;
+	std::vector<struct mycorner*> neighbors;
+};
+
 
 void gen_cells(struct byteimage *image)
 {
@@ -166,30 +169,50 @@ void gen_cells(struct byteimage *image)
 
 	// generate the vertices and vertex_edges
 	jcv_diagram_generate_vertices(&diagram);
+	std::vector<struct corner> corners;
 
 	{
+	int index = 0;
 	const jcv_vertex *vertex = jcv_diagram_get_vertices(&diagram);
 	while (vertex) {
-		plot((int)vertex->pos.x, (int)vertex->pos.y, image->data, image->width, image->height, image->nchannels, blue);
+		struct corner c;
+		c.index = index++;
+		c.vertex = vertex;
+		printf("%d\n", vertex->index);
 		jcv_vertex_edge *edges = vertex->edges; // The half edges owned by the vertex
 		while (edges) {
 			jcv_vertex *neighbor = edges->neighbor;
-			draw_line(vertex->pos.x, vertex->pos.y, neighbor->pos.x, neighbor->pos.y, image->data, image->width, image->height, image->nchannels, white);
 			edges = edges->next;
+			c.neighbors.push_back(neighbor);
 		}
+		corners.push_back(c);
 		vertex = jcv_diagram_get_next_vertex(vertex);
 	}
 	}
 
-	{
-	const jcv_vertex *vertex = jcv_diagram_get_vertices(&diagram);
-	while (vertex) {
-		plot((int)vertex->pos.x, (int)vertex->pos.y, image->data, image->width, image->height, image->nchannels, blue);
-		vertex = jcv_diagram_get_next_vertex(vertex);
+	struct mycorner *mycorners = new struct mycorner[corners.size()];
+	for (auto &corn : corners) {
+		struct mycorner mycorn;
+		mycorn.position = glm::vec2(corn.vertex->pos.x, corn.vertex->pos.y);
+		mycorn.index = corn.vertex->index;
+		mycorners[mycorn.index] = mycorn;
+		//mycorners.push_back(mycorn);
 	}
+	for (auto &corn : corners) {
+		for (auto &neighbor : corn.neighbors) {
+			mycorners[corn.vertex->index].neighbors.push_back(&mycorners[neighbor->index]);
+		}
 	}
+
+	struct mycorner c = mycorners[40];
+	for (auto &neighbor : c.neighbors) {
+		draw_line(c.position.x, c.position.y, neighbor->position.x, neighbor->position.y, image->data, image->width, image->height, image->nchannels, white);
+		plot((int)neighbor->position.x, (int)neighbor->position.y, image->data, image->width, image->height, image->nchannels, blue);
+	}
+	plot((int)c.position.x, (int)c.position.y, image->data, image->width, image->height, image->nchannels, blue);
 
 	delete [] cells;
+	delete [] mycorners;
 	jcv_diagram_free(&diagram);
 }
 

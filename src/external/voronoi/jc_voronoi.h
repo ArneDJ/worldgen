@@ -226,6 +226,7 @@ typedef struct _jcv_vertex
     struct _jcv_vertex* next;
     jcv_point           pos;
     struct _jcv_vertex_edge* edges; // The half edges owned by the vertex
+    int index;
 } jcv_vertex;
 
 typedef struct _jcv_altered_edge
@@ -399,6 +400,7 @@ typedef struct _jcv_context_internal
     int                 currentsite;
     int                 _padding;
     jcv_vertex*         vertices;
+    int 		numvertices;
 
     jcv_memoryblock*    memblocks;
     jcv_edge*           edgepool;
@@ -726,7 +728,9 @@ static jcv_vertex* jcv_vertex_new(jcv_context_internal* internal, const jcv_poin
     e->pos = *pos;
     e->edges = 0;
     e->next = internal->vertices;
+    e->index = internal->numvertices;
     internal->vertices = e;
+    internal->numvertices++;
     return e;
 }
 
@@ -1478,6 +1482,7 @@ void jcv_diagram_generate_useralloc( int num_points, const jcv_point* points, co
     internal->numsites      = num_points;
     internal->numsites_sqrt = (int)(JCV_SQRT((jcv_real)num_points));
     internal->currentsite   = 0;
+    internal->numvertices   = 0;
 
     internal->bottomsite = jcv_nextsite(internal);
 
