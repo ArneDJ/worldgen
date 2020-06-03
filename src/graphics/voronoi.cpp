@@ -57,7 +57,7 @@ struct delaunay {
 
 struct corner {
 	glm::vec2 vertex;
-	struct corner *adjacent[3];
+	std::vector<struct corner*> adjacent;
 };
 
 struct border {
@@ -94,20 +94,26 @@ void gen_cells(struct byteimage *image)
 	jcv_point dimensions;
 	dimensions.x = (jcv_real)image->width;
 	dimensions.y = (jcv_real)image->height;
+	const jcv_rect rect = {
+		{0.0, 0.0},
+		dimensions,
+	};
 	jcv_diagram diagram;
 	memset(&diagram, 0, sizeof(jcv_diagram));
-	jcv_diagram_generate(points.size(), points.data(), 0, 0, &diagram);
+	jcv_diagram_generate(points.size(), points.data(), &rect, &diagram);
 
 	std::vector<jcv_point> relaxed_points;
 	relax_points(&diagram, relaxed_points);
 
-	jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), 0, 0, &diagram);
+	jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), &rect, &diagram);
 
 	const jcv_site *sites = jcv_diagram_get_sites(&diagram);
 
 	unsigned char sitecolor[3] = {255, 255, 255};
 	unsigned char linecolor[3] = {255, 255, 255};
 	unsigned char delacolor[3] = {255, 0, 0};
+	unsigned char blue[3] = {0, 0, 255};
+	unsigned char white[3] = {255, 255, 255};
 
 	struct mycell *cells = new struct mycell[diagram.numsites];
 	// get each cell
@@ -144,94 +150,8 @@ void gen_cells(struct byteimage *image)
 		}
 	}
 
-	// get neighbor edges
-/*
-struct border {
-	//glm::vec2 a;
-	//glm::vec2 b;
-	const jcv_edge *edge;
-	std::vector<const jcv_edge*> neighbors;
-};
-*/
-	std::vector<struct border> borders;
-	const jcv_edge *edge = jcv_diagram_get_edges(&diagram);
-	while (edge) {
-		struct border b;
-		b.edge = edge;
-
-		jcv_site *site0 = edge->sites[0];
-		jcv_site *site1 = edge->sites[1];
-
-		if (site0 != nullptr) {
-			const jcv_graphedge *edge = site0->edges;
-			while (edge) {
-				const jcv_site *neighbor = edge->neighbor;
-				if (neighbor != nullptr) {
-					const jcv_graphedge *e = neighbor->edges;
-					while (e) {
-						if (e->neighbor == site1) {
-							b.neighbors.push_back(e->edge);
-						}
-						e = e->next;
-					}
-				}
-				edge = edge->next;
-			}
-			
-		}
-		if (site1 != nullptr) {
-			const jcv_graphedge *edge = site1->edges;
-			while (edge) {
-				const jcv_site *neighbor = edge->neighbor;
-				if (neighbor != nullptr) {
-					const jcv_graphedge *e = neighbor->edges;
-					while (e) {
-						if (e->neighbor == site0) {
-							b.neighbors.push_back(e->edge);
-						}
-						e = e->next;
-					}
-				}
-				edge = edge->next;
-			}
-			
-		}
-
-		borders.push_back(b);
-
-		edge = jcv_diagram_get_next_edge(edge);
-	}
-
-	// get delaunay graph
-	std::vector<struct delaunay> graph;
-	for (int i = 0; i < diagram.numsites; i++) { 
-		const jcv_site *site = &sites[i];
-		const jcv_graphedge *edge = site->edges;
-		while (edge) {
-			const jcv_site *neighbor0 = edge->neighbor;
-			const jcv_site *neighbor1 = (edge->next == nullptr) ? site->edges->neighbor : edge->next->neighbor;
-
-			if (neighbor0 != nullptr && neighbor1 != nullptr) {
-			struct delaunay dela = {
-				.a = site,
-				.b = neighbor0,
-				.c = neighbor1,
-			};
-			graph.push_back(dela);
-			}
-
-			edge = edge->next;
-		}
-	}
-	struct delaunay g = graph[61];
-	//for (auto &g : graph) {
-		plot((int)g.a->p.x, (int)g.a->p.y, image->data, image->width, image->height, image->nchannels, sitecolor);
-		plot((int)g.b->p.x, (int)g.b->p.y, image->data, image->width, image->height, image->nchannels, sitecolor);
-		plot((int)g.c->p.x, (int)g.c->p.y, image->data, image->width, image->height, image->nchannels, sitecolor);
-	//}
-
 	mycell cell = cells[28];
-	//plot(int(cell.center.x), int(cell.center.y), image->data, image->width, image->height, image->nchannels, sitecolor);
+	plot(int(cell.center.x), int(cell.center.y), image->data, image->width, image->height, image->nchannels, sitecolor);
 	for (auto &neighbor : cell.neighbors) {
 		unsigned char rcolor[3];
 		unsigned char basecolor = 100;
@@ -240,23 +160,40 @@ struct border {
 		rcolor[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
 
 		for (auto &border : neighbor->borders) {
-			//draw_triangle(neighbor->center.x, neighbor->center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, rcolor);
+			draw_triangle(neighbor->center.x, neighbor->center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, rcolor);
 		}
 	}
 
+	// generate the vertices and vertex_edges
+	jcv_diagram_generate_vertices(&diagram);
 
-	struct border bor = borders[60];
-	draw_line(bor.edge->pos[0].x, bor.edge->pos[0].y, bor.edge->pos[1].x, bor.edge->pos[1].y, image->data, image->width, image->height, image->nchannels, delacolor);
-	for (auto &neighbor : bor.neighbors) {
-		draw_line(neighbor->pos[0].x, neighbor->pos[0].y, neighbor->pos[1].x, neighbor->pos[1].y, image->data, image->width, image->height, image->nchannels, delacolor);
-
+	{
+	const jcv_vertex *vertex = jcv_diagram_get_vertices(&diagram);
+	while (vertex) {
+		plot((int)vertex->pos.x, (int)vertex->pos.y, image->data, image->width, image->height, image->nchannels, blue);
+		jcv_vertex_edge *edges = vertex->edges; // The half edges owned by the vertex
+		while (edges) {
+			jcv_vertex *neighbor = edges->neighbor;
+			draw_line(vertex->pos.x, vertex->pos.y, neighbor->pos.x, neighbor->pos.y, image->data, image->width, image->height, image->nchannels, white);
+			edges = edges->next;
+		}
+		vertex = jcv_diagram_get_next_vertex(vertex);
+	}
 	}
 
+	{
+	const jcv_vertex *vertex = jcv_diagram_get_vertices(&diagram);
+	while (vertex) {
+		plot((int)vertex->pos.x, (int)vertex->pos.y, image->data, image->width, image->height, image->nchannels, blue);
+		vertex = jcv_diagram_get_next_vertex(vertex);
+	}
+	}
 
 	delete [] cells;
 	jcv_diagram_free(&diagram);
 }
 
+/*
 void do_voronoi(struct byteimage *image, const struct byteimage *heightimage)
 {
 	std::random_device rd;
@@ -323,3 +260,4 @@ void do_voronoi(struct byteimage *image, const struct byteimage *heightimage)
 
 	jcv_diagram_free(&diagram);
 }
+*/
