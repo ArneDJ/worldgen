@@ -44,25 +44,7 @@ static void relax_points(const jcv_diagram* diagram, std::vector<jcv_point> &poi
 	}
 }
 
-struct corner {
-	int index;
-	glm::vec2 position;
-	std::vector<struct corner*> adjacent;
-};
-
-struct border {
-	struct mycorner *a;
-	struct mycorner *b;
-};
-
-struct cell {
-	glm::vec2 center;
-	std::vector<glm::vec4> borders;
-	std::vector<struct cell*> neighbors;
-	// std::vector<struct corner*> corners;
-};
-
-void gen_diagram(struct byteimage *image, std::vector<glm::vec2> &locations)
+void Voronoi::gen_diagram(std::vector<glm::vec2> &locations, size_t width, size_t height)
 {
 	std::vector<jcv_point> points;
 
@@ -74,8 +56,8 @@ void gen_diagram(struct byteimage *image, std::vector<glm::vec2> &locations)
 	}
 
 	jcv_point dimensions;
-	dimensions.x = (jcv_real)image->width;
-	dimensions.y = (jcv_real)image->height;
+	dimensions.x = (jcv_real)width;
+	dimensions.y = (jcv_real)height;
 	const jcv_rect rect = {
 		{0.0, 0.0},
 		dimensions,
@@ -91,13 +73,15 @@ void gen_diagram(struct byteimage *image, std::vector<glm::vec2> &locations)
 
 	const jcv_site *sites = jcv_diagram_get_sites(&diagram);
 
-	struct cell *cells = new struct cell[diagram.numsites];
+	//struct cell *cells = new struct cell[diagram.numsites];
+	cells.resize(diagram.numsites);
 	// get each cell
 	for (int i = 0; i < diagram.numsites; i++) {
 		const jcv_site *site = &sites[i];
 		struct cell cell;
 		jcv_point p = site->p;
 		cell.center = glm::vec2(p.x, p.y);
+		cell.index = site->index;
 		const jcv_graphedge *edge = site->edges;
 		while (edge) {
 			cell.borders.push_back(glm::vec4(edge->pos[0].x, edge->pos[0].y, edge->pos[1].x, edge->pos[1].y));
@@ -123,7 +107,7 @@ void gen_diagram(struct byteimage *image, std::vector<glm::vec2> &locations)
 	// generate the vertices and vertex_edges
 	jcv_diagram_generate_vertices(&diagram);
 
-	struct corner *mycorners = new struct corner[diagram.internal->numvertices];
+	corners.resize(diagram.internal->numvertices);
 
 	const jcv_vertex *vertex = jcv_diagram_get_vertices(&diagram);
 	while (vertex) {
@@ -134,40 +118,11 @@ void gen_diagram(struct byteimage *image, std::vector<glm::vec2> &locations)
 		while (edges) {
 			jcv_vertex *neighbor = edges->neighbor;
 			edges = edges->next;
-			c.adjacent.push_back(&mycorners[neighbor->index]);
+			c.adjacent.push_back(&corners[neighbor->index]);
 		}
-		mycorners[vertex->index] = c;
+		corners[vertex->index] = c;
 		vertex = jcv_diagram_get_next_vertex(vertex);
 	}
 
-	unsigned char sitecolor[3] = {255, 255, 255};
-	unsigned char linecolor[3] = {255, 255, 255};
-	unsigned char delacolor[3] = {255, 0, 0};
-	unsigned char blue[3] = {0, 0, 255};
-	unsigned char white[3] = {255, 255, 255};
-
-	cell cell = cells[28];
-	plot(int(cell.center.x), int(cell.center.y), image->data, image->width, image->height, image->nchannels, sitecolor);
-	for (auto &neighbor : cell.neighbors) {
-		unsigned char rcolor[3];
-		unsigned char basecolor = 100;
-		rcolor[0] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-		rcolor[1] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-		rcolor[2] = basecolor + (unsigned char)(rand() % (235 - basecolor));
-
-		for (auto &border : neighbor->borders) {
-			draw_triangle(neighbor->center.x, neighbor->center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, rcolor);
-		}
-	}
-
-	struct corner c = mycorners[40];
-	for (auto &neighbor : c.adjacent) {
-		draw_line(c.position.x, c.position.y, neighbor->position.x, neighbor->position.y, image->data, image->width, image->height, image->nchannels, white);
-		plot((int)neighbor->position.x, (int)neighbor->position.y, image->data, image->width, image->height, image->nchannels, blue);
-	}
-	plot((int)c.position.x, (int)c.position.y, image->data, image->width, image->height, image->nchannels, blue);
-
-	delete [] cells;
-	delete [] mycorners;
 	jcv_diagram_free(&diagram);
 }

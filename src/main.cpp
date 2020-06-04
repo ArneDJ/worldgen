@@ -172,16 +172,15 @@ struct byteimage height_texture(long seed)
 		.width = size,
 		.height = size,
 	};
-	heightmap_image(&image, seed, 0.002f, 100.f);
+	heightmap_image(&image, seed, 0.002f, 200.f);
 
 	return image;
 }
 
-#define SEA_LEVEL 0.5
+#define SEA_LEVEL 0.43
 #define MOUNTAIN_LEVEL 0.7
-#define NSITES 256*256
-#define MAX_SITES 100
-void gen_cells(struct byteimage *image)
+#define NSITES 128*128
+void gen_cells(struct byteimage *image, const struct byteimage *heightimage)
 {
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -189,17 +188,94 @@ void gen_cells(struct byteimage *image)
 
 	std::vector<glm::vec2> points;
 
-	for (int i = 0; i < MAX_SITES; i++) {
+	for (int i = 0; i < NSITES; i++) {
 		glm::vec2 point = glm::vec2(dis(gen), dis(gen));
 		points.push_back(point);
 	}
 
-	gen_diagram(image, points);
+	Voronoi voronoi = { points, image->width, image->height };
+
+	unsigned char sitecolor[3] = {255, 255, 255};
+	unsigned char linecolor[3] = {255, 255, 255};
+	unsigned char delacolor[3] = {255, 0, 0};
+	unsigned char blue[3] = {0, 0, 255};
+	unsigned char white[3] = {255, 255, 255};
+
+	for (auto &cell : voronoi.cells) {
+		int x = int(cell.center.x);
+		int y = int(cell.center.y);
+		float height = sample_byte_height(x, y, heightimage);
+		if (height < SEA_LEVEL) {
+		 	height = 0.25f;
+		} else if (height > MOUNTAIN_LEVEL) {
+			height = 1.f;
+		} else {
+			height = 0.75f;
+		}
+		unsigned char rcolor[3];
+		unsigned char basecolor = 100;
+		rcolor[0] = height * 255;
+		rcolor[1] = height * 128;
+		rcolor[2] = height * 32;
+
+		for (auto &border : cell.borders) {
+			draw_triangle(cell.center.x, cell.center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, rcolor);
+		}
+	}
+
+	std::uniform_int_distribution<int> distro(0, voronoi.corners.size() - 1);
+	for (int i = 0; i < 500; i++) {
+		std::vector<struct corner*> river;
+		bool rejected = true;
+		int start = distro(gen);
+		struct corner *c = &voronoi.corners[start];
+		float height = sample_byte_height(c->position.x, c->position.y, heightimage);
+		if (height > 0.6f) {
+			// find the lowest neighbor
+			int tick = 0;
+			struct corner *previous = c;
+			while (height > SEA_LEVEL && tick < NSITES) {
+			river.push_back(c);
+			height = sample_byte_height(c->position.x, c->position.y, heightimage);
+			float min = 1.f;
+			struct corner *neighbor = nullptr;
+			for (auto &n : c->adjacent) {
+				if (n != previous) {
+				float neighborheight = sample_byte_height(n->position.x, n->position.y, heightimage);
+				if (neighborheight < min) { 
+					neighbor = n;
+					min = neighborheight;
+				}
+				}
+			}
+			if (neighbor != nullptr) {
+				plot((int)c->position.x, (int)c->position.y, image->data, image->width, image->height, image->nchannels, blue);
+				previous = c;
+				c = neighbor;
+			} else {
+				break;
+			}
+			tick++;
+			if (height < SEA_LEVEL) {
+				rejected = false;
+			}
+			}
+
+			if (rejected == false) {
+				for (int i = 0; i < river.size(); i++) {
+					if (i+1 < river.size()) {
+						draw_line(river[i]->position.x, river[i]->position.y, river[i+1]->position.x, river[i+1]->position.y, image->data, image->width, image->height, image->nchannels, blue);
+					}
+				}
+			}
+		}
+	}
+
 }
 
 GLuint voronoi_texture(const struct byteimage *heightimage)
 {
-	const size_t size = 512;
+	const size_t size = 1024;
 
 	struct byteimage image = {
 		.data = new unsigned char[size*size*3],
@@ -208,8 +284,7 @@ GLuint voronoi_texture(const struct byteimage *heightimage)
 		.height = size,
 	};
 
-	//do_voronoi(&image, heightimage);
-	gen_cells(&image);
+	gen_cells(&image, heightimage);
 
 	GLuint texture = bind_byte_texture(&image, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
 
@@ -232,7 +307,7 @@ struct byteimage temperature_texture(long seed)
 	return image;
 }
 
-GLuint continent_texture(const struct byteimage *heightimage)
+struct byteimage continent_texture(const struct byteimage *heightimage)
 {
 	struct byteimage image = {
 		.data = new unsigned char[heightimage->width*heightimage->height],
@@ -245,14 +320,12 @@ GLuint continent_texture(const struct byteimage *heightimage)
 	for (int i = 0; i < heightimage->height; i++) {
 		for (int j = 0; j < heightimage->width; j++) {
 			float height = heightimage->data[index] / 255.f;
-			height = height < 0.45f ? 0.f : 1.f;
+			height = height < SEA_LEVEL ? 0.f : 1.f;
 			image.data[index++] = 255.f * height;
 		}
 	}
 
-	GLuint texture = bind_byte_texture(&image, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
-
-	return texture;
+	return image;
 }
 
 GLuint rainfall_texture(const struct byteimage *tempimage, long seed)
@@ -271,18 +344,18 @@ GLuint rainfall_texture(const struct byteimage *tempimage, long seed)
 	size_t index = 0;
 	for (auto i = 0; i < size; i++) {
 			float height = image.data[index] / 255.f;
-			height = (1.f - height) < 0.4f ? 0.f : 1.f;
-			image.data[index++] = 255.f * height;
+			height = height < 0.5 ? 0.f : 1.f;
+			image.data[index++] = 255.f * (1.f - height);
 	}
 
-	gauss_blur_image(&image, 40.f);
+	gauss_blur_image(&image, 50.f);
 
 	index = 0;
 	for (auto i = 0; i < size; i++) {
 			float temperature = 1.f - (tempimage->data[index] / 255.f);
 			float rainfall = image.data[index] / 255.f;
-			//image.data[index++] *= sqrtf(temperature);
-			image.data[index++] = 255.f * glm::mix(rainfall, temperature*temperature, 1.f - temperature);
+			rainfall = glm::mix(rainfall, temperature*temperature, 1.f - temperature);
+			image.data[index++] = 255.f * rainfall;
 	}
 
 	GLuint texture = bind_byte_texture(&image, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
@@ -306,7 +379,9 @@ void run_worldgen(SDL_Window *window)
 	struct byteimage heightimage = height_texture(seed);
 	GLuint heightmap = bind_byte_texture(&heightimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
-	GLuint continent = continent_texture(&heightimage);
+
+	struct byteimage continentimage = continent_texture(&heightimage);
+	GLuint continent = bind_byte_texture(&continentimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 	struct byteimage temperatureimage = temperature_texture(seed);
 	GLuint temperature = bind_byte_texture(&temperatureimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 

@@ -18,6 +18,8 @@ struct floatimage gen_normalmap(const struct floatimage *heightmap);
 
 float sample_image(int x, int y, const struct floatimage *image, unsigned int channel);
 
+float sample_byte_height(int x, int y, const struct byteimage *image);
+
 void billow_3D_image(unsigned char *image, size_t sidelength, float frequency, float cloud_distance);
 
 void heightmap_image(struct byteimage *image, long seed, float frequency, float perturb);

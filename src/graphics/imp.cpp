@@ -30,7 +30,7 @@ static inline float sample_height(int x, int y, const struct floatimage *image)
 	return image->data[index];
 }
 
-static inline float sample_byte_height(int x, int y, const struct byteimage *image)
+float sample_byte_height(int x, int y, const struct byteimage *image)
 {
 	if (x < 0 || y < 0 || x > (image->width-1) || y > (image->height-1)) {
 		return 0.f; 
