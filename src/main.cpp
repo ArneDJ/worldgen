@@ -209,6 +209,8 @@ enum TILE_BIOME {
 	SAVANNA,
 	STEPPE,
 	DESERT,
+	BADLANDS,
+	ALPINE,
 };
 
 struct tile {
@@ -220,6 +222,20 @@ struct tile {
 	bool river;
 	const struct cell *site;
 };
+
+enum TILE_TEMPERATURE sample_temperature(float warmth)
+{
+	enum TILE_TEMPERATURE temperature = COLD;
+	if (warmth > 0.75f) {
+		temperature = WARM;
+	} else if (warmth < 0.25f) {
+		temperature = COLD;
+	} else {
+		temperature = TEMPERATE;
+	}
+
+	return temperature;
+}
 
 enum TILE_RELIEF_TYPE sample_relief(float height)
 {
@@ -246,7 +262,57 @@ enum TILE_RELIEF_TYPE sample_relief(float height)
 	return relief;
 }
 
-void gen_cells(struct byteimage *image, const struct byteimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage)
+enum TILE_VEGETATION sample_vegetation(float rainfall) 
+{
+	enum TILE_VEGETATION vegetation = ARID;
+	if (rainfall < 0.2f) {
+		vegetation = ARID;
+	} else if (rainfall > 0.4f) {
+		vegetation = HUMID;
+	} else {
+		vegetation = DRY;
+	}
+
+	return vegetation;
+};
+
+enum TILE_BIOME generate_biome(enum TILE_RELIEF_TYPE relief, enum TILE_TEMPERATURE temperature, enum TILE_VEGETATION vegetation) 
+{
+	if (relief == WATER) { return OCEAN; }
+
+	if (relief == MOUNTAIN) {
+		if (temperature == WARM) {
+			return BADLANDS; 
+		} else {
+			return ALPINE;
+		}
+	}
+
+	enum TILE_BIOME biome = STEPPE;
+	if (temperature == COLD) {
+		switch (vegetation) {
+		case ARID: biome = STEPPE; break;
+		case DRY: biome = SAVANNA; break;
+		case HUMID: biome = TAIGA; break;
+		};
+	} else if (temperature == TEMPERATE) {
+		switch (vegetation) {
+		case ARID: biome = STEPPE; break;
+		case DRY: biome = SAVANNA; break;
+		case HUMID: biome = FOREST; break;
+		};
+	} else if (temperature == WARM) {
+		switch (vegetation) {
+		case ARID: biome = DESERT; break;
+		case DRY: biome = SAVANNA; break;
+		case HUMID: biome = SAVANNA; break;
+		};
+	}
+
+	return biome;
+};
+
+void gen_cells(struct byteimage *image, const struct byteimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage)
 {
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -286,12 +352,17 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 		int x = int(cell.center.x);
 		int y = int(cell.center.y);
 		float height = sample_byte_height(x, y, heightimage);
+		float warmth = sample_byte_height(x, y, temperatureimage);
+		float rain = sample_byte_height(x, y, rainimage);
 		enum TILE_RELIEF_TYPE relief = sample_relief(height);
+		enum TILE_TEMPERATURE temperature = sample_temperature(warmth);
+		enum TILE_VEGETATION vegetation = sample_vegetation(rain);
+		enum TILE_BIOME biome = generate_biome(relief, temperature, vegetation);
 		struct tile t = {
 			.relief = relief,
-			.temperature = COLD,
-			.vegetation = ARID,
-			.biome = OCEAN,
+			.temperature = temperature,
+			.vegetation = vegetation,
+			.biome = biome,
 			.coast = false,
 			.river = false,
 			.site = &cell,
@@ -299,7 +370,38 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 
 		tiles.push_back(t);
 	}
+	glm::vec3 ocean = {0.2f, 0.2f, 0.95f};
+	glm::vec3 forest = {0.2f, 1.f, 0.2f};
+	glm::vec3 taiga = {0.2f, 0.95f, 0.6f};
+	glm::vec3 savanna = {0.6f, 0.95f, 0.2f};
+	glm::vec3 steppe = {0.7f, 0.8f, 0.2f};
+	glm::vec3 desert = {0.8f, 0.9f, 0.2f};
+	glm::vec3 alpine = {0.8f, 0.8f, 0.8f};
+	glm::vec3 badlands = {1.f, 0.8f, 0.8f};
 
+	for (auto &t : tiles) {
+		glm::vec3 color = {1.f, 1.f, 1.f};
+		switch (t.biome) {
+		case OCEAN: color = ocean; break;
+		case FOREST: color = forest; break;
+		case TAIGA: color = taiga; break;
+		case SAVANNA: color = savanna; break;
+		case STEPPE: color = steppe; break;
+		case DESERT: color = desert; break;
+		case ALPINE: color = alpine; break;
+		case BADLANDS: color = badlands; break;
+		};
+
+		unsigned char c[3];
+		c[0] = 255 * color.x;
+		c[1] = 255 * color.y;
+		c[2] = 255 * color.z;
+		for (auto &border : t.site->borders) {
+			draw_triangle(t.site->center.x, t.site->center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, c);
+			//draw_line(border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, white);
+		}
+	}
+	/*
 	glm::vec3 watercolor = {0.2f, 0.2f, 0.95f};
 	glm::vec3 plaincolor = {0.5f, 0.7f, 0.4f};
 	glm::vec3 hillscolor = {0.7f, 0.7f, 0.5f};
@@ -323,39 +425,13 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 			//draw_line(border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, white);
 		}
 	}
+	*/
 
 	unsigned char sitecolor[3] = {255, 255, 255};
 	unsigned char linecolor[3] = {255, 255, 255};
 	unsigned char delacolor[3] = {255, 0, 0};
 	unsigned char blue[3] = {0, 0, 255};
 	unsigned char white[3] = {255, 255, 255};
-	/*
-
-	for (auto &cell : voronoi.cells) {
-		int x = int(cell.center.x);
-		int y = int(cell.center.y);
-		float height = sample_byte_height(x, y, heightimage);
-		unsigned char rcolor[3];
-		rcolor[0] = 255;
-		rcolor[1] = 0;
-		rcolor[2] = 0;
-
-		if (height < SEA_LEVEL) {
-		 	height = 0.25f;
-			rcolor[0] = 64; rcolor[1] = 64; rcolor[2] = 255;
-		} else if (height > MOUNTAIN_LEVEL) {
-			height = 1.f;
-			rcolor[0] = 200; rcolor[1] = 200; rcolor[2] = 200;
-		} else {
-			height = 0.75f;
-			rcolor[0] = 64; rcolor[1] = 200; rcolor[2] = 64;
-		}
-		for (auto &border : cell.borders) {
-			draw_triangle(cell.center.x, cell.center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, rcolor);
-			//draw_line(border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, white);
-		}
-	}
-	*/
 
 	std::uniform_int_distribution<int> distro(0, voronoi.corners.size() - 1);
 	for (int i = 0; i < 500; i++) {
@@ -406,7 +482,7 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 
 }
 
-GLuint voronoi_texture(const struct byteimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage)
+GLuint voronoi_texture(const struct byteimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage,const struct byteimage *temperatureimage)
 {
 	const size_t size = 1024;
 
@@ -417,7 +493,7 @@ GLuint voronoi_texture(const struct byteimage *heightimage, const struct byteima
 		.height = size,
 	};
 
-	gen_cells(&image, heightimage, continentimage, rainimage);
+	gen_cells(&image, heightimage, continentimage, rainimage, temperatureimage);
 
 	GLuint texture = bind_byte_texture(&image, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
 
@@ -519,7 +595,7 @@ void run_worldgen(SDL_Window *window)
 	struct byteimage rainimage = rainfall_texture(&temperatureimage, seed);
 	GLuint rainfall = bind_byte_texture(&rainimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
-	GLuint voronoi = voronoi_texture(&heightimage, &continentimage, &rainimage);
+	GLuint voronoi = voronoi_texture(&heightimage, &continentimage, &rainimage, &temperatureimage);
 
 	Camera cam = { 
 		glm::vec3(300.f, 8.f, 8.f),
