@@ -33,6 +33,10 @@
 
 #define FOG_DENSITY 0.015f
 
+#define SEA_LEVEL 0.43f
+#define MOUNTAIN_LEVEL 0.65f
+#define NSITES 256*256
+
 class Skybox {
 public:
 	Skybox(GLuint cubemapbind)
@@ -177,51 +181,181 @@ struct byteimage height_texture(long seed)
 	return image;
 }
 
-#define SEA_LEVEL 0.43
-#define MOUNTAIN_LEVEL 0.7
-#define NSITES 128*128
-void gen_cells(struct byteimage *image, const struct byteimage *heightimage)
+enum TILE_RELIEF_TYPE {
+	WATER,
+	PLAIN,
+	HILLS,
+	MOUNTAIN,
+};
+
+enum TILE_TEMPERATURE {
+	COLD,
+	TEMPERATE,
+	WARM,
+};
+
+enum TILE_VEGETATION {
+	ARID,
+	DRY,
+	HUMID,
+};
+
+enum TILE_BIOME {
+	OCEAN,
+	SEA,
+	MARSH,
+	FOREST,
+	TAIGA,
+	SAVANNA,
+	STEPPE,
+	DESERT,
+};
+
+struct tile {
+	enum TILE_RELIEF_TYPE relief;
+	enum TILE_TEMPERATURE temperature;
+	enum TILE_VEGETATION vegetation;
+	enum TILE_BIOME biome;
+	bool coast;
+	bool river;
+	const struct cell *site;
+};
+
+enum TILE_RELIEF_TYPE sample_relief(float height)
+{
+	enum TILE_RELIEF_TYPE relief = WATER;
+
+	if (height < SEA_LEVEL) {
+		relief = WATER;
+	}
+	if (height > MOUNTAIN_LEVEL) {
+		relief = MOUNTAIN;
+	}
+	if (height > SEA_LEVEL && height < MOUNTAIN_LEVEL) {
+		std::random_device rd;
+		std::mt19937 gen(rd());
+		float p = glm::smoothstep(SEA_LEVEL, MOUNTAIN_LEVEL, height);
+		std::bernoulli_distribution d(p);
+		if (d(gen) == false) {
+			relief = PLAIN;
+		} else {
+			relief = HILLS;
+		}
+	}
+
+	return relief;
+}
+
+void gen_cells(struct byteimage *image, const struct byteimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage)
 {
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::uniform_real_distribution<float> dis(0, image->width);
 
+	// generate set of points based on elevation and rainfall
 	std::vector<glm::vec2> points;
 
 	for (int i = 0; i < NSITES; i++) {
 		glm::vec2 point = glm::vec2(dis(gen), dis(gen));
-		points.push_back(point);
+		int x = int(point.x);
+		int y = int(point.y);
+		float height = sample_byte_height(x, y, heightimage);
+		float rain = sample_byte_height(x, y, rainimage);
+		float p = 1.f;
+		if (height > SEA_LEVEL && height < MOUNTAIN_LEVEL) {
+			p = 1.f;
+		} else if (height < SEA_LEVEL) {
+			p = 0.05f;
+		} else {
+			p = 0.25f;
+		}
+		if (height > SEA_LEVEL && height < MOUNTAIN_LEVEL) {
+			p = glm::mix(p, rain, 0.75f);
+		}
+		std::bernoulli_distribution d(p);
+		if (d(gen) == true) {
+			points.push_back(point);
+		}
 	}
 
 	Voronoi voronoi = { points, image->width, image->height };
+
+	std::vector<struct tile> tiles;
+
+	for (auto &cell : voronoi.cells) {
+		int x = int(cell.center.x);
+		int y = int(cell.center.y);
+		float height = sample_byte_height(x, y, heightimage);
+		enum TILE_RELIEF_TYPE relief = sample_relief(height);
+		struct tile t = {
+			.relief = relief,
+			.temperature = COLD,
+			.vegetation = ARID,
+			.biome = OCEAN,
+			.coast = false,
+			.river = false,
+			.site = &cell,
+		};
+
+		tiles.push_back(t);
+	}
+
+	glm::vec3 watercolor = {0.2f, 0.2f, 0.95f};
+	glm::vec3 plaincolor = {0.5f, 0.7f, 0.4f};
+	glm::vec3 hillscolor = {0.7f, 0.7f, 0.5f};
+	glm::vec3 mountainscolor = {0.5f, 0.5f, 0.5f};
+
+	for (auto &t : tiles) {
+		glm::vec3 color = {1.f, 1.f, 1.f};
+		switch (t.relief) {
+		case WATER: color = watercolor; break;
+		case PLAIN: color = plaincolor; break;
+		case HILLS: color = hillscolor; break;
+		case MOUNTAIN: color = mountainscolor; break;
+		};
+
+		unsigned char c[3];
+		c[0] = 255 * color.x;
+		c[1] = 255 * color.y;
+		c[2] = 255 * color.z;
+		for (auto &border : t.site->borders) {
+			draw_triangle(t.site->center.x, t.site->center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, c);
+			//draw_line(border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, white);
+		}
+	}
 
 	unsigned char sitecolor[3] = {255, 255, 255};
 	unsigned char linecolor[3] = {255, 255, 255};
 	unsigned char delacolor[3] = {255, 0, 0};
 	unsigned char blue[3] = {0, 0, 255};
 	unsigned char white[3] = {255, 255, 255};
+	/*
 
 	for (auto &cell : voronoi.cells) {
 		int x = int(cell.center.x);
 		int y = int(cell.center.y);
 		float height = sample_byte_height(x, y, heightimage);
+		unsigned char rcolor[3];
+		rcolor[0] = 255;
+		rcolor[1] = 0;
+		rcolor[2] = 0;
+
 		if (height < SEA_LEVEL) {
 		 	height = 0.25f;
+			rcolor[0] = 64; rcolor[1] = 64; rcolor[2] = 255;
 		} else if (height > MOUNTAIN_LEVEL) {
 			height = 1.f;
+			rcolor[0] = 200; rcolor[1] = 200; rcolor[2] = 200;
 		} else {
 			height = 0.75f;
+			rcolor[0] = 64; rcolor[1] = 200; rcolor[2] = 64;
 		}
-		unsigned char rcolor[3];
-		unsigned char basecolor = 100;
-		rcolor[0] = height * 255;
-		rcolor[1] = height * 128;
-		rcolor[2] = height * 32;
-
 		for (auto &border : cell.borders) {
 			draw_triangle(cell.center.x, cell.center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, rcolor);
+			//draw_line(border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, white);
 		}
 	}
+	*/
 
 	std::uniform_int_distribution<int> distro(0, voronoi.corners.size() - 1);
 	for (int i = 0; i < 500; i++) {
@@ -249,7 +383,6 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage)
 				}
 			}
 			if (neighbor != nullptr) {
-				plot((int)c->position.x, (int)c->position.y, image->data, image->width, image->height, image->nchannels, blue);
 				previous = c;
 				c = neighbor;
 			} else {
@@ -273,7 +406,7 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage)
 
 }
 
-GLuint voronoi_texture(const struct byteimage *heightimage)
+GLuint voronoi_texture(const struct byteimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage)
 {
 	const size_t size = 1024;
 
@@ -284,7 +417,7 @@ GLuint voronoi_texture(const struct byteimage *heightimage)
 		.height = size,
 	};
 
-	gen_cells(&image, heightimage);
+	gen_cells(&image, heightimage, continentimage, rainimage);
 
 	GLuint texture = bind_byte_texture(&image, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
 
@@ -328,7 +461,7 @@ struct byteimage continent_texture(const struct byteimage *heightimage)
 	return image;
 }
 
-GLuint rainfall_texture(const struct byteimage *tempimage, long seed)
+struct byteimage rainfall_texture(const struct byteimage *tempimage, long seed)
 {
 	const size_t size = tempimage->width * tempimage->height * tempimage->nchannels;
 
@@ -358,9 +491,7 @@ GLuint rainfall_texture(const struct byteimage *tempimage, long seed)
 			image.data[index++] = 255.f * rainfall;
 	}
 
-	GLuint texture = bind_byte_texture(&image, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
-
-	return texture;
+	return image;
 }
 
 void run_worldgen(SDL_Window *window)
@@ -385,8 +516,10 @@ void run_worldgen(SDL_Window *window)
 	struct byteimage temperatureimage = temperature_texture(seed);
 	GLuint temperature = bind_byte_texture(&temperatureimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
-	GLuint rainfall = rainfall_texture(&temperatureimage, seed);
-	GLuint voronoi = voronoi_texture(&heightimage);
+	struct byteimage rainimage = rainfall_texture(&temperatureimage, seed);
+	GLuint rainfall = bind_byte_texture(&rainimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
+
+	GLuint voronoi = voronoi_texture(&heightimage, &continentimage, &rainimage);
 
 	Camera cam = { 
 		glm::vec3(300.f, 8.f, 8.f),
