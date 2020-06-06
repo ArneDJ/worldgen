@@ -181,30 +181,31 @@ struct byteimage height_texture(long seed)
 	return image;
 }
 
-enum TILE_RELIEF_TYPE {
+enum RELIEF_TYPE {
 	WATER,
 	PLAIN,
 	HILLS,
 	MOUNTAIN,
 };
 
-enum TILE_TEMPERATURE {
+enum TEMPERATURE {
 	COLD,
 	TEMPERATE,
 	WARM,
 };
 
-enum TILE_VEGETATION {
+enum VEGETATION {
 	ARID,
 	DRY,
 	HUMID,
 };
 
-enum TILE_BIOME {
+enum BIOME {
 	OCEAN,
 	SEA,
 	MARSH,
 	FOREST,
+	GRASSLAND,
 	TAIGA,
 	SAVANNA,
 	STEPPE,
@@ -214,18 +215,20 @@ enum TILE_BIOME {
 };
 
 struct tile {
-	enum TILE_RELIEF_TYPE relief;
-	enum TILE_TEMPERATURE temperature;
-	enum TILE_VEGETATION vegetation;
-	enum TILE_BIOME biome;
+	int index;
+	enum RELIEF_TYPE relief;
+	enum TEMPERATURE temperature;
+	enum VEGETATION vegetation;
+	enum BIOME biome;
 	bool coast;
 	bool river;
 	const struct cell *site;
+	std::vector<const struct tile*> neighbors;
 };
 
-enum TILE_TEMPERATURE sample_temperature(float warmth)
+enum TEMPERATURE sample_temperature(float warmth)
 {
-	enum TILE_TEMPERATURE temperature = COLD;
+	enum TEMPERATURE temperature = COLD;
 	if (warmth > 0.75f) {
 		temperature = WARM;
 	} else if (warmth < 0.25f) {
@@ -237,9 +240,9 @@ enum TILE_TEMPERATURE sample_temperature(float warmth)
 	return temperature;
 }
 
-enum TILE_RELIEF_TYPE sample_relief(float height)
+enum RELIEF_TYPE sample_relief(float height)
 {
-	enum TILE_RELIEF_TYPE relief = WATER;
+	enum RELIEF_TYPE relief = WATER;
 
 	if (height < SEA_LEVEL) {
 		relief = WATER;
@@ -262,21 +265,27 @@ enum TILE_RELIEF_TYPE sample_relief(float height)
 	return relief;
 }
 
-enum TILE_VEGETATION sample_vegetation(float rainfall) 
+enum VEGETATION sample_vegetation(float rainfall) 
 {
-	enum TILE_VEGETATION vegetation = ARID;
-	if (rainfall < 0.2f) {
+	enum VEGETATION vegetation = ARID;
+	if (rainfall < 0.25f) {
 		vegetation = ARID;
-	} else if (rainfall > 0.4f) {
-		vegetation = HUMID;
 	} else {
-		vegetation = DRY;
+		std::random_device rd;
+		std::mt19937 gen(rd());
+		float p = glm::smoothstep(0.2f, 1.f, rainfall);
+		std::bernoulli_distribution d(sqrtf(p));
+		if (d(gen) == false) {
+			vegetation = DRY;
+		} else {
+			vegetation = HUMID;
+		}
 	}
 
 	return vegetation;
 };
 
-enum TILE_BIOME generate_biome(enum TILE_RELIEF_TYPE relief, enum TILE_TEMPERATURE temperature, enum TILE_VEGETATION vegetation) 
+enum BIOME generate_biome(enum RELIEF_TYPE relief, enum TEMPERATURE temperature, enum VEGETATION vegetation) 
 {
 	if (relief == WATER) { return OCEAN; }
 
@@ -288,17 +297,17 @@ enum TILE_BIOME generate_biome(enum TILE_RELIEF_TYPE relief, enum TILE_TEMPERATU
 		}
 	}
 
-	enum TILE_BIOME biome = STEPPE;
+	enum BIOME biome = STEPPE;
 	if (temperature == COLD) {
 		switch (vegetation) {
 		case ARID: biome = STEPPE; break;
-		case DRY: biome = SAVANNA; break;
+		case DRY: biome = GRASSLAND; break;
 		case HUMID: biome = TAIGA; break;
 		};
 	} else if (temperature == TEMPERATE) {
 		switch (vegetation) {
 		case ARID: biome = STEPPE; break;
-		case DRY: biome = SAVANNA; break;
+		case DRY: biome = GRASSLAND; break;
 		case HUMID: biome = FOREST; break;
 		};
 	} else if (temperature == WARM) {
@@ -347,18 +356,24 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 	Voronoi voronoi = { points, image->width, image->height };
 
 	std::vector<struct tile> tiles;
+	tiles.resize(voronoi.cells.size());
 
-	for (auto &cell : voronoi.cells) {
+	for (const auto &cell : voronoi.cells) {
 		int x = int(cell.center.x);
 		int y = int(cell.center.y);
 		float height = sample_byte_height(x, y, heightimage);
 		float warmth = sample_byte_height(x, y, temperatureimage);
 		float rain = sample_byte_height(x, y, rainimage);
-		enum TILE_RELIEF_TYPE relief = sample_relief(height);
-		enum TILE_TEMPERATURE temperature = sample_temperature(warmth);
-		enum TILE_VEGETATION vegetation = sample_vegetation(rain);
-		enum TILE_BIOME biome = generate_biome(relief, temperature, vegetation);
+		enum RELIEF_TYPE relief = sample_relief(height);
+		enum TEMPERATURE temperature = sample_temperature(warmth);
+		enum VEGETATION vegetation = sample_vegetation(rain);
+		enum BIOME biome = generate_biome(relief, temperature, vegetation);
+		std::vector<const struct tile*> neighbors;
+		for (const auto &neighbor : cell.neighbors) {
+			neighbors.push_back(&tiles[neighbor->index]);
+		}
 		struct tile t = {
+			.index = cell.index,
 			.relief = relief,
 			.temperature = temperature,
 			.vegetation = vegetation,
@@ -366,14 +381,36 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 			.coast = false,
 			.river = false,
 			.site = &cell,
+			.neighbors = neighbors,
 		};
 
-		tiles.push_back(t);
+		tiles[cell.index] = t;
 	}
+
+	// find coastal tiles
+	for (auto &t : tiles) {
+		bool sea = false;
+		bool land = false;
+		for (auto neighbor : t.neighbors) {
+			if (neighbor->relief == WATER) {
+				sea = true;
+			}
+			if (neighbor->relief != WATER) {
+				land = true;
+			}
+		}
+
+		if (sea == true && land == true ) {
+			t.coast = true;
+		}
+	}
+
 	glm::vec3 ocean = {0.2f, 0.2f, 0.95f};
 	glm::vec3 forest = {0.2f, 1.f, 0.2f};
 	glm::vec3 taiga = {0.2f, 0.95f, 0.6f};
-	glm::vec3 savanna = {0.6f, 0.95f, 0.2f};
+	glm::vec3 grassland = {0.6f, 0.9f, 0.2f};
+	//glm::vec3 savanna = {0.6f, 0.95f, 0.2f};
+	glm::vec3 savanna = {1.f, 0.f, 0.f};
 	glm::vec3 steppe = {0.7f, 0.8f, 0.2f};
 	glm::vec3 desert = {0.8f, 0.9f, 0.2f};
 	glm::vec3 alpine = {0.8f, 0.8f, 0.8f};
@@ -390,6 +427,7 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 		case DESERT: color = desert; break;
 		case ALPINE: color = alpine; break;
 		case BADLANDS: color = badlands; break;
+		case GRASSLAND: color = grassland; break;
 		};
 
 		unsigned char c[3];
@@ -398,7 +436,6 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 		c[2] = 255 * color.z;
 		for (auto &border : t.site->borders) {
 			draw_triangle(t.site->center.x, t.site->center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, c);
-			//draw_line(border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, white);
 		}
 	}
 	/*
@@ -563,7 +600,7 @@ struct byteimage rainfall_texture(const struct byteimage *tempimage, long seed)
 	for (auto i = 0; i < size; i++) {
 			float temperature = 1.f - (tempimage->data[index] / 255.f);
 			float rainfall = image.data[index] / 255.f;
-			rainfall = glm::mix(rainfall, temperature*temperature, 1.f - temperature);
+			rainfall = glm::mix(rainfall, temperature, 1.f - temperature);
 			image.data[index++] = 255.f * rainfall;
 	}
 
