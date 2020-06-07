@@ -1,14 +1,18 @@
+struct cell;
+
 struct corner {
 	int index;
 	glm::vec2 position;
 	std::vector<struct corner*> adjacent;
+	std::vector<const struct cell*> cells;
 };
 
 struct cell {
 	int index;
 	glm::vec2 center;
 	std::vector<glm::vec4> borders;
-	std::vector<struct cell*> neighbors;
+	std::vector<const struct cell*> neighbors;
+	std::vector<const struct corner*> corners;
 };
 
 class Voronoi {

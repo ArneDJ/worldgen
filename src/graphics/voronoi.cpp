@@ -11,6 +11,16 @@
 #include "imp.h"
 #include "voronoi.h"
 
+static void prune_corners(std::vector<const struct corner*> &v)
+{
+	auto end = v.end();
+	for (auto it = v.begin(); it != end; ++it) {
+		end = std::remove(it + 1, end, *it);
+	}
+
+	v.erase(end, v.end());
+}
+
 // Remaps the point from the input space to image space
 static inline jcv_point remap(const jcv_point* pt, const jcv_point* min, const jcv_point* max, const jcv_point* scale)
 {
@@ -114,14 +124,37 @@ void Voronoi::gen_diagram(std::vector<glm::vec2> &locations, size_t width, size_
 		struct corner c;
 		c.index = vertex->index;
 		c.position = glm::vec2(vertex->pos.x, vertex->pos.y);
-		jcv_vertex_edge *edges = vertex->edges; // The half edges owned by the vertex
+		jcv_vertex_edge *edges = vertex->edges;
 		while (edges) {
 			jcv_vertex *neighbor = edges->neighbor;
-			edges = edges->next;
 			c.adjacent.push_back(&corners[neighbor->index]);
+			edges = edges->next;
 		}
 		corners[vertex->index] = c;
 		vertex = jcv_diagram_get_next_vertex(vertex);
+	}
+
+	// get corner and cell duality
+	for (int i = 0; i < diagram.numsites; i++) { 
+		const jcv_site *site = &sites[i];
+		const jcv_graphedge *edge = site->edges;
+		while (edge) {
+			const jcv_altered_edge *altered = get_altered_edge(edge);
+			jcv_vertex *a = altered->vertices[0];
+			cells[site->index].corners.push_back(&corners[a->index]);
+			jcv_vertex *b = altered->vertices[1];
+			cells[site->index].corners.push_back(&corners[b->index]);
+
+			edge = edge->next;
+		}
+	}
+
+	// remove duplicates and add duality
+	for (auto &cell : cells) {
+		prune_corners(cell.corners);
+		for (auto &corner : cell.corners) {
+			corners[corner->index].cells.push_back(&cells[cell.index]);
+		}
 	}
 
 	jcv_diagram_free(&diagram);

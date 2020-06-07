@@ -212,6 +212,7 @@ enum BIOME {
 	DESERT,
 	BADLANDS,
 	ALPINE,
+	FLOODPLAIN,
 };
 
 struct tile {
@@ -409,8 +410,7 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 	glm::vec3 forest = {0.2f, 1.f, 0.2f};
 	glm::vec3 taiga = {0.2f, 0.95f, 0.6f};
 	glm::vec3 grassland = {0.6f, 0.9f, 0.2f};
-	//glm::vec3 savanna = {0.6f, 0.95f, 0.2f};
-	glm::vec3 savanna = {1.f, 0.f, 0.f};
+	glm::vec3 savanna = {1.f, 0.5f, 0.f};
 	glm::vec3 steppe = {0.7f, 0.8f, 0.2f};
 	glm::vec3 desert = {0.8f, 0.9f, 0.2f};
 	glm::vec3 alpine = {0.8f, 0.8f, 0.8f};
@@ -515,6 +515,17 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 				}
 			}
 		}
+	}
+
+	struct cell c = voronoi.cells[50];
+	for (auto &border : c.borders) {
+		printf("border: %f, %f, %f, %f\n", border.x, border.y, border.z, border.w);
+	}
+	for (auto &corner : c.corners) {
+		printf("corner index: %d\n", corner->index);
+		printf("corner: %f, %f\n", corner->position.x, corner->position.y);
+		plot(corner->position.x, corner->position.y, image->data, image->width, image->height, image->nchannels, white);
+
 	}
 
 }
