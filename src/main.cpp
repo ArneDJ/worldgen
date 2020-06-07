@@ -220,9 +220,22 @@ struct tile;
 struct corner {
 	int index;
 	bool coastal;
+	bool river;
 	const struct vertex *v;
-	std::vector<const struct corner*> neighbors;
+	std::vector<struct corner*> neighbors;
 	std::vector<const struct tile*> tiles;
+};
+
+struct border {
+	const struct corner *a;
+	const struct corner *b;
+	glm::vec2 direction;
+};
+
+struct river {
+	std::vector<struct border> segments;
+	const struct corner *source;
+	const struct corner *mouth;
 };
 
 struct tile {
@@ -410,7 +423,7 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 
 	// copy vertex structure to corners
 	for (const auto &vertex : voronoi.vertices) {
-		std::vector<const struct corner*> neighbors;
+		std::vector<struct corner*> neighbors;
 		for (const auto &neighbor : vertex.adjacent) {
 			neighbors.push_back(&corners[neighbor->index]);
 		}
@@ -421,6 +434,7 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 		struct corner c = {
 			.index = vertex.index,
 			.coastal = false,
+			.river = false,
 			.v = &vertex,
 			.neighbors = neighbors,
 			.tiles = tils,
@@ -464,6 +478,89 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 		}
 	}
 
+	// generate rivers
+	std::vector<struct river> rivers;
+	std::uniform_int_distribution<size_t> distr(0, corners.size() - 1);
+	for (int i = 0; i < 500; i++) {
+		struct river river;
+		size_t start = distr(gen);
+		struct corner *source = &corners[start];
+		bool rejected = true;
+		float height = sample_byte_height(source->v->position.x, source->v->position.y, heightimage);
+		// river sources may only start above a certain height
+		if (height > 0.58f) {
+			river.source = source;
+			struct corner *start = source;
+			struct corner *previous = source;
+			int tick = 0;
+			while (start->coastal == false && tick < corners.size()) {
+				float min = 1.f;
+				struct corner *next = nullptr;
+				for (auto &neighbor : start->neighbors) {
+					if (neighbor != previous) {
+						float neighborheight = sample_byte_height(neighbor->v->position.x, neighbor->v->position.y, heightimage);
+						if (neighborheight < min) { 
+							next = neighbor;
+							min = neighborheight;
+						}
+					}
+				}
+
+				// if we still don't find a valid corner reject the river
+				if (next == nullptr) {
+					rejected = true;
+					break;
+				}
+
+				glm::vec2 direction = glm::vec2(next->v->position.x, next->v->position.y) - glm::vec2(start->v->position.x, start->v->position.y);
+				struct border segment = {
+					.a = start,
+					.b = next,
+					.direction = direction,
+				};
+
+				river.segments.push_back(segment);
+
+				if (next->coastal == true) {
+					rejected = false;
+					river.mouth = next;
+				}
+
+				previous = start;
+				start = next;
+				tick++;
+			}
+		}
+
+		if (rejected == false) {
+			rivers.push_back(river);
+		}
+	}
+
+	// validate rivers
+	for (const auto &river : rivers) {
+		for (const auto &segment : river.segments) {
+			corners[segment.a->index].river = true;
+			corners[segment.b->index].river = true;
+		}
+	}
+
+	// assign floodplains and marshes 
+	for (auto &tile : tiles) {
+		size_t river_count = 0;
+		for (const auto &corner : tile.corners) {
+			if (corner->river == true) {
+				river_count++;
+				if (tile.biome == DESERT) {
+					tile.biome = FLOODPLAIN;
+				}
+			}
+		}
+		if (river_count > 4 && tile.relief == PLAIN) {
+			tile.biome = MARSH;
+		}
+	}
+
 	glm::vec3 ocean = {0.2f, 0.2f, 0.95f};
 	glm::vec3 forest = {0.2f, 1.f, 0.2f};
 	glm::vec3 taiga = {0.2f, 0.95f, 0.6f};
@@ -473,6 +570,8 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 	glm::vec3 desert = {0.8f, 0.9f, 0.2f};
 	glm::vec3 alpine = {0.8f, 0.8f, 0.8f};
 	glm::vec3 badlands = {1.f, 0.8f, 0.8f};
+	glm::vec3 floodplain = {0.1f, 0.5f, 0.f};
+	glm::vec3 marsh = {0.1f, 0.5f, 0.4f};
 
 	for (auto &t : tiles) {
 		glm::vec3 color = {1.f, 1.f, 1.f};
@@ -486,6 +585,8 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 		case ALPINE: color = alpine; break;
 		case BADLANDS: color = badlands; break;
 		case GRASSLAND: color = grassland; break;
+		case FLOODPLAIN: color = floodplain; break;
+		case MARSH: color = marsh; break;
 		};
 
 		unsigned char c[3];
@@ -503,64 +604,11 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 	unsigned char blue[3] = {0, 0, 255};
 	unsigned char white[3] = {255, 255, 255};
 
-	std::uniform_int_distribution<int> distro(0, voronoi.vertices.size() - 1);
-	for (int i = 0; i < 500; i++) {
-		std::vector<struct vertex*> river;
-		bool rejected = true;
-		int start = distro(gen);
-		struct vertex *c = &voronoi.vertices[start];
-		float height = sample_byte_height(c->position.x, c->position.y, heightimage);
-		if (height > 0.6f) {
-			// find the lowest neighbor
-			int tick = 0;
-			struct vertex *previous = c;
-			while (height > SEA_LEVEL && tick < NSITES) {
-			river.push_back(c);
-			height = sample_byte_height(c->position.x, c->position.y, heightimage);
-			float min = 1.f;
-			struct vertex *neighbor = nullptr;
-			for (auto &n : c->adjacent) {
-				if (n != previous) {
-				float neighborheight = sample_byte_height(n->position.x, n->position.y, heightimage);
-				if (neighborheight < min) { 
-					neighbor = n;
-					min = neighborheight;
-				}
-				}
-			}
-			if (neighbor != nullptr) {
-				previous = c;
-				c = neighbor;
-			} else {
-				break;
-			}
-			tick++;
-			if (height < SEA_LEVEL) {
-				rejected = false;
-			}
-			}
-
-			if (rejected == false) {
-				for (int i = 0; i < river.size(); i++) {
-					if (i+1 < river.size()) {
-						draw_line(river[i]->position.x, river[i]->position.y, river[i+1]->position.x, river[i+1]->position.y, image->data, image->width, image->height, image->nchannels, blue);
-					}
-				}
-			}
+	for (const auto &river : rivers) {
+		for (const auto &segment : river.segments) {
+			draw_line(segment.a->v->position.x, segment.a->v->position.y, segment.b->v->position.x, segment.b->v->position.y, image->data, image->width, image->height, image->nchannels, blue);
 		}
 	}
-
-	struct cell c = voronoi.cells[50];
-	for (auto &border : c.borders) {
-		printf("border: %f, %f, %f, %f\n", border.x, border.y, border.z, border.w);
-	}
-	for (auto &vertex : c.vertices) {
-		printf("vertex index: %d\n", vertex->index);
-		printf("vertex: %f, %f\n", vertex->position.x, vertex->position.y);
-		plot(vertex->position.x, vertex->position.y, image->data, image->width, image->height, image->nchannels, white);
-
-	}
-
 }
 
 GLuint voronoi_texture(const struct byteimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage,const struct byteimage *temperatureimage)
