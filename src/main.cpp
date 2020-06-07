@@ -215,6 +215,16 @@ enum BIOME {
 	FLOODPLAIN,
 };
 
+struct tile;
+
+struct corner {
+	int index;
+	bool coastal;
+	const struct vertex *v;
+	std::vector<const struct corner*> neighbors;
+	std::vector<const struct tile*> tiles;
+};
+
 struct tile {
 	int index;
 	enum RELIEF_TYPE relief;
@@ -225,6 +235,7 @@ struct tile {
 	bool river;
 	const struct cell *site;
 	std::vector<const struct tile*> neighbors;
+	std::vector<const struct corner*> corners;
 };
 
 enum TEMPERATURE sample_temperature(float warmth)
@@ -359,6 +370,10 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 	std::vector<struct tile> tiles;
 	tiles.resize(voronoi.cells.size());
 
+	std::vector<struct corner> corners;
+	corners.resize(voronoi.vertices.size());
+
+	// copy cell structure to tiles
 	for (const auto &cell : voronoi.cells) {
 		int x = int(cell.center.x);
 		int y = int(cell.center.y);
@@ -373,6 +388,10 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 		for (const auto &neighbor : cell.neighbors) {
 			neighbors.push_back(&tiles[neighbor->index]);
 		}
+		std::vector<const struct corner*> corn;
+		for (const auto &vertex : cell.vertices) {
+			corn.push_back(&corners[vertex->index]);
+		}
 		struct tile t = {
 			.index = cell.index,
 			.relief = relief,
@@ -383,9 +402,31 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 			.river = false,
 			.site = &cell,
 			.neighbors = neighbors,
+			.corners = corn,
 		};
 
 		tiles[cell.index] = t;
+	}
+
+	// copy vertex structure to corners
+	for (const auto &vertex : voronoi.vertices) {
+		std::vector<const struct corner*> neighbors;
+		for (const auto &neighbor : vertex.adjacent) {
+			neighbors.push_back(&corners[neighbor->index]);
+		}
+		std::vector<const struct tile*> tils;
+		for (const auto &cell : vertex.cells) {
+			tils.push_back(&tiles[cell->index]);
+		}
+		struct corner c = {
+			.index = vertex.index,
+			.coastal = false,
+			.v = &vertex,
+			.neighbors = neighbors,
+			.tiles = tils,
+		};
+
+		corners[vertex.index] = c;
 	}
 
 	// find coastal tiles
@@ -403,6 +444,23 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 
 		if (sea == true && land == true ) {
 			t.coast = true;
+		}
+	}
+
+	// find coastal corners
+	for (auto &c : corners) {
+		bool sea = false;
+		bool land = false;
+		for (const auto &tile : c.tiles) {
+			if (tile->relief == WATER) {
+				sea = true;
+			}
+			if (tile->relief != WATER) {
+				land = true;
+			}
+		}
+		if (sea == true && land == true ) {
+			c.coastal = true;
 		}
 	}
 
@@ -438,31 +496,6 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 			draw_triangle(t.site->center.x, t.site->center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, c);
 		}
 	}
-	/*
-	glm::vec3 watercolor = {0.2f, 0.2f, 0.95f};
-	glm::vec3 plaincolor = {0.5f, 0.7f, 0.4f};
-	glm::vec3 hillscolor = {0.7f, 0.7f, 0.5f};
-	glm::vec3 mountainscolor = {0.5f, 0.5f, 0.5f};
-
-	for (auto &t : tiles) {
-		glm::vec3 color = {1.f, 1.f, 1.f};
-		switch (t.relief) {
-		case WATER: color = watercolor; break;
-		case PLAIN: color = plaincolor; break;
-		case HILLS: color = hillscolor; break;
-		case MOUNTAIN: color = mountainscolor; break;
-		};
-
-		unsigned char c[3];
-		c[0] = 255 * color.x;
-		c[1] = 255 * color.y;
-		c[2] = 255 * color.z;
-		for (auto &border : t.site->borders) {
-			draw_triangle(t.site->center.x, t.site->center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, c);
-			//draw_line(border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, white);
-		}
-	}
-	*/
 
 	unsigned char sitecolor[3] = {255, 255, 255};
 	unsigned char linecolor[3] = {255, 255, 255};
@@ -470,22 +503,22 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 	unsigned char blue[3] = {0, 0, 255};
 	unsigned char white[3] = {255, 255, 255};
 
-	std::uniform_int_distribution<int> distro(0, voronoi.corners.size() - 1);
+	std::uniform_int_distribution<int> distro(0, voronoi.vertices.size() - 1);
 	for (int i = 0; i < 500; i++) {
-		std::vector<struct corner*> river;
+		std::vector<struct vertex*> river;
 		bool rejected = true;
 		int start = distro(gen);
-		struct corner *c = &voronoi.corners[start];
+		struct vertex *c = &voronoi.vertices[start];
 		float height = sample_byte_height(c->position.x, c->position.y, heightimage);
 		if (height > 0.6f) {
 			// find the lowest neighbor
 			int tick = 0;
-			struct corner *previous = c;
+			struct vertex *previous = c;
 			while (height > SEA_LEVEL && tick < NSITES) {
 			river.push_back(c);
 			height = sample_byte_height(c->position.x, c->position.y, heightimage);
 			float min = 1.f;
-			struct corner *neighbor = nullptr;
+			struct vertex *neighbor = nullptr;
 			for (auto &n : c->adjacent) {
 				if (n != previous) {
 				float neighborheight = sample_byte_height(n->position.x, n->position.y, heightimage);
@@ -521,10 +554,10 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 	for (auto &border : c.borders) {
 		printf("border: %f, %f, %f, %f\n", border.x, border.y, border.z, border.w);
 	}
-	for (auto &corner : c.corners) {
-		printf("corner index: %d\n", corner->index);
-		printf("corner: %f, %f\n", corner->position.x, corner->position.y);
-		plot(corner->position.x, corner->position.y, image->data, image->width, image->height, image->nchannels, white);
+	for (auto &vertex : c.vertices) {
+		printf("vertex index: %d\n", vertex->index);
+		printf("vertex: %f, %f\n", vertex->position.x, vertex->position.y);
+		plot(vertex->position.x, vertex->position.y, image->data, image->width, image->height, image->nchannels, white);
 
 	}
 

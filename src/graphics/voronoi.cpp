@@ -11,7 +11,7 @@
 #include "imp.h"
 #include "voronoi.h"
 
-static void prune_corners(std::vector<const struct corner*> &v)
+static void prune_vertices(std::vector<const struct vertex*> &v)
 {
 	auto end = v.end();
 	for (auto it = v.begin(); it != end; ++it) {
@@ -117,33 +117,33 @@ void Voronoi::gen_diagram(std::vector<glm::vec2> &locations, size_t width, size_
 	// generate the vertices and vertex_edges
 	jcv_diagram_generate_vertices(&diagram);
 
-	corners.resize(diagram.internal->numvertices);
+	vertices.resize(diagram.internal->numvertices);
 
 	const jcv_vertex *vertex = jcv_diagram_get_vertices(&diagram);
 	while (vertex) {
-		struct corner c;
+		struct vertex c;
 		c.index = vertex->index;
 		c.position = glm::vec2(vertex->pos.x, vertex->pos.y);
 		jcv_vertex_edge *edges = vertex->edges;
 		while (edges) {
 			jcv_vertex *neighbor = edges->neighbor;
-			c.adjacent.push_back(&corners[neighbor->index]);
+			c.adjacent.push_back(&vertices[neighbor->index]);
 			edges = edges->next;
 		}
-		corners[vertex->index] = c;
+		vertices[vertex->index] = c;
 		vertex = jcv_diagram_get_next_vertex(vertex);
 	}
 
-	// get corner and cell duality
+	// get vertex and cell duality
 	for (int i = 0; i < diagram.numsites; i++) { 
 		const jcv_site *site = &sites[i];
 		const jcv_graphedge *edge = site->edges;
 		while (edge) {
 			const jcv_altered_edge *altered = get_altered_edge(edge);
 			jcv_vertex *a = altered->vertices[0];
-			cells[site->index].corners.push_back(&corners[a->index]);
+			cells[site->index].vertices.push_back(&vertices[a->index]);
 			jcv_vertex *b = altered->vertices[1];
-			cells[site->index].corners.push_back(&corners[b->index]);
+			cells[site->index].vertices.push_back(&vertices[b->index]);
 
 			edge = edge->next;
 		}
@@ -151,9 +151,9 @@ void Voronoi::gen_diagram(std::vector<glm::vec2> &locations, size_t width, size_
 
 	// remove duplicates and add duality
 	for (auto &cell : cells) {
-		prune_corners(cell.corners);
-		for (auto &corner : cell.corners) {
-			corners[corner->index].cells.push_back(&cells[cell.index]);
+		prune_vertices(cell.vertices);
+		for (auto &vertex : cell.vertices) {
+			vertices[vertex->index].cells.push_back(&cells[cell.index]);
 		}
 	}
 
