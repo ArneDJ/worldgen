@@ -4,7 +4,7 @@ layout(vertices = 4) out;
 
 void main(void)
 {
-	const float tesselation = 16.0;
+	const float tesselation = 48.0;
 
 	if (gl_InvocationID == 0) {
 		gl_TessLevelInner[0] = tesselation;

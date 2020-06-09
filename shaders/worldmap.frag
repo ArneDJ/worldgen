@@ -2,13 +2,11 @@
 
 layout(binding = 0) uniform sampler2D heightmap;
 layout(binding = 1) uniform sampler2D colormap;
-//layout(binding = 1) uniform sampler2D normalmap;
+layout(binding = 2) uniform sampler2D normalmap;
+/*
 layout(binding = 2) uniform sampler2D occlusmap;
 layout(binding = 3) uniform sampler2D detailmap;
-layout(binding = 4) uniform sampler2D grassmap;
-layout(binding = 5) uniform sampler2D dirtmap;
-layout(binding = 6) uniform sampler2D stonemap;
-layout(binding = 7) uniform sampler2D snowmap;
+*/
 
 layout(binding = 10) uniform sampler2DArrayShadow shadowmap;
 
@@ -164,5 +162,5 @@ float shadow_coef(void)
 
 void main(void)
 {
-	color = texture(colormap, mapscale*fragment.texcoord);
+	color = texture(normalmap, mapscale*fragment.texcoord);
 }

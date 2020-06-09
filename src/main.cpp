@@ -24,6 +24,7 @@
 #include "graphics/shader.h"
 #include "graphics/camera.h"
 #include "worldmap/voronoi.h"
+#include "worldmap/terraform.h"
 #include "worldmap/map.h"
 
 #define WINDOW_WIDTH 1920
@@ -36,7 +37,7 @@
 
 #define MAX_RIVER_SIZE 2000
 #define SEA_LEVEL 0.43f
-#define MOUNTAIN_LEVEL 0.7f
+#define MOUNTAIN_LEVEL 0.65f
 #define NSITES 256*256
 
 class Skybox {
@@ -300,6 +301,8 @@ enum BIOME generate_biome(enum RELIEF_TYPE relief, enum TEMPERATURE temperature,
 	return biome;
 };
 
+
+
 struct worldmap {
 	Voronoi voronoi;
 	std::vector<struct tile> tiles;
@@ -307,7 +310,7 @@ struct worldmap {
 	std::vector<struct river> rivers;
 };
 
-struct worldmap gen_cells(size_t max, const struct byteimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage)
+struct worldmap gen_cells(size_t max, const struct floatimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage)
 {
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -322,7 +325,7 @@ struct worldmap gen_cells(size_t max, const struct byteimage *heightimage, const
 		glm::vec2 point = glm::vec2(dis(gen), dis(gen));
 		int x = int(point.x);
 		int y = int(point.y);
-		float height = sample_byte_height(ratio*x, ratio*y, heightimage);
+		float height = sample_image(ratio*x, ratio*y, heightimage, 0);
 		float rain = sample_byte_height(ratio*x, ratio*y, rainimage);
 		float p = 1.f;
 		if (height > SEA_LEVEL && height < MOUNTAIN_LEVEL) {
@@ -350,7 +353,7 @@ struct worldmap gen_cells(size_t max, const struct byteimage *heightimage, const
 	for (const auto &cell : map.voronoi.cells) {
 		int x = int(cell.center.x);
 		int y = int(cell.center.y);
-		float height = sample_byte_height(ratio*x, ratio*y, heightimage);
+		float height = sample_image(ratio*x, ratio*y, heightimage, 0);
 		float warmth = sample_byte_height(ratio*x, ratio*y, temperatureimage);
 		float rain = sample_byte_height(ratio*x, ratio*y, rainimage);
 		enum RELIEF_TYPE relief = sample_relief(height);
@@ -452,7 +455,7 @@ struct worldmap gen_cells(size_t max, const struct byteimage *heightimage, const
 		size_t start = distr(gen);
 		struct corner *source = &map.corners[start];
 		bool rejected = true;
-		float height = sample_byte_height(ratio*source->v->position.x, ratio*source->v->position.y, heightimage);
+		float height = sample_image(ratio*source->v->position.x, ratio*source->v->position.y, heightimage, 0);
 		// river sources may only start above a certain height
 		if (height > 0.58f) {
 			river.source = source;
@@ -464,7 +467,7 @@ struct worldmap gen_cells(size_t max, const struct byteimage *heightimage, const
 				struct corner *next = nullptr;
 				for (auto &neighbor : start->neighbors) {
 					if (neighbor != previous) {
-						float neighborheight = sample_byte_height(ratio*neighbor->v->position.x, ratio*neighbor->v->position.y, heightimage);
+						float neighborheight = sample_image(ratio*neighbor->v->position.x, ratio*neighbor->v->position.y, heightimage, 0);
 						if (neighborheight < min) { 
 							next = neighbor;
 							min = neighborheight;
@@ -595,23 +598,7 @@ GLuint voronoi_texture(const struct worldmap *map)
 	return texture;
 }
 
-struct byteimage temperature_texture(long seed)
-{
-	const size_t size = 2048;
-
-	struct byteimage image = {
-		.data = new unsigned char[size*size],
-		.nchannels = 1,
-		.width = size,
-		.height = size,
-	};
-
-	gradient_image(&image, seed, 100.f);
-
-	return image;
-}
-
-struct byteimage continent_texture(const struct byteimage *heightimage)
+struct byteimage continent_texture(const struct floatimage *heightimage)
 {
 	struct byteimage image = {
 		.data = new unsigned char[heightimage->width*heightimage->height],
@@ -623,7 +610,7 @@ struct byteimage continent_texture(const struct byteimage *heightimage)
 	size_t index = 0;
 	for (int i = 0; i < heightimage->height; i++) {
 		for (int j = 0; j < heightimage->width; j++) {
-			float height = heightimage->data[index] / 255.f;
+			float height = heightimage->data[index];
 			height = height < SEA_LEVEL ? 0.f : 1.f;
 			image.data[index++] = 255.f * height;
 		}
@@ -665,14 +652,90 @@ struct byteimage rainfall_texture(const struct byteimage *tempimage, long seed)
 	return image;
 }
 
-/*
-// all images should only have a single color channel
-struct floatimage relief_heightmap(const struct byteimage *heightmap, const struct byteimage *water, const struct byteimage *plain, const struct byteimage *hills, const struct byteimage *mountains)
+struct byteimage relief_mask(const struct worldmap *map, enum RELIEF_TYPE relief, size_t width, size_t height, float blur)
 {
+	struct byteimage image = {
+		.data = new unsigned char[width*height],
+		.nchannels = 1,
+		.width = width,
+		.height = height,
+	};
 
+	for (int i = 0; i < width*height; i++) {
+		image.data[i] = 0;
+	}
 
+	const float ratio = float(width) / float(4096);
+
+	unsigned char mask[3] = {255, 255, 255};
+
+	for (const auto &tile : map->tiles) {
+		if (tile.relief == relief) {
+			for (const auto &border : tile.site->borders) {
+				draw_triangle(ratio*tile.site->center.x, ratio*tile.site->center.y, ratio*border.x, ratio*border.y, ratio*border.z, ratio*border.w, image.data, image.width, image.height, image.nchannels, mask);
+			}
+		}
+	}
+
+	gauss_blur_image(&image, blur);
+
+	return image;
 }
-*/
+
+// all images should only have a single color channel
+struct floatimage relief_heightmap(const struct floatimage *heightmap, const struct worldmap *map, long seed)
+{
+	const size_t width = 2048;
+	const size_t height = 2048;
+	struct byteimage water = relief_mask(map, WATER, width, height, 1.f);
+	struct byteimage mountain = relief_mask(map, MOUNTAIN, width, height, 10.f);
+
+	struct floatimage image = {
+		.data = new float[width*height],
+		.nchannels = 1,
+		.width = width,
+		.height = height,
+	};
+
+	const float ratio = float(heightmap->width) / float(width);
+
+	{
+		unsigned int index = 0; 
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				float height = sample_image(ratio*j, ratio*i, heightmap, 0);
+				image.data[index++] = 0.5f * height;
+			}
+		}
+	}
+
+	struct floatimage mountainmap = {
+		.data = new float[width*height],
+		.nchannels = 1,
+		.width = width,
+		.height = height,
+	};
+
+	cellnoise_image(mountainmap.data, mountainmap.width, seed, 0.04f);
+
+	unsigned int index = 0;
+	for (int i = 0; i < width; i++) {
+		for (int j = 0; j < height; j++) {
+			float mask = sample_byte_height(j, i, &mountain);
+			float watermask = sample_byte_height(j, i, &water);
+			float ridge = (0.25f*mountainmap.data[index]) + 0.4f;
+			float height = glm::mix(image.data[index], ridge, mask*mask);
+			height = glm::mix(height, 0.75f*height, watermask);
+			image.data[index++] = height;
+		}
+	}
+
+	delete [] mountainmap.data;
+	delete [] water.data;
+	delete [] mountain.data;
+
+	return image;
+}
 
 void run_worldgen(SDL_Window *window)
 {
@@ -688,24 +751,33 @@ void run_worldgen(SDL_Window *window)
 	std::uniform_int_distribution<long> dis;
 	long seed = dis(gen);
 
-	struct byteimage heightimage = height_texture(seed);
-	GLuint heightmap = bind_byte_texture(&heightimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
+	Terraform terraform = {
+		2048,
+		2048,
+		seed,
+		0.001f,
+	};
+
+	GLuint heightmap = bind_texture(&terraform.heightmap, GL_R8, GL_RED, GL_FLOAT);
 
 
-	struct byteimage continentimage = continent_texture(&heightimage);
+	struct byteimage continentimage = continent_texture(&terraform.heightmap);
 	GLuint continent = bind_byte_texture(&continentimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
-	struct byteimage temperatureimage = temperature_texture(seed);
-	GLuint temperature = bind_byte_texture(&temperatureimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
+	GLuint temperature = bind_byte_texture(&terraform.temperature, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
-	struct byteimage rainimage = rainfall_texture(&temperatureimage, seed);
-	GLuint rainfall = bind_byte_texture(&rainimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
+	GLuint rainfall = bind_byte_texture(&terraform.rainfall, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
-	struct worldmap tilecells = gen_cells(4096, &heightimage, &continentimage, &rainimage, &temperatureimage);
+	struct worldmap tilecells = gen_cells(4096, &terraform.heightmap, &continentimage, &terraform.rainfall, &terraform.temperature);
 	GLuint voronoi = voronoi_texture(&tilecells);
+
+	struct floatimage reliefheightimage = relief_heightmap(&terraform.heightmap, &tilecells, seed);
+	GLuint reliefheight = bind_texture(&reliefheightimage, GL_R8, GL_RED, GL_FLOAT);
+	struct floatimage normalimage = gen_normalmap(&reliefheightimage);
+	GLuint normalmap = bind_texture(&normalimage, GL_RGB8, GL_RGB, GL_FLOAT);
 
 	struct mesh worldmap_mesh = gen_patch_grid(32, 32.f);
 	worldmap_program.uniform_float("mapscale", 1.f / (32.f*32.f));
-	worldmap_program.uniform_float("amplitude", 32.f);
+	worldmap_program.uniform_float("amplitude", 64.f);
 
 	Camera cam = { 
 		glm::vec3(300.f, 8.f, 8.f),
@@ -745,8 +817,9 @@ void run_worldgen(SDL_Window *window)
 		worldmap_program.uniform_mat4("VIEW_PROJECT", VP);
 
 		worldmap_program.bind();
-		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, heightmap);
+		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, reliefheight);
 		activate_texture(GL_TEXTURE1, GL_TEXTURE_2D, voronoi);
+		activate_texture(GL_TEXTURE2, GL_TEXTURE_2D, normalmap);
 		glBindVertexArray(worldmap_mesh.VAO);
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		 glPatchParameteri(GL_PATCH_VERTICES, 4);
