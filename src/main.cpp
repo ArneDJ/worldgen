@@ -23,7 +23,8 @@
 #include "graphics/glwrapper.h"
 #include "graphics/shader.h"
 #include "graphics/camera.h"
-#include "graphics/voronoi.h"
+#include "worldmap/voronoi.h"
+#include "worldmap/map.h"
 
 #define WINDOW_WIDTH 1920
 #define WINDOW_HEIGHT 1080
@@ -33,8 +34,9 @@
 
 #define FOG_DENSITY 0.015f
 
+#define MAX_RIVER_SIZE 2000
 #define SEA_LEVEL 0.43f
-#define MOUNTAIN_LEVEL 0.65f
+#define MOUNTAIN_LEVEL 0.7f
 #define NSITES 256*256
 
 class Skybox {
@@ -67,8 +69,8 @@ GLuint bind_byte_texture(const struct byteimage *image, GLenum internalformat, G
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexStorage2D(GL_TEXTURE_2D, 1, internalformat, image->width, image->height);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height, format, type, image->data);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -80,6 +82,28 @@ Shader base_shader(const char *vertpath, const char *fragpath)
 	struct shaderinfo pipeline[] = {
 		{GL_VERTEX_SHADER, vertpath},
 		{GL_FRAGMENT_SHADER, fragpath},
+		{GL_NONE, NULL}
+	};
+
+	Shader shader(pipeline);
+
+	shader.bind();
+
+	glm::mat4 model = glm::mat4(1.f);
+	shader.uniform_mat4("model", model);
+	shader.uniform_vec3("fogcolor", glm::vec3(0.46, 0.7, 0.99));
+	shader.uniform_float("fogfactor", FOG_DENSITY);
+
+	return shader;
+}
+
+Shader worldmap_shader(void)
+{
+	struct shaderinfo pipeline[] = {
+		{GL_VERTEX_SHADER, "shaders/worldmap.vert"},
+		{GL_TESS_CONTROL_SHADER, "shaders/worldmap.tesc"},
+		{GL_TESS_EVALUATION_SHADER, "shaders/worldmap.tese"},
+		{GL_FRAGMENT_SHADER, "shaders/worldmap.frag"},
 		{GL_NONE, NULL}
 	};
 
@@ -168,7 +192,7 @@ static void init_imgui(SDL_Window *window, SDL_GLContext glcontext)
 
 struct byteimage height_texture(long seed)
 {
-	const size_t size = 1024;
+	const size_t size = 2048;
 
 	struct byteimage image = {
 		.data = new unsigned char[size*size],
@@ -176,80 +200,10 @@ struct byteimage height_texture(long seed)
 		.width = size,
 		.height = size,
 	};
-	heightmap_image(&image, seed, 0.002f, 200.f);
+	heightmap_image(&image, seed, 0.001f, 200.f);
 
 	return image;
 }
-
-enum RELIEF_TYPE {
-	WATER,
-	PLAIN,
-	HILLS,
-	MOUNTAIN,
-};
-
-enum TEMPERATURE {
-	COLD,
-	TEMPERATE,
-	WARM,
-};
-
-enum VEGETATION {
-	ARID,
-	DRY,
-	HUMID,
-};
-
-enum BIOME {
-	OCEAN,
-	SEA,
-	MARSH,
-	FOREST,
-	GRASSLAND,
-	TAIGA,
-	SAVANNA,
-	STEPPE,
-	DESERT,
-	BADLANDS,
-	ALPINE,
-	FLOODPLAIN,
-};
-
-struct tile;
-
-struct corner {
-	int index;
-	bool coastal;
-	bool river;
-	const struct vertex *v;
-	std::vector<struct corner*> neighbors;
-	std::vector<const struct tile*> tiles;
-};
-
-struct border {
-	const struct corner *a;
-	const struct corner *b;
-	glm::vec2 direction;
-};
-
-struct river {
-	std::vector<struct border> segments;
-	const struct corner *source;
-	const struct corner *mouth;
-};
-
-struct tile {
-	int index;
-	enum RELIEF_TYPE relief;
-	enum TEMPERATURE temperature;
-	enum VEGETATION vegetation;
-	enum BIOME biome;
-	bool coast;
-	bool river;
-	const struct cell *site;
-	std::vector<const struct tile*> neighbors;
-	std::vector<const struct corner*> corners;
-};
 
 enum TEMPERATURE sample_temperature(float warmth)
 {
@@ -346,11 +300,20 @@ enum BIOME generate_biome(enum RELIEF_TYPE relief, enum TEMPERATURE temperature,
 	return biome;
 };
 
-void gen_cells(struct byteimage *image, const struct byteimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage)
+struct worldmap {
+	Voronoi voronoi;
+	std::vector<struct tile> tiles;
+	std::vector<struct corner> corners;
+	std::vector<struct river> rivers;
+};
+
+struct worldmap gen_cells(size_t max, const struct byteimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage)
 {
 	std::random_device rd;
 	std::mt19937 gen(rd());
-	std::uniform_real_distribution<float> dis(0, image->width);
+	std::uniform_real_distribution<float> dis(0, max);
+
+	const float ratio = float(heightimage->width) / float(max);
 
 	// generate set of points based on elevation and rainfall
 	std::vector<glm::vec2> points;
@@ -359,8 +322,8 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 		glm::vec2 point = glm::vec2(dis(gen), dis(gen));
 		int x = int(point.x);
 		int y = int(point.y);
-		float height = sample_byte_height(x, y, heightimage);
-		float rain = sample_byte_height(x, y, rainimage);
+		float height = sample_byte_height(ratio*x, ratio*y, heightimage);
+		float rain = sample_byte_height(ratio*x, ratio*y, rainimage);
 		float p = 1.f;
 		if (height > SEA_LEVEL && height < MOUNTAIN_LEVEL) {
 			p = 1.f;
@@ -378,32 +341,29 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 		}
 	}
 
-	Voronoi voronoi = { points, image->width, image->height };
-
-	std::vector<struct tile> tiles;
-	tiles.resize(voronoi.cells.size());
-
-	std::vector<struct corner> corners;
-	corners.resize(voronoi.vertices.size());
+	struct worldmap map;
+	map.voronoi.gen_diagram(points, max, max);
+	map.tiles.resize(map.voronoi.cells.size());
+	map.corners.resize(map.voronoi.vertices.size());
 
 	// copy cell structure to tiles
-	for (const auto &cell : voronoi.cells) {
+	for (const auto &cell : map.voronoi.cells) {
 		int x = int(cell.center.x);
 		int y = int(cell.center.y);
-		float height = sample_byte_height(x, y, heightimage);
-		float warmth = sample_byte_height(x, y, temperatureimage);
-		float rain = sample_byte_height(x, y, rainimage);
+		float height = sample_byte_height(ratio*x, ratio*y, heightimage);
+		float warmth = sample_byte_height(ratio*x, ratio*y, temperatureimage);
+		float rain = sample_byte_height(ratio*x, ratio*y, rainimage);
 		enum RELIEF_TYPE relief = sample_relief(height);
 		enum TEMPERATURE temperature = sample_temperature(warmth);
 		enum VEGETATION vegetation = sample_vegetation(rain);
 		enum BIOME biome = generate_biome(relief, temperature, vegetation);
 		std::vector<const struct tile*> neighbors;
 		for (const auto &neighbor : cell.neighbors) {
-			neighbors.push_back(&tiles[neighbor->index]);
+			neighbors.push_back(&map.tiles[neighbor->index]);
 		}
 		std::vector<const struct corner*> corn;
 		for (const auto &vertex : cell.vertices) {
-			corn.push_back(&corners[vertex->index]);
+			corn.push_back(&map.corners[vertex->index]);
 		}
 		struct tile t = {
 			.index = cell.index,
@@ -418,18 +378,18 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 			.corners = corn,
 		};
 
-		tiles[cell.index] = t;
+		map.tiles[cell.index] = t;
 	}
 
 	// copy vertex structure to corners
-	for (const auto &vertex : voronoi.vertices) {
+	for (const auto &vertex : map.voronoi.vertices) {
 		std::vector<struct corner*> neighbors;
 		for (const auto &neighbor : vertex.adjacent) {
-			neighbors.push_back(&corners[neighbor->index]);
+			neighbors.push_back(&map.corners[neighbor->index]);
 		}
 		std::vector<const struct tile*> tils;
 		for (const auto &cell : vertex.cells) {
-			tils.push_back(&tiles[cell->index]);
+			tils.push_back(&map.tiles[cell->index]);
 		}
 		struct corner c = {
 			.index = vertex.index,
@@ -440,11 +400,11 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 			.tiles = tils,
 		};
 
-		corners[vertex.index] = c;
+		map.corners[vertex.index] = c;
 	}
 
 	// find coastal tiles
-	for (auto &t : tiles) {
+	for (auto &t : map.tiles) {
 		bool sea = false;
 		bool land = false;
 		for (auto neighbor : t.neighbors) {
@@ -459,10 +419,16 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 		if (sea == true && land == true ) {
 			t.coast = true;
 		}
+
+		// turn lakes of only 1 tile into marshes
+		if (t.relief == WATER && sea == false) {
+			t.relief = PLAIN;
+			t.biome = MARSH;
+		}
 	}
 
 	// find coastal corners
-	for (auto &c : corners) {
+	for (auto &c : map.corners) {
 		bool sea = false;
 		bool land = false;
 		for (const auto &tile : c.tiles) {
@@ -479,26 +445,26 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 	}
 
 	// generate rivers
-	std::vector<struct river> rivers;
-	std::uniform_int_distribution<size_t> distr(0, corners.size() - 1);
+	//std::vector<struct river> rivers;
+	std::uniform_int_distribution<size_t> distr(0, map.corners.size() - 1);
 	for (int i = 0; i < 500; i++) {
 		struct river river;
 		size_t start = distr(gen);
-		struct corner *source = &corners[start];
+		struct corner *source = &map.corners[start];
 		bool rejected = true;
-		float height = sample_byte_height(source->v->position.x, source->v->position.y, heightimage);
+		float height = sample_byte_height(ratio*source->v->position.x, ratio*source->v->position.y, heightimage);
 		// river sources may only start above a certain height
 		if (height > 0.58f) {
 			river.source = source;
 			struct corner *start = source;
 			struct corner *previous = source;
-			int tick = 0;
-			while (start->coastal == false && tick < corners.size()) {
+			size_t river_size = 0;
+			while (start->coastal == false && river_size < MAX_RIVER_SIZE) {
 				float min = 1.f;
 				struct corner *next = nullptr;
 				for (auto &neighbor : start->neighbors) {
 					if (neighbor != previous) {
-						float neighborheight = sample_byte_height(neighbor->v->position.x, neighbor->v->position.y, heightimage);
+						float neighborheight = sample_byte_height(ratio*neighbor->v->position.x, ratio*neighbor->v->position.y, heightimage);
 						if (neighborheight < min) { 
 							next = neighbor;
 							min = neighborheight;
@@ -528,25 +494,25 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 
 				previous = start;
 				start = next;
-				tick++;
+				river_size++;
 			}
 		}
 
 		if (rejected == false) {
-			rivers.push_back(river);
+			map.rivers.push_back(river);
 		}
 	}
 
 	// validate rivers
-	for (const auto &river : rivers) {
+	for (const auto &river : map.rivers) {
 		for (const auto &segment : river.segments) {
-			corners[segment.a->index].river = true;
-			corners[segment.b->index].river = true;
+			map.corners[segment.a->index].river = true;
+			map.corners[segment.b->index].river = true;
 		}
 	}
 
 	// assign floodplains and marshes 
-	for (auto &tile : tiles) {
+	for (auto &tile : map.tiles) {
 		size_t river_count = 0;
 		for (const auto &corner : tile.corners) {
 			if (corner->river == true) {
@@ -561,6 +527,20 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 		}
 	}
 
+	return map;
+}
+
+GLuint voronoi_texture(const struct worldmap *map)
+{
+	const size_t size = 4096;
+
+	struct byteimage image = {
+		.data = new unsigned char[size*size*3],
+		.nchannels = 3,
+		.width = size,
+		.height = size,
+	};
+
 	glm::vec3 ocean = {0.2f, 0.2f, 0.95f};
 	glm::vec3 forest = {0.2f, 1.f, 0.2f};
 	glm::vec3 taiga = {0.2f, 0.95f, 0.6f};
@@ -573,7 +553,7 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 	glm::vec3 floodplain = {0.1f, 0.5f, 0.f};
 	glm::vec3 marsh = {0.1f, 0.5f, 0.4f};
 
-	for (auto &t : tiles) {
+	for (auto &t : map->tiles) {
 		glm::vec3 color = {1.f, 1.f, 1.f};
 		switch (t.biome) {
 		case OCEAN: color = ocean; break;
@@ -594,7 +574,7 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 		c[1] = 255 * color.y;
 		c[2] = 255 * color.z;
 		for (auto &border : t.site->borders) {
-			draw_triangle(t.site->center.x, t.site->center.y, border.x, border.y, border.z, border.w, image->data, image->width, image->height, image->nchannels, c);
+			draw_triangle(t.site->center.x, t.site->center.y, border.x, border.y, border.z, border.w, image.data, image.width, image.height, image.nchannels, c);
 		}
 	}
 
@@ -604,25 +584,11 @@ void gen_cells(struct byteimage *image, const struct byteimage *heightimage, con
 	unsigned char blue[3] = {0, 0, 255};
 	unsigned char white[3] = {255, 255, 255};
 
-	for (const auto &river : rivers) {
+	for (const auto &river : map->rivers) {
 		for (const auto &segment : river.segments) {
-			draw_line(segment.a->v->position.x, segment.a->v->position.y, segment.b->v->position.x, segment.b->v->position.y, image->data, image->width, image->height, image->nchannels, blue);
+			draw_line(segment.a->v->position.x, segment.a->v->position.y, segment.b->v->position.x, segment.b->v->position.y, image.data, image.width, image.height, image.nchannels, blue);
 		}
 	}
-}
-
-GLuint voronoi_texture(const struct byteimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage,const struct byteimage *temperatureimage)
-{
-	const size_t size = 1024;
-
-	struct byteimage image = {
-		.data = new unsigned char[size*size*3],
-		.nchannels = 3,
-		.width = size,
-		.height = size,
-	};
-
-	gen_cells(&image, heightimage, continentimage, rainimage, temperatureimage);
 
 	GLuint texture = bind_byte_texture(&image, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
 
@@ -631,7 +597,7 @@ GLuint voronoi_texture(const struct byteimage *heightimage, const struct byteima
 
 struct byteimage temperature_texture(long seed)
 {
-	const size_t size = 1024;
+	const size_t size = 2048;
 
 	struct byteimage image = {
 		.data = new unsigned char[size*size],
@@ -699,6 +665,15 @@ struct byteimage rainfall_texture(const struct byteimage *tempimage, long seed)
 	return image;
 }
 
+/*
+// all images should only have a single color channel
+struct floatimage relief_heightmap(const struct byteimage *heightmap, const struct byteimage *water, const struct byteimage *plain, const struct byteimage *hills, const struct byteimage *mountains)
+{
+
+
+}
+*/
+
 void run_worldgen(SDL_Window *window)
 {
 	SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -706,6 +681,7 @@ void run_worldgen(SDL_Window *window)
 	Skybox skybox = init_skybox();
 	Shader skybox_program = skybox_shader();
 	Shader map_program = base_shader("shaders/map.vert", "shaders/map.frag");
+	Shader worldmap_program = worldmap_shader();
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -724,7 +700,12 @@ void run_worldgen(SDL_Window *window)
 	struct byteimage rainimage = rainfall_texture(&temperatureimage, seed);
 	GLuint rainfall = bind_byte_texture(&rainimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
-	GLuint voronoi = voronoi_texture(&heightimage, &continentimage, &rainimage, &temperatureimage);
+	struct worldmap tilecells = gen_cells(4096, &heightimage, &continentimage, &rainimage, &temperatureimage);
+	GLuint voronoi = voronoi_texture(&tilecells);
+
+	struct mesh worldmap_mesh = gen_patch_grid(32, 32.f);
+	worldmap_program.uniform_float("mapscale", 1.f / (32.f*32.f));
+	worldmap_program.uniform_float("amplitude", 32.f);
 
 	Camera cam = { 
 		glm::vec3(300.f, 8.f, 8.f),
@@ -761,26 +742,36 @@ void run_worldgen(SDL_Window *window)
 		glm::mat4 VP = cam.project * cam.view;
 		skybox_program.uniform_mat4("view", cam.view);
 		map_program.uniform_mat4("VIEW_PROJECT", VP);
+		worldmap_program.uniform_mat4("VIEW_PROJECT", VP);
+
+		worldmap_program.bind();
+		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, heightmap);
+		activate_texture(GL_TEXTURE1, GL_TEXTURE_2D, voronoi);
+		glBindVertexArray(worldmap_mesh.VAO);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		 glPatchParameteri(GL_PATCH_VERTICES, 4);
+		 glDrawArrays(GL_PATCHES, 0, worldmap_mesh.ecount);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		glDisable(GL_CULL_FACE);
 		map_program.bind();
-		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 0.f)));
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(0.f, 32.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, heightmap);
 		glBindVertexArray(map.VAO);
 		glDrawArrays(map.mode, 0, map.ecount);
 
-		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(100.f, 0.f, 0.f)));
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(100.f, 32.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, continent);
 		glDrawArrays(map.mode, 0, map.ecount);
 		glEnable(GL_CULL_FACE);
 
-		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(200.f, 0.f, 0.f)));
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(200.f, 32.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, rainfall);
 		glDrawArrays(map.mode, 0, map.ecount);
-		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(300.f, 0.f, 0.f)));
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(300.f, 32.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, temperature);
 		glDrawArrays(map.mode, 0, map.ecount);
-		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(400.f, 0.f, 0.f)));
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(400.f, 32.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, voronoi);
 		glDrawArrays(map.mode, 0, map.ecount);
 		glEnable(GL_CULL_FACE);

@@ -8,7 +8,7 @@
 #define JC_VORONOI_IMPLEMENTATION
 #include "../external/voronoi/jc_voronoi.h"
 
-#include "imp.h"
+#include "../graphics/imp.h"
 #include "voronoi.h"
 
 static void prune_vertices(std::vector<const struct vertex*> &v)
