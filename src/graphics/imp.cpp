@@ -105,11 +105,6 @@ struct floatimage gen_normalmap(const struct floatimage *heightmap)
 			normalmap.data[index] = normal.x;
 			normalmap.data[index+1] = normal.y;
 			normalmap.data[index+2] = normal.z;
-			/*
-			normalmap.data[index] = normal.x * 255.f;
-			normalmap.data[index+1] = normal.y * 255.f;
-			normalmap.data[index+2] = normal.z * 255.f;
-			*/
 		}
 	}
 
@@ -166,6 +161,43 @@ void cellnoise_image(float *image, size_t sidelength, long seed, float freq)
 			float x = i; float y = j;
 			cellnoise.GradientPerturbFractal(x, y);
 			float height = cellnoise.GetNoise(x, y) / max;
+			image[index++] = height;
+		}
+	}
+}
+
+void badlands_image(float *image, size_t sidelength, long seed, float freq)
+{
+	FastNoise cellnoise;
+	cellnoise.SetSeed(seed);
+	cellnoise.SetNoiseType(FastNoise::Cellular);
+	cellnoise.SetCellularDistanceFunction(FastNoise::Euclidean);
+	cellnoise.SetFrequency(freq);
+	cellnoise.SetCellularReturnType(FastNoise::Distance2Sub);
+	cellnoise.SetGradientPerturbAmp(10.f);
+
+	float max = 1.f;
+	for (int i = 0; i < sidelength; i++) {
+		for (int j = 0; j < sidelength; j++) {
+			float x = i; float y = j;
+			cellnoise.GradientPerturbFractal(x, y);
+			float val = cellnoise.GetNoise(x, y);
+			if (val > max) { max = val; }
+		}
+	}
+
+	unsigned int index = 0;
+	for (int i = 0; i < sidelength; i++) {
+		for (int j = 0; j < sidelength; j++) {
+			float x = i; float y = j;
+			cellnoise.GradientPerturbFractal(x, y);
+			float height = cellnoise.GetNoise(x, y) / max;
+			if (height > 0.1f && height < 0.2f) { 
+				height = glm::mix(0.1f, 0.2f, glm::smoothstep(0.15f, 0.16f, height));
+			}
+			if (height > 0.25f && height < 0.5f) { 
+				height = glm::mix(0.25f, 0.5f, glm::smoothstep(0.35f, 0.4f, height));
+			}
 			image[index++] = height;
 		}
 	}

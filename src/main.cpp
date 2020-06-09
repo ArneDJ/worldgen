@@ -191,21 +191,6 @@ static void init_imgui(SDL_Window *window, SDL_GLContext glcontext)
 	ImGui_ImplOpenGL3_Init("#version 430");
 }
 
-struct byteimage height_texture(long seed)
-{
-	const size_t size = 2048;
-
-	struct byteimage image = {
-		.data = new unsigned char[size*size],
-		.nchannels = 1,
-		.width = size,
-		.height = size,
-	};
-	heightmap_image(&image, seed, 0.001f, 200.f);
-
-	return image;
-}
-
 enum TEMPERATURE sample_temperature(float warmth)
 {
 	enum TEMPERATURE temperature = COLD;
@@ -300,8 +285,6 @@ enum BIOME generate_biome(enum RELIEF_TYPE relief, enum TEMPERATURE temperature,
 
 	return biome;
 };
-
-
 
 struct worldmap {
 	Voronoi voronoi;
@@ -619,39 +602,6 @@ struct byteimage continent_texture(const struct floatimage *heightimage)
 	return image;
 }
 
-struct byteimage rainfall_texture(const struct byteimage *tempimage, long seed)
-{
-	const size_t size = tempimage->width * tempimage->height * tempimage->nchannels;
-
-	struct byteimage image = {
-		.data = new unsigned char[size],
-		.nchannels = tempimage->nchannels,
-		.width = tempimage->width,
-		.height = tempimage->height,
-	};
-
-	heightmap_image(&image, seed, 0.002f, 200.f);
-
-	size_t index = 0;
-	for (auto i = 0; i < size; i++) {
-			float height = image.data[index] / 255.f;
-			height = height < 0.5 ? 0.f : 1.f;
-			image.data[index++] = 255.f * (1.f - height);
-	}
-
-	gauss_blur_image(&image, 50.f);
-
-	index = 0;
-	for (auto i = 0; i < size; i++) {
-			float temperature = 1.f - (tempimage->data[index] / 255.f);
-			float rainfall = image.data[index] / 255.f;
-			rainfall = glm::mix(rainfall, temperature, 1.f - temperature);
-			image.data[index++] = 255.f * rainfall;
-	}
-
-	return image;
-}
-
 struct byteimage relief_mask(const struct worldmap *map, enum RELIEF_TYPE relief, size_t width, size_t height, float blur)
 {
 	struct byteimage image = {
@@ -671,6 +621,36 @@ struct byteimage relief_mask(const struct worldmap *map, enum RELIEF_TYPE relief
 
 	for (const auto &tile : map->tiles) {
 		if (tile.relief == relief) {
+			for (const auto &border : tile.site->borders) {
+				draw_triangle(ratio*tile.site->center.x, ratio*tile.site->center.y, ratio*border.x, ratio*border.y, ratio*border.z, ratio*border.w, image.data, image.width, image.height, image.nchannels, mask);
+			}
+		}
+	}
+
+	gauss_blur_image(&image, blur);
+
+	return image;
+}
+
+struct byteimage biome_mask(const struct worldmap *map, enum BIOME biome, size_t width, size_t height, float blur)
+{
+	struct byteimage image = {
+		.data = new unsigned char[width*height],
+		.nchannels = 1,
+		.width = width,
+		.height = height,
+	};
+
+	for (int i = 0; i < width*height; i++) {
+		image.data[i] = 0;
+	}
+
+	const float ratio = float(width) / float(4096);
+
+	unsigned char mask[3] = {255, 255, 255};
+
+	for (const auto &tile : map->tiles) {
+		if (tile.biome == biome) {
 			for (const auto &border : tile.site->borders) {
 				draw_triangle(ratio*tile.site->center.x, ratio*tile.site->center.y, ratio*border.x, ratio*border.y, ratio*border.z, ratio*border.w, image.data, image.width, image.height, image.nchannels, mask);
 			}
@@ -718,6 +698,22 @@ struct floatimage relief_heightmap(const struct floatimage *heightmap, const str
 
 	cellnoise_image(mountainmap.data, mountainmap.width, seed, 0.04f);
 
+	struct floatimage badlands = {
+		.data = new float[width*height],
+		.nchannels = 1,
+		.width = width,
+		.height = height,
+	};
+
+	badlands_image(badlands.data, badlands.width, seed, 0.02f);
+
+	struct byteimage badlandmask = biome_mask(map, BADLANDS, width, height, 1.f);
+	for (int i = 0; i < width*height; i++) {
+		float mask = badlandmask.data[i] / 255.f;
+		float height = glm::mix(mountainmap.data[i], badlands.data[i], mask);
+		mountainmap.data[i] = height;
+	}
+
 	unsigned int index = 0;
 	for (int i = 0; i < width; i++) {
 		for (int j = 0; j < height; j++) {
@@ -731,6 +727,7 @@ struct floatimage relief_heightmap(const struct floatimage *heightmap, const str
 	}
 
 	delete [] mountainmap.data;
+	delete [] badlands.data;
 	delete [] water.data;
 	delete [] mountain.data;
 
