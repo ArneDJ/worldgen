@@ -12,6 +12,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "../graphics/imp.h"
+#include "../graphics/noise.h"
 #include "terraform.h"
 
 struct floatimage gen_heightmap(size_t width, size_t height, long seed, float freq)

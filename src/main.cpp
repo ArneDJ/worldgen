@@ -23,6 +23,7 @@
 #include "graphics/glwrapper.h"
 #include "graphics/shader.h"
 #include "graphics/camera.h"
+#include "graphics/noise.h"
 #include "worldmap/voronoi.h"
 #include "worldmap/terraform.h"
 #include "worldmap/map.h"
@@ -37,7 +38,7 @@
 
 #define MAX_RIVER_SIZE 2000
 #define SEA_LEVEL 0.43f
-#define MOUNTAIN_LEVEL 0.65f
+#define MOUNTAIN_LEVEL 0.69f
 #define NSITES 256*256
 
 class Skybox {
@@ -293,7 +294,7 @@ struct worldmap {
 	std::vector<struct river> rivers;
 };
 
-struct worldmap gen_cells(size_t max, const struct floatimage *heightimage, const struct byteimage *continentimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage)
+struct worldmap gen_cells(size_t max, const struct floatimage *heightimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage)
 {
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -440,7 +441,7 @@ struct worldmap gen_cells(size_t max, const struct floatimage *heightimage, cons
 		bool rejected = true;
 		float height = sample_image(ratio*source->v->position.x, ratio*source->v->position.y, heightimage, 0);
 		// river sources may only start above a certain height
-		if (height > 0.58f) {
+		if (height > 0.5f) {
 			river.source = source;
 			struct corner *start = source;
 			struct corner *previous = source;
@@ -579,27 +580,6 @@ GLuint voronoi_texture(const struct worldmap *map)
 	GLuint texture = bind_byte_texture(&image, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
 
 	return texture;
-}
-
-struct byteimage continent_texture(const struct floatimage *heightimage)
-{
-	struct byteimage image = {
-		.data = new unsigned char[heightimage->width*heightimage->height],
-		.nchannels = heightimage->nchannels,
-		.width = heightimage->width,
-		.height = heightimage->height,
-	};
-
-	size_t index = 0;
-	for (int i = 0; i < heightimage->height; i++) {
-		for (int j = 0; j < heightimage->width; j++) {
-			float height = heightimage->data[index];
-			height = height < SEA_LEVEL ? 0.f : 1.f;
-			image.data[index++] = 255.f * height;
-		}
-	}
-
-	return image;
 }
 
 struct byteimage relief_mask(const struct worldmap *map, enum RELIEF_TYPE relief, size_t width, size_t height, float blur)
@@ -758,13 +738,11 @@ void run_worldgen(SDL_Window *window)
 	GLuint heightmap = bind_texture(&terraform.heightmap, GL_R8, GL_RED, GL_FLOAT);
 
 
-	struct byteimage continentimage = continent_texture(&terraform.heightmap);
-	GLuint continent = bind_byte_texture(&continentimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 	GLuint temperature = bind_byte_texture(&terraform.temperature, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
 	GLuint rainfall = bind_byte_texture(&terraform.rainfall, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
-	struct worldmap tilecells = gen_cells(4096, &terraform.heightmap, &continentimage, &terraform.rainfall, &terraform.temperature);
+	struct worldmap tilecells = gen_cells(4096, &terraform.heightmap, &terraform.rainfall, &terraform.temperature);
 	GLuint voronoi = voronoi_texture(&tilecells);
 
 	struct floatimage reliefheightimage = relief_heightmap(&terraform.heightmap, &tilecells, seed);
@@ -829,11 +807,6 @@ void run_worldgen(SDL_Window *window)
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, heightmap);
 		glBindVertexArray(map.VAO);
 		glDrawArrays(map.mode, 0, map.ecount);
-
-		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(100.f, 32.f, 0.f)));
-		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, continent);
-		glDrawArrays(map.mode, 0, map.ecount);
-		glEnable(GL_CULL_FACE);
 
 		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(200.f, 32.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, rainfall);
