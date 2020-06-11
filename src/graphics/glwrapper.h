@@ -34,6 +34,8 @@ GLuint bind_texture(const struct floatimage *image, GLenum internalformat, GLenu
 
 GLuint bind_mipmap_texture(struct byteimage *image, GLenum internalformat, GLenum format, GLenum type);
 
+GLuint bind_array_texture(unsigned char *texels, GLsizei width, GLsizei height, GLsizei depth, GLenum internalformat, GLenum format);
+
 void activate_texture(GLenum unit, GLenum target, GLuint texture); 
 
 GLuint load_TGA_cubemap(const char *fpath[6]);

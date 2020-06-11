@@ -186,7 +186,7 @@ static void init_imgui(SDL_Window *window, SDL_GLContext glcontext)
 	ImGui_ImplOpenGL3_Init("#version 430");
 }
 
-void cellnoise_image(float *image, size_t sidelength, long seed, float freq)
+void mountain_image(float *image, size_t sidelength, long seed, float freq)
 {
 	FastNoise cellnoise;
 	cellnoise.SetSeed(seed);
@@ -249,6 +249,9 @@ void badlands_image(float *image, size_t sidelength, long seed, float freq)
 			}
 			if (height > 0.25f && height < 0.5f) { 
 				height = glm::mix(0.25f, 0.5f, glm::smoothstep(0.35f, 0.4f, height));
+			}
+			if (height > 0.5f) {
+				height = glm::mix(0.5f, 0.6f, glm::smoothstep(0.5f, 0.6f, height));
 			}
 			image[index++] = height*height;
 		}
@@ -414,7 +417,7 @@ struct floatimage gen_topology(const struct floatimage *heightmap, const Tilemap
 		.height = height,
 	};
 
-	cellnoise_image(mountainmap.data, mountainmap.width, seed, 0.04f);
+	mountain_image(mountainmap.data, mountainmap.width, seed, 0.04f);
 
 	struct floatimage badlands = {
 		.data = new float[width*height],
@@ -423,7 +426,7 @@ struct floatimage gen_topology(const struct floatimage *heightmap, const Tilemap
 		.height = height,
 	};
 
-	badlands_image(badlands.data, badlands.width, seed, 0.02f);
+	badlands_image(badlands.data, badlands.width, seed, 0.04f);
 
 	struct byteimage badlandmask = biome_mask(map, BADLANDS, width, height, 1.f);
 	for (int i = 0; i < width*height; i++) {
@@ -450,6 +453,35 @@ struct floatimage gen_topology(const struct floatimage *heightmap, const Tilemap
 	delete [] mountain.data;
 
 	return image;
+}
+
+GLuint gen_biomemask_texture(const Tilemap *map)
+{
+	const size_t side = 1024;
+
+	std::vector<struct byteimage> masks;
+	masks.push_back(biome_mask(map, GRASSLAND, side, side, 2.f));
+	masks.push_back(biome_mask(map, ALPINE, side, side, 2.f));
+	masks.push_back(biome_mask(map, DESERT, side, side, 2.f));
+	masks.push_back(biome_mask(map, SAVANNA, side, side, 2.f));
+	masks.push_back(biome_mask(map, BADLANDS, side, side, 2.f));
+
+	unsigned char *texels = new unsigned char[side*side*masks.size()];
+
+	size_t offset = 0;
+	for (const auto &mask : masks) {
+		memcpy(texels+offset, mask.data, side*side);
+		offset += side*side;
+	}
+
+	GLuint texture = bind_array_texture(texels, side, side, GLsizei(masks.size()), GL_R8, GL_RED);
+
+	for (auto &mask : masks) {
+		delete [] mask.data;
+	}
+	delete [] texels;
+
+	return texture;
 }
 
 void run_worldgen(SDL_Window *window)
@@ -484,6 +516,13 @@ void run_worldgen(SDL_Window *window)
 	struct mesh worldmap_mesh = gen_patch_grid(32, 32.f);
 	worldmap_program.uniform_float("mapscale", 1.f / (32.f*32.f));
 	worldmap_program.uniform_float("amplitude", 48.f);
+
+	GLuint masks_array = gen_biomemask_texture(&tilecells);
+	GLuint grassmap = load_DDS_texture("media/textures/worldmap/grass.dds");
+	GLuint alpinemap = load_DDS_texture("media/textures/worldmap/alpine.dds");
+	GLuint desertmap = load_DDS_texture("media/textures/worldmap/desert.dds");
+	GLuint savannamap = load_DDS_texture("media/textures/worldmap/savanna.dds");
+	GLuint badlandsmap = load_DDS_texture("media/textures/worldmap/badlands.dds");
 
 	Camera cam = { 
 		glm::vec3(300.f, 8.f, 8.f),
@@ -526,6 +565,12 @@ void run_worldgen(SDL_Window *window)
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, reliefheight);
 		activate_texture(GL_TEXTURE1, GL_TEXTURE_2D, voronoi);
 		activate_texture(GL_TEXTURE2, GL_TEXTURE_2D, normalmap);
+		activate_texture(GL_TEXTURE3, GL_TEXTURE_2D_ARRAY, masks_array);
+		activate_texture(GL_TEXTURE4, GL_TEXTURE_2D, grassmap);
+		activate_texture(GL_TEXTURE5, GL_TEXTURE_2D, alpinemap);
+		activate_texture(GL_TEXTURE6, GL_TEXTURE_2D, desertmap);
+		activate_texture(GL_TEXTURE7, GL_TEXTURE_2D, savannamap);
+		activate_texture(GL_TEXTURE8, GL_TEXTURE_2D, badlandsmap);
 		glBindVertexArray(worldmap_mesh.VAO);
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		 glPatchParameteri(GL_PATCH_VERTICES, 4);

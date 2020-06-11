@@ -319,6 +319,27 @@ GLuint bind_mipmap_texture(struct byteimage *image, GLenum internalformat, GLenu
 	return texture;
 }
 
+GLuint bind_array_texture(unsigned char *texels, GLsizei width, GLsizei height, GLsizei depth, GLenum internalformat, GLenum format)
+{
+	GLuint texture = 0;
+
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, texture);
+	// Allocate the storage.
+	glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, internalformat, width, height, depth);
+	glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, depth, format, GL_UNSIGNED_BYTE, texels);
+
+	// Always set reasonable texture parameters
+	glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
+
+	glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+
+	return texture;
+}
+
 void activate_texture(GLenum unit, GLenum target, GLuint texture)
 {
 	glActiveTexture(unit);
