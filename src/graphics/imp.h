@@ -19,13 +19,11 @@ struct byteimage {
 	size_t height;
 };
 
-void terrain_image(float *image, size_t sidelength, long seed, float freq, float mountain_amp, float field_amp);
-
 struct floatimage gen_normalmap(const struct floatimage *heightmap);
 
-float sample_image(int x, int y, const struct floatimage *image, unsigned int channel);
+float sample_floatimage(int x, int y, unsigned int channel, const struct floatimage *image);
 
-float sample_byte_height(int x, int y, const struct byteimage *image);
+float sample_byteimage(int x, int y, unsigned int channel, const struct byteimage *image);
 
 void gauss_blur_image(struct byteimage *image, float sigma);
 

@@ -1,4 +1,4 @@
-enum RELIEF_TYPE {
+enum RELIEF {
 	WATER,
 	PLAIN,
 	HILLS,
@@ -57,7 +57,7 @@ struct river {
 
 struct tile {
 	int index;
-	enum RELIEF_TYPE relief;
+	enum RELIEF relief;
 	enum TEMPERATURE temperature;
 	enum VEGETATION vegetation;
 	enum BIOME biome;
@@ -68,3 +68,14 @@ struct tile {
 	std::vector<const struct corner*> corners;
 };
 
+class Tilemap {
+public:
+	Voronoi voronoi;
+	std::vector<struct tile> tiles;
+	std::vector<struct corner> corners;
+	std::vector<struct river> rivers;
+public:
+	void gen_tiles(size_t max, const struct floatimage *heightimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage);
+};
+
+//Tilemap gen_tiles(size_t max, const struct floatimage *heightimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage);

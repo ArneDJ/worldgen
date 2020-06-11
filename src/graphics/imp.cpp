@@ -18,17 +18,6 @@ static inline float sample_height(int x, int y, const struct floatimage *image)
 	return image->data[index];
 }
 
-float sample_byte_height(int x, int y, const struct byteimage *image)
-{
-	if (x < 0 || y < 0 || x > (image->width-1) || y > (image->height-1)) {
-		return 0.f; 
-	}
-
-	int index = y * image->width * image->nchannels + x * image->nchannels;
-
-	return image->data[index] / 255.f;
-}
-
 static glm::vec3 filter_normal(int x, int y, const struct floatimage *image)
 {
 	const float strength = 32.f; // sobel filter strength
@@ -57,7 +46,27 @@ static glm::vec3 filter_normal(int x, int y, const struct floatimage *image)
 	return normal;
 }
 
-float sample_image(int x, int y, const struct floatimage *image, unsigned int channel)
+float sample_byteimage(int x, int y, unsigned int channel, const struct byteimage *image)
+{
+	if (image->data == nullptr) {
+		std::cerr << "error: no image data\n";
+		return 0.f;
+	}
+	if (channel > image->nchannels) {
+		std::cerr << "error: invalid channel to sample\n";
+		return 0.f;
+	}
+	if (x < 0 || y < 0 || x > (image->width-1) || y > (image->height-1)) {
+		return 0.f; 
+	}
+
+	int index = y * image->width * image->nchannels + x * image->nchannels;
+
+	return image->data[index+channel] / 255.f;
+}
+
+
+float sample_floatimage(int x, int y, unsigned int channel, const struct floatimage *image)
 {
 	if (image->data == nullptr) {
 		std::cerr << "error: no image data\n";

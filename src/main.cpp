@@ -26,7 +26,7 @@
 #include "graphics/camera.h"
 #include "worldmap/voronoi.h"
 #include "worldmap/terraform.h"
-#include "worldmap/map.h"
+#include "worldmap/tilemap.h"
 
 #define WINDOW_WIDTH 1920
 #define WINDOW_HEIGHT 1080
@@ -35,12 +35,6 @@
 #define FAR_CLIP 1600.f
 
 #define FOG_DENSITY 0.015f
-
-#define MAX_RIVER_SIZE 2000
-#define SEA_LEVEL 0.43f
-#define MOUNTAIN_LEVEL 0.69f
-#define NSITES 256*256
-
 class Skybox {
 public:
 	Skybox(GLuint cubemapbind)
@@ -261,332 +255,7 @@ void badlands_image(float *image, size_t sidelength, long seed, float freq)
 	}
 }
 
-enum TEMPERATURE sample_temperature(float warmth)
-{
-	enum TEMPERATURE temperature = COLD;
-	if (warmth > 0.75f) {
-		temperature = WARM;
-	} else if (warmth < 0.25f) {
-		temperature = COLD;
-	} else {
-		temperature = TEMPERATE;
-	}
-
-	return temperature;
-}
-
-enum RELIEF_TYPE sample_relief(float height)
-{
-	enum RELIEF_TYPE relief = WATER;
-
-	if (height < SEA_LEVEL) {
-		relief = WATER;
-	}
-	if (height > MOUNTAIN_LEVEL) {
-		relief = MOUNTAIN;
-	}
-	if (height > SEA_LEVEL && height < MOUNTAIN_LEVEL) {
-		std::random_device rd;
-		std::mt19937 gen(rd());
-		float p = glm::smoothstep(SEA_LEVEL, MOUNTAIN_LEVEL, height);
-		std::bernoulli_distribution d(p);
-		if (d(gen) == false) {
-			relief = PLAIN;
-		} else {
-			relief = HILLS;
-		}
-	}
-
-	return relief;
-}
-
-enum VEGETATION sample_vegetation(float rainfall) 
-{
-	enum VEGETATION vegetation = ARID;
-	if (rainfall < 0.25f) {
-		vegetation = ARID;
-	} else {
-		std::random_device rd;
-		std::mt19937 gen(rd());
-		float p = glm::smoothstep(0.2f, 1.f, rainfall);
-		std::bernoulli_distribution d(sqrtf(p));
-		if (d(gen) == false) {
-			vegetation = DRY;
-		} else {
-			vegetation = HUMID;
-		}
-	}
-
-	return vegetation;
-};
-
-enum BIOME generate_biome(enum RELIEF_TYPE relief, enum TEMPERATURE temperature, enum VEGETATION vegetation) 
-{
-	if (relief == WATER) { return OCEAN; }
-
-	if (relief == MOUNTAIN) {
-		if (temperature == WARM) {
-			return BADLANDS; 
-		} else {
-			return ALPINE;
-		}
-	}
-
-	enum BIOME biome = STEPPE;
-	if (temperature == COLD) {
-		switch (vegetation) {
-		case ARID: biome = STEPPE; break;
-		case DRY: biome = GRASSLAND; break;
-		case HUMID: biome = TAIGA; break;
-		};
-	} else if (temperature == TEMPERATE) {
-		switch (vegetation) {
-		case ARID: biome = STEPPE; break;
-		case DRY: biome = GRASSLAND; break;
-		case HUMID: biome = FOREST; break;
-		};
-	} else if (temperature == WARM) {
-		switch (vegetation) {
-		case ARID: biome = DESERT; break;
-		case DRY: biome = SAVANNA; break;
-		case HUMID: biome = SAVANNA; break;
-		};
-	}
-
-	return biome;
-};
-
-struct worldmap {
-	Voronoi voronoi;
-	std::vector<struct tile> tiles;
-	std::vector<struct corner> corners;
-	std::vector<struct river> rivers;
-};
-
-struct worldmap gen_cells(size_t max, const struct floatimage *heightimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage)
-{
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_real_distribution<float> dis(0, max);
-
-	const float ratio = float(heightimage->width) / float(max);
-
-	// generate set of points based on elevation and rainfall
-	std::vector<glm::vec2> points;
-
-	for (int i = 0; i < NSITES; i++) {
-		glm::vec2 point = glm::vec2(dis(gen), dis(gen));
-		int x = int(point.x);
-		int y = int(point.y);
-		float height = sample_image(ratio*x, ratio*y, heightimage, 0);
-		float rain = sample_byte_height(ratio*x, ratio*y, rainimage);
-		float p = 1.f;
-		if (height > SEA_LEVEL && height < MOUNTAIN_LEVEL) {
-			p = 1.f;
-		} else if (height < SEA_LEVEL) {
-			p = 0.05f;
-		} else {
-			p = 0.25f;
-		}
-		if (height > SEA_LEVEL && height < MOUNTAIN_LEVEL) {
-			p = glm::mix(p, rain, 0.75f);
-		}
-		std::bernoulli_distribution d(p);
-		if (d(gen) == true) {
-			points.push_back(point);
-		}
-	}
-
-	struct worldmap map;
-	map.voronoi.gen_diagram(points, max, max);
-	map.tiles.resize(map.voronoi.cells.size());
-	map.corners.resize(map.voronoi.vertices.size());
-
-	// copy cell structure to tiles
-	for (const auto &cell : map.voronoi.cells) {
-		int x = int(cell.center.x);
-		int y = int(cell.center.y);
-		float height = sample_image(ratio*x, ratio*y, heightimage, 0);
-		float warmth = sample_byte_height(ratio*x, ratio*y, temperatureimage);
-		float rain = sample_byte_height(ratio*x, ratio*y, rainimage);
-		enum RELIEF_TYPE relief = sample_relief(height);
-		enum TEMPERATURE temperature = sample_temperature(warmth);
-		enum VEGETATION vegetation = sample_vegetation(rain);
-		enum BIOME biome = generate_biome(relief, temperature, vegetation);
-		std::vector<const struct tile*> neighbors;
-		for (const auto &neighbor : cell.neighbors) {
-			neighbors.push_back(&map.tiles[neighbor->index]);
-		}
-		std::vector<const struct corner*> corn;
-		for (const auto &vertex : cell.vertices) {
-			corn.push_back(&map.corners[vertex->index]);
-		}
-		struct tile t = {
-			.index = cell.index,
-			.relief = relief,
-			.temperature = temperature,
-			.vegetation = vegetation,
-			.biome = biome,
-			.coast = false,
-			.river = false,
-			.site = &cell,
-			.neighbors = neighbors,
-			.corners = corn,
-		};
-
-		map.tiles[cell.index] = t;
-	}
-
-	// copy vertex structure to corners
-	for (const auto &vertex : map.voronoi.vertices) {
-		std::vector<struct corner*> neighbors;
-		for (const auto &neighbor : vertex.adjacent) {
-			neighbors.push_back(&map.corners[neighbor->index]);
-		}
-		std::vector<const struct tile*> tils;
-		for (const auto &cell : vertex.cells) {
-			tils.push_back(&map.tiles[cell->index]);
-		}
-		struct corner c = {
-			.index = vertex.index,
-			.coastal = false,
-			.river = false,
-			.v = &vertex,
-			.neighbors = neighbors,
-			.tiles = tils,
-		};
-
-		map.corners[vertex.index] = c;
-	}
-
-	// find coastal tiles
-	for (auto &t : map.tiles) {
-		bool sea = false;
-		bool land = false;
-		for (auto neighbor : t.neighbors) {
-			if (neighbor->relief == WATER) {
-				sea = true;
-			}
-			if (neighbor->relief != WATER) {
-				land = true;
-			}
-		}
-
-		if (sea == true && land == true ) {
-			t.coast = true;
-		}
-
-		// turn lakes of only 1 tile into marshes
-		if (t.relief == WATER && sea == false) {
-			t.relief = PLAIN;
-			t.biome = MARSH;
-		}
-	}
-
-	// find coastal corners
-	for (auto &c : map.corners) {
-		bool sea = false;
-		bool land = false;
-		for (const auto &tile : c.tiles) {
-			if (tile->relief == WATER) {
-				sea = true;
-			}
-			if (tile->relief != WATER) {
-				land = true;
-			}
-		}
-		if (sea == true && land == true ) {
-			c.coastal = true;
-		}
-	}
-
-	// generate rivers
-	//std::vector<struct river> rivers;
-	std::uniform_int_distribution<size_t> distr(0, map.corners.size() - 1);
-	for (int i = 0; i < 500; i++) {
-		struct river river;
-		size_t start = distr(gen);
-		struct corner *source = &map.corners[start];
-		bool rejected = true;
-		float height = sample_image(ratio*source->v->position.x, ratio*source->v->position.y, heightimage, 0);
-		// river sources may only start above a certain height
-		if (height > 0.5f) {
-			river.source = source;
-			struct corner *start = source;
-			struct corner *previous = source;
-			size_t river_size = 0;
-			while (start->coastal == false && river_size < MAX_RIVER_SIZE) {
-				float min = 1.f;
-				struct corner *next = nullptr;
-				for (auto &neighbor : start->neighbors) {
-					if (neighbor != previous) {
-						float neighborheight = sample_image(ratio*neighbor->v->position.x, ratio*neighbor->v->position.y, heightimage, 0);
-						if (neighborheight < min) { 
-							next = neighbor;
-							min = neighborheight;
-						}
-					}
-				}
-
-				// if we still don't find a valid corner reject the river
-				if (next == nullptr) {
-					rejected = true;
-					break;
-				}
-
-				glm::vec2 direction = glm::vec2(next->v->position.x, next->v->position.y) - glm::vec2(start->v->position.x, start->v->position.y);
-				struct border segment = {
-					.a = start,
-					.b = next,
-					.direction = direction,
-				};
-
-				river.segments.push_back(segment);
-
-				if (next->coastal == true) {
-					rejected = false;
-					river.mouth = next;
-				}
-
-				previous = start;
-				start = next;
-				river_size++;
-			}
-		}
-
-		if (rejected == false) {
-			map.rivers.push_back(river);
-		}
-	}
-
-	// validate rivers
-	for (const auto &river : map.rivers) {
-		for (const auto &segment : river.segments) {
-			map.corners[segment.a->index].river = true;
-			map.corners[segment.b->index].river = true;
-		}
-	}
-
-	// assign floodplains and marshes 
-	for (auto &tile : map.tiles) {
-		size_t river_count = 0;
-		for (const auto &corner : tile.corners) {
-			if (corner->river == true) {
-				river_count++;
-				if (tile.biome == DESERT) {
-					tile.biome = FLOODPLAIN;
-				}
-			}
-		}
-		if (river_count > 4 && tile.relief == PLAIN) {
-			tile.biome = MARSH;
-		}
-	}
-
-	return map;
-}
-
-GLuint voronoi_texture(const struct worldmap *map)
+GLuint voronoi_texture(const Tilemap *map)
 {
 	const size_t size = 4096;
 
@@ -651,7 +320,7 @@ GLuint voronoi_texture(const struct worldmap *map)
 	return texture;
 }
 
-struct byteimage relief_mask(const struct worldmap *map, enum RELIEF_TYPE relief, size_t width, size_t height, float blur)
+struct byteimage relief_mask(const Tilemap *map, enum RELIEF relief, size_t width, size_t height, float blur)
 {
 	struct byteimage image = {
 		.data = new unsigned char[width*height],
@@ -681,7 +350,7 @@ struct byteimage relief_mask(const struct worldmap *map, enum RELIEF_TYPE relief
 	return image;
 }
 
-struct byteimage biome_mask(const struct worldmap *map, enum BIOME biome, size_t width, size_t height, float blur)
+struct byteimage biome_mask(const Tilemap *map, enum BIOME biome, size_t width, size_t height, float blur)
 {
 	struct byteimage image = {
 		.data = new unsigned char[width*height],
@@ -712,7 +381,7 @@ struct byteimage biome_mask(const struct worldmap *map, enum BIOME biome, size_t
 }
 
 // all images should only have a single color channel
-struct floatimage gen_topology(const struct floatimage *heightmap, const struct worldmap *map, long seed)
+struct floatimage gen_topology(const struct floatimage *heightmap, const Tilemap *map, long seed)
 {
 	const size_t width = 2048;
 	const size_t height = 2048;
@@ -732,7 +401,7 @@ struct floatimage gen_topology(const struct floatimage *heightmap, const struct 
 		unsigned int index = 0; 
 		for (int i = 0; i < height; i++) {
 			for (int j = 0; j < width; j++) {
-				float height = sample_image(ratio*j, ratio*i, heightmap, 0);
+				float height = sample_floatimage(ratio*j, ratio*i, 0, heightmap);
 				image.data[index++] = 0.5f * height;
 			}
 		}
@@ -766,8 +435,8 @@ struct floatimage gen_topology(const struct floatimage *heightmap, const struct 
 	unsigned int index = 0;
 	for (int i = 0; i < width; i++) {
 		for (int j = 0; j < height; j++) {
-			float mask = sample_byte_height(j, i, &mountain);
-			float watermask = sample_byte_height(j, i, &water);
+			float mask = sample_byteimage(j, i, 0, &mountain);
+			float watermask = sample_byteimage(j, i, 0, &water);
 			float ridge = (0.25f*mountainmap.data[index]) + 0.4f;
 			float height = glm::mix(image.data[index], ridge, mask*mask*mask*mask);
 			height = glm::mix(height, 0.75f*height, watermask);
@@ -800,13 +469,11 @@ void run_worldgen(SDL_Window *window)
 	Terraform terraform = { 2048, seed, 0.001f, };
 
 	GLuint heightmap = bind_texture(&terraform.heightmap, GL_R8, GL_RED, GL_FLOAT);
-
-
 	GLuint temperature = bind_byte_texture(&terraform.temperature, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
-
 	GLuint rainfall = bind_byte_texture(&terraform.rainfall, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
-	struct worldmap tilecells = gen_cells(4096, &terraform.heightmap, &terraform.rainfall, &terraform.temperature);
+	Tilemap tilecells; 
+	tilecells.gen_tiles(4096, &terraform.heightmap, &terraform.rainfall, &terraform.temperature);
 	GLuint voronoi = voronoi_texture(&tilecells);
 
 	struct floatimage topology = gen_topology(&terraform.heightmap, &tilecells, seed);
@@ -872,10 +539,10 @@ void run_worldgen(SDL_Window *window)
 		glBindVertexArray(map.VAO);
 		glDrawArrays(map.mode, 0, map.ecount);
 
-		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(200.f, 32.f, 0.f)));
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(100.f, 32.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, rainfall);
 		glDrawArrays(map.mode, 0, map.ecount);
-		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(300.f, 32.f, 0.f)));
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(200.f, 32.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, temperature);
 		glDrawArrays(map.mode, 0, map.ecount);
 		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(400.f, 32.f, 0.f)));
