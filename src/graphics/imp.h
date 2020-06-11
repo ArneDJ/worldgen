@@ -1,3 +1,10 @@
+enum {
+	RED_CHANNEL = 1,
+	RG_CHANNEL = 2,
+	RGB_CHANNEL = 3,
+	RGBA_CHANNEL = 4
+};
+
 struct floatimage {
 	float *data = nullptr;
 	unsigned int nchannels;

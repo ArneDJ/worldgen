@@ -7,13 +7,6 @@
 
 #include "imp.h"
 
-enum {
-	RED_CHANNEL = 1,
-	RG_CHANNEL = 2,
-	RGB_CHANNEL = 3,
-	RGBA_CHANNEL = 4
-};
-
 static inline float sample_height(int x, int y, const struct floatimage *image)
 {
 	if (x < 0 || y < 0 || x > (image->width-1) || y > (image->height-1)) {

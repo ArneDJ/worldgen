@@ -163,4 +163,5 @@ float shadow_coef(void)
 void main(void)
 {
 	color = texture(normalmap, mapscale*fragment.texcoord);
+	color = mix(color, texture(colormap, mapscale*fragment.texcoord), 0.6);
 }

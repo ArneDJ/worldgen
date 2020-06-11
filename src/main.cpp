@@ -17,13 +17,13 @@
 #include "external/imgui/imgui.h"
 #include "external/imgui/imgui_impl_sdl.h"
 #include "external/imgui/imgui_impl_opengl3.h"
+#include "external/fastnoise/FastNoise.h"
 
 #include "graphics/imp.h"
 #include "graphics/dds.h"
 #include "graphics/glwrapper.h"
 #include "graphics/shader.h"
 #include "graphics/camera.h"
-#include "graphics/noise.h"
 #include "worldmap/voronoi.h"
 #include "worldmap/terraform.h"
 #include "worldmap/map.h"
@@ -190,6 +190,75 @@ static void init_imgui(SDL_Window *window, SDL_GLContext glcontext)
 	// Setup Platform/Renderer bindings
 	ImGui_ImplSDL2_InitForOpenGL(window, glcontext);
 	ImGui_ImplOpenGL3_Init("#version 430");
+}
+
+void cellnoise_image(float *image, size_t sidelength, long seed, float freq)
+{
+	FastNoise cellnoise;
+	cellnoise.SetSeed(seed);
+	cellnoise.SetNoiseType(FastNoise::Cellular);
+	cellnoise.SetCellularDistanceFunction(FastNoise::Euclidean);
+	cellnoise.SetFrequency(freq);
+	cellnoise.SetCellularReturnType(FastNoise::Distance2Add);
+	cellnoise.SetGradientPerturbAmp(10.f);
+
+	float max = 1.f;
+	for (int i = 0; i < sidelength; i++) {
+		for (int j = 0; j < sidelength; j++) {
+			float x = i; float y = j;
+			cellnoise.GradientPerturbFractal(x, y);
+			float val = cellnoise.GetNoise(x, y);
+			if (val > max) { max = val; }
+		}
+	}
+
+	unsigned int index = 0;
+	for (int i = 0; i < sidelength; i++) {
+		for (int j = 0; j < sidelength; j++) {
+			float x = i; float y = j;
+			cellnoise.GradientPerturbFractal(x, y);
+			float height = cellnoise.GetNoise(x, y) / max;
+			image[index++] = height;
+		}
+	}
+}
+
+void badlands_image(float *image, size_t sidelength, long seed, float freq)
+{
+	FastNoise cellnoise;
+	cellnoise.SetSeed(seed);
+	cellnoise.SetNoiseType(FastNoise::Cellular);
+	cellnoise.SetCellularDistanceFunction(FastNoise::Euclidean);
+	cellnoise.SetFrequency(freq);
+	cellnoise.SetCellularReturnType(FastNoise::Distance2Sub);
+	cellnoise.SetGradientPerturbAmp(10.f);
+
+	float max = 1.f;
+	for (int i = 0; i < sidelength; i++) {
+		for (int j = 0; j < sidelength; j++) {
+			float x = i; float y = j;
+			cellnoise.GradientPerturbFractal(x, y);
+			float val = cellnoise.GetNoise(x, y);
+			if (val > max) { max = val; }
+		}
+	}
+
+	unsigned int index = 0;
+	for (int i = 0; i < sidelength; i++) {
+		for (int j = 0; j < sidelength; j++) {
+			float x = i; float y = j;
+			cellnoise.GradientPerturbFractal(x, y);
+			float height = cellnoise.GetNoise(x, y) / max;
+			height = sqrtf(height);
+			if (height > 0.1f && height < 0.2f) { 
+				height = glm::mix(0.1f, 0.2f, glm::smoothstep(0.15f, 0.16f, height));
+			}
+			if (height > 0.25f && height < 0.5f) { 
+				height = glm::mix(0.25f, 0.5f, glm::smoothstep(0.35f, 0.4f, height));
+			}
+			image[index++] = height*height;
+		}
+	}
 }
 
 enum TEMPERATURE sample_temperature(float warmth)
@@ -643,12 +712,12 @@ struct byteimage biome_mask(const struct worldmap *map, enum BIOME biome, size_t
 }
 
 // all images should only have a single color channel
-struct floatimage relief_heightmap(const struct floatimage *heightmap, const struct worldmap *map, long seed)
+struct floatimage gen_topology(const struct floatimage *heightmap, const struct worldmap *map, long seed)
 {
 	const size_t width = 2048;
 	const size_t height = 2048;
 	struct byteimage water = relief_mask(map, WATER, width, height, 1.f);
-	struct byteimage mountain = relief_mask(map, MOUNTAIN, width, height, 10.f);
+	struct byteimage mountain = relief_mask(map, MOUNTAIN, width, height, 5.f);
 
 	struct floatimage image = {
 		.data = new float[width*height],
@@ -700,7 +769,7 @@ struct floatimage relief_heightmap(const struct floatimage *heightmap, const str
 			float mask = sample_byte_height(j, i, &mountain);
 			float watermask = sample_byte_height(j, i, &water);
 			float ridge = (0.25f*mountainmap.data[index]) + 0.4f;
-			float height = glm::mix(image.data[index], ridge, mask*mask);
+			float height = glm::mix(image.data[index], ridge, mask*mask*mask*mask);
 			height = glm::mix(height, 0.75f*height, watermask);
 			image.data[index++] = height;
 		}
@@ -728,12 +797,7 @@ void run_worldgen(SDL_Window *window)
 	std::uniform_int_distribution<long> dis;
 	long seed = dis(gen);
 
-	Terraform terraform = {
-		2048,
-		2048,
-		seed,
-		0.001f,
-	};
+	Terraform terraform = { 2048, seed, 0.001f, };
 
 	GLuint heightmap = bind_texture(&terraform.heightmap, GL_R8, GL_RED, GL_FLOAT);
 
@@ -745,14 +809,14 @@ void run_worldgen(SDL_Window *window)
 	struct worldmap tilecells = gen_cells(4096, &terraform.heightmap, &terraform.rainfall, &terraform.temperature);
 	GLuint voronoi = voronoi_texture(&tilecells);
 
-	struct floatimage reliefheightimage = relief_heightmap(&terraform.heightmap, &tilecells, seed);
-	GLuint reliefheight = bind_texture(&reliefheightimage, GL_R8, GL_RED, GL_FLOAT);
-	struct floatimage normalimage = gen_normalmap(&reliefheightimage);
+	struct floatimage topology = gen_topology(&terraform.heightmap, &tilecells, seed);
+	GLuint reliefheight = bind_texture(&topology, GL_R8, GL_RED, GL_FLOAT);
+	struct floatimage normalimage = gen_normalmap(&topology);
 	GLuint normalmap = bind_texture(&normalimage, GL_RGB8, GL_RGB, GL_FLOAT);
 
 	struct mesh worldmap_mesh = gen_patch_grid(32, 32.f);
 	worldmap_program.uniform_float("mapscale", 1.f / (32.f*32.f));
-	worldmap_program.uniform_float("amplitude", 64.f);
+	worldmap_program.uniform_float("amplitude", 48.f);
 
 	Camera cam = { 
 		glm::vec3(300.f, 8.f, 8.f),

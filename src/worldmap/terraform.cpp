@@ -11,40 +11,105 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "../external/fastnoise/FastNoise.h"
+
 #include "../graphics/imp.h"
-#include "../graphics/noise.h"
 #include "terraform.h"
 
-struct floatimage gen_heightmap(size_t width, size_t height, long seed, float freq)
+static struct floatimage gen_heightmap(size_t side, long seed, float freq)
 {
 	struct floatimage image = {
-		.data = new float[height*width],
-		.nchannels = 1,
-		.width = width,
-		.height = height,
+		.data = new float[side*side],
+		.nchannels = RED_CHANNEL,
+		.width = side,
+		.height = side,
 	};
-	simplex_image(&image, seed, freq, 200.f);
+
+	FastNoise noise;
+	noise.SetSeed(seed);
+	noise.SetNoiseType(FastNoise::SimplexFractal);
+	noise.SetFractalType(FastNoise::FBM);
+	noise.SetFrequency(freq);
+	noise.SetFractalOctaves(5);
+	noise.SetGradientPerturbAmp(200.f);
+
+	const glm::vec2 center = glm::vec2(0.5f*float(image.width), 0.5f*float(image.height));
+
+	FastNoise cellnoise;
+	cellnoise.SetSeed(seed);
+	cellnoise.SetNoiseType(FastNoise::Cellular);
+	cellnoise.SetCellularDistanceFunction(FastNoise::Euclidean);
+	cellnoise.SetFrequency(1.5f*freq);
+	cellnoise.SetCellularReturnType(FastNoise::Distance2Div);
+	cellnoise.SetGradientPerturbAmp(200.f);
+
+	float max = 1.f;
+	for (int i = 0; i < image.width; i++) {
+		for (int j = 0; j < image.height; j++) {
+			float x = i; float y = j;
+			cellnoise.GradientPerturbFractal(x, y);
+			float val = cellnoise.GetNoise(x, y);
+			if (val > max) { max = val; }
+		}
+	}
+
+	unsigned int index = 0;
+	for (int i = 0; i < image.width; i++) {
+		for (int j = 0; j < image.height; j++) {
+			float x = i; float y = j;
+			noise.GradientPerturbFractal(x, y);
+
+			float height = (noise.GetNoise(x, y) + 1.f) / 2.f;
+			height = glm::clamp(height, 0.f, 1.f);
+
+			float mask = glm::distance(0.5f*float(image.width), float(y)) / (0.5f*float(image.width));
+			mask = 1.f - glm::clamp(mask, 0.f, 1.f);
+			mask = glm::smoothstep(0.2f, 0.5f, sqrtf(mask));
+			height *= sqrtf(mask);
+
+			x = i; y = j;
+			cellnoise.GradientPerturbFractal(x, y);
+			float ridge = cellnoise.GetNoise(x, y) / max;
+
+			height = glm::mix(height, ridge, ridge*glm::smoothstep(0.4f, 0.7f, height));
+
+			image.data[index++] = height;
+		}
+	}
 
 	return image;
 }
 
-struct byteimage gen_temperature(long seed)
+static struct byteimage gen_temperature(size_t side, long seed)
 {
-	const size_t size = 2048;
-
 	struct byteimage image = {
-		.data = new unsigned char[size*size],
-		.nchannels = 1,
-		.width = size,
-		.height = size,
+		.data = new unsigned char[side*side],
+		.nchannels = RED_CHANNEL,
+		.width = side,
+		.height = side,
 	};
 
-	gradient_image(&image, seed, 100.f);
+	FastNoise noise;
+	noise.SetSeed(seed);
+	noise.SetNoiseType(FastNoise::Perlin);
+	noise.SetFrequency(0.005f);
+	noise.SetGradientPerturbAmp(100.f);
+
+	const float height = float(image.height);
+	unsigned int index = 0;
+	for (int i = 0; i < image.width; i++) {
+		for (int j = 0; j < image.height; j++) {
+			float y = i; float x = j;
+			noise.GradientPerturbFractal(x, y);
+			float lattitude = 1.f - (y / height);
+			image.data[index++] = 255.f * glm::clamp(lattitude, 0.f, 1.f);
+		}
+	}
 
 	return image;
 }
 
-struct byteimage gen_rainfall(const struct floatimage *heightimage, const struct byteimage *tempimage, long seed)
+static struct byteimage gen_rainfall(const struct floatimage *heightimage, const struct byteimage *tempimage, long seed)
 {
 	const size_t size = heightimage->width * heightimage->height * heightimage->nchannels;
 
@@ -55,30 +120,29 @@ struct byteimage gen_rainfall(const struct floatimage *heightimage, const struct
 		.height = heightimage->height,
 	};
 
-	//simplex_image(&image, seed, 0.002f, 200.f);
-
 	for (auto i = 0; i < size; i++) {
-			float height = heightimage->data[i];
-			height = height < 0.5 ? 0.f : 1.f;
-			image.data[i] = 255.f * (1.f - height);
+		float height = heightimage->data[i];
+		height = height < 0.5f ? 0.f : 1.f;
+		image.data[i] = 255.f * (1.f - height);
 	}
 
 	gauss_blur_image(&image, 50.f);
 
 	for (auto i = 0; i < size; i++) {
-			float temperature = 1.f - (tempimage->data[i] / 255.f);
-			float rainfall = image.data[i] / 255.f;
-			rainfall = glm::mix(rainfall, temperature, 1.f - temperature);
-			image.data[i] = 255.f * rainfall;
+		float temperature = 1.f - (tempimage->data[i] / 255.f);
+		float rainfall = image.data[i] / 255.f;
+		rainfall = glm::mix(rainfall, temperature, 1.f - temperature);
+		image.data[i] = 255.f * rainfall;
 	}
 
 	return image;
 }
 
-Terraform::Terraform(size_t width, size_t height, long seed, float freq)
+Terraform::Terraform(size_t side, long seed, float freq)
 {
-	heightmap = gen_heightmap(width, height, seed, freq);		
-	temperature = gen_temperature(seed);
+	heightmap = gen_heightmap(side, seed, freq);		
+
+	temperature = gen_temperature(side, seed);
 	rainfall = gen_rainfall(&heightmap, &temperature, seed);
 }
 
