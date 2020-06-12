@@ -37,6 +37,8 @@
 #define FOG_DENSITY 0.015f
 class Skybox {
 public:
+	GLuint cubemap;
+public:
 	Skybox(GLuint cubemapbind)
 	{
 		cubemap = cubemapbind;
@@ -44,7 +46,6 @@ public:
 	};
 	void display(void) const;
 private:
-	GLuint cubemap;
 	struct mesh cube;
 };
 
@@ -221,11 +222,13 @@ void badlands_image(float *image, size_t sidelength, long seed, float freq)
 {
 	FastNoise cellnoise;
 	cellnoise.SetSeed(seed);
-	cellnoise.SetNoiseType(FastNoise::Cellular);
-	cellnoise.SetCellularDistanceFunction(FastNoise::Euclidean);
+	cellnoise.SetNoiseType(FastNoise::PerlinFractal);
+	//cellnoise.SetCellularDistanceFunction(FastNoise::Euclidean);
 	cellnoise.SetFrequency(freq);
-	cellnoise.SetCellularReturnType(FastNoise::Distance2Sub);
-	cellnoise.SetGradientPerturbAmp(10.f);
+	cellnoise.SetFractalOctaves(6);
+	cellnoise.SetFractalLacunarity(2.f);
+	//cellnoise.SetCellularReturnType(FastNoise::Distance);
+	cellnoise.SetGradientPerturbAmp(50.f);
 
 	float max = 1.f;
 	for (int i = 0; i < sidelength; i++) {
@@ -242,17 +245,8 @@ void badlands_image(float *image, size_t sidelength, long seed, float freq)
 		for (int j = 0; j < sidelength; j++) {
 			float x = i; float y = j;
 			cellnoise.GradientPerturbFractal(x, y);
-			float height = cellnoise.GetNoise(x, y) / max;
-			height = sqrtf(height);
-			if (height > 0.1f && height < 0.2f) { 
-				height = glm::mix(0.1f, 0.2f, glm::smoothstep(0.15f, 0.16f, height));
-			}
-			if (height > 0.25f && height < 0.5f) { 
-				height = glm::mix(0.25f, 0.5f, glm::smoothstep(0.35f, 0.4f, height));
-			}
-			if (height > 0.5f) {
-				height = glm::mix(0.5f, 0.6f, glm::smoothstep(0.5f, 0.6f, height));
-			}
+			float height = cellnoise.GetNoise(x, y);
+			height = glm::clamp(0.5f*(height+1.f), 0.f, 1.f);
 			image[index++] = height*height;
 		}
 	}
@@ -270,6 +264,7 @@ GLuint voronoi_texture(const Tilemap *map)
 	};
 
 	glm::vec3 ocean = {0.2f, 0.2f, 0.95f};
+	glm::vec3 sea = {0.2f, 0.5f, 0.95f};
 	glm::vec3 forest = {0.2f, 1.f, 0.2f};
 	glm::vec3 taiga = {0.2f, 0.95f, 0.6f};
 	glm::vec3 grassland = {0.6f, 0.9f, 0.2f};
@@ -285,6 +280,7 @@ GLuint voronoi_texture(const Tilemap *map)
 		glm::vec3 color = {1.f, 1.f, 1.f};
 		switch (t.biome) {
 		case OCEAN: color = ocean; break;
+		case SEA: color = sea; break;
 		case FOREST: color = forest; break;
 		case TAIGA: color = taiga; break;
 		case SAVANNA: color = savanna; break;
@@ -388,7 +384,7 @@ struct floatimage gen_topology(const struct floatimage *heightmap, const Tilemap
 {
 	const size_t width = 2048;
 	const size_t height = 2048;
-	struct byteimage water = relief_mask(map, WATER, width, height, 1.f);
+	struct byteimage water = relief_mask(map, WATER, width, height, 2.f);
 	struct byteimage mountain = relief_mask(map, MOUNTAIN, width, height, 5.f);
 
 	struct floatimage image = {
@@ -426,7 +422,7 @@ struct floatimage gen_topology(const struct floatimage *heightmap, const Tilemap
 		.height = height,
 	};
 
-	badlands_image(badlands.data, badlands.width, seed, 0.04f);
+	badlands_image(badlands.data, badlands.width, seed, 0.01f);
 
 	struct byteimage badlandmask = biome_mask(map, BADLANDS, width, height, 1.f);
 	for (int i = 0; i < width*height; i++) {
@@ -440,7 +436,7 @@ struct floatimage gen_topology(const struct floatimage *heightmap, const Tilemap
 		for (int j = 0; j < height; j++) {
 			float mask = sample_byteimage(j, i, 0, &mountain);
 			float watermask = sample_byteimage(j, i, 0, &water);
-			float ridge = (0.25f*mountainmap.data[index]) + 0.4f;
+			float ridge = (0.4f*mountainmap.data[index]) + 0.35f;
 			float height = glm::mix(image.data[index], ridge, mask*mask*mask*mask);
 			height = glm::mix(height, 0.75f*height, watermask);
 			image.data[index++] = height;
@@ -491,6 +487,7 @@ void run_worldgen(SDL_Window *window)
 	Skybox skybox = init_skybox();
 	Shader skybox_program = skybox_shader();
 	Shader map_program = base_shader("shaders/map.vert", "shaders/map.frag");
+	Shader water_program = base_shader("shaders/worldwater.vert", "shaders/worldwater.frag");
 	Shader worldmap_program = worldmap_shader();
 
 	std::random_device rd;
@@ -517,12 +514,17 @@ void run_worldgen(SDL_Window *window)
 	worldmap_program.uniform_float("mapscale", 1.f / (32.f*32.f));
 	worldmap_program.uniform_float("amplitude", 48.f);
 
+	water_program.uniform_float("mapscale", 1.f / (32.f*32.f));
+
 	GLuint masks_array = gen_biomemask_texture(&tilecells);
 	GLuint grassmap = load_DDS_texture("media/textures/worldmap/grass.dds");
-	GLuint alpinemap = load_DDS_texture("media/textures/worldmap/alpine.dds");
+	GLuint alpinemap = load_DDS_texture("media/textures/worldmap/stone.dds");
 	GLuint desertmap = load_DDS_texture("media/textures/worldmap/desert.dds");
 	GLuint savannamap = load_DDS_texture("media/textures/worldmap/savanna.dds");
 	GLuint badlandsmap = load_DDS_texture("media/textures/worldmap/badlands.dds");
+	GLuint snowmap = load_DDS_texture("media/textures/worldmap/snow.dds");
+
+	GLuint waternormal = load_DDS_texture("media/textures/water/normal.dds");
 
 	Camera cam = { 
 		glm::vec3(300.f, 8.f, 8.f),
@@ -533,6 +535,7 @@ void run_worldgen(SDL_Window *window)
 	};
 
 	struct mesh map = gen_quad(glm::vec3(0.f, 100.f, 0.f), glm::vec3(100.f, 100.f, 0.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(100.f, 0.f, 0.f));
+	struct mesh water_mesh = gen_quad(glm::vec3(0.f, 10.f, 0.f), glm::vec3(1024.f, 10.f, 0.f), glm::vec3(0.f, 10.f, 1024.f), glm::vec3(1024.f, 10.f, 1024.f));
 
 	float start = 0.f;
  	float end = 0.f;
@@ -558,6 +561,12 @@ void run_worldgen(SDL_Window *window)
 
 		glm::mat4 VP = cam.project * cam.view;
 		skybox_program.uniform_mat4("view", cam.view);
+		water_program.uniform_mat4("view", cam.view);
+		water_program.uniform_mat4("project", cam.project);
+		water_program.uniform_vec3("camerapos", cam.eye);
+		//water_program.uniform_vec3 fogcolor;
+		//water_program.uniform_float fogfactor;
+		water_program.uniform_float("time", start);
 		map_program.uniform_mat4("VIEW_PROJECT", VP);
 		worldmap_program.uniform_mat4("VIEW_PROJECT", VP);
 
@@ -571,6 +580,7 @@ void run_worldgen(SDL_Window *window)
 		activate_texture(GL_TEXTURE6, GL_TEXTURE_2D, desertmap);
 		activate_texture(GL_TEXTURE7, GL_TEXTURE_2D, savannamap);
 		activate_texture(GL_TEXTURE8, GL_TEXTURE_2D, badlandsmap);
+		activate_texture(GL_TEXTURE9, GL_TEXTURE_2D, snowmap);
 		glBindVertexArray(worldmap_mesh.VAO);
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		 glPatchParameteri(GL_PATCH_VERTICES, 4);
@@ -593,6 +603,14 @@ void run_worldgen(SDL_Window *window)
 		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(400.f, 32.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, voronoi);
 		glDrawArrays(map.mode, 0, map.ecount);
+
+		//map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 0.f)));
+		water_program.bind();
+		activate_texture(GL_TEXTURE0, GL_TEXTURE_CUBE_MAP, skybox.cubemap);
+		activate_texture(GL_TEXTURE1, GL_TEXTURE_2D, reliefheight);
+		activate_texture(GL_TEXTURE4, GL_TEXTURE_2D, waternormal);
+		glBindVertexArray(water_mesh.VAO);
+		glDrawArrays(water_mesh.mode, 0, water_mesh.ecount);
 		glEnable(GL_CULL_FACE);
 
 		skybox_program.bind();

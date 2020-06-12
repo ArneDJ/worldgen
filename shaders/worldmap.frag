@@ -10,6 +10,7 @@ layout(binding = 5) uniform sampler2D alpinemap;
 layout(binding = 6) uniform sampler2D desertmap;
 layout(binding = 7) uniform sampler2D savannamap;
 layout(binding = 8) uniform sampler2D badlandsmap;
+layout(binding = 9) uniform sampler2D snowmap;
 
 layout(binding = 10) uniform sampler2DArrayShadow shadowmap;
 
@@ -171,16 +172,26 @@ void main(void)
 	float savannamask = texture(maskmaps, vec3(mapscale*fragment.texcoord, 3.0)).r;
 	float badlandsmask = texture(maskmaps, vec3(mapscale*fragment.texcoord, 4.0)).r;
 
+	vec3 normal = texture(normalmap, mapscale*fragment.texcoord).rgb;
+	float slope = 1.0 - normal.y;
+
 	color = texture(grassmap, 0.05*fragment.texcoord);
-	color = mix(color, texture(alpinemap, 0.05*fragment.texcoord), alpmask);
+
+	float height = texture(heightmap, mapscale*fragment.texcoord).r;
+
+	color = mix(texture(desertmap, 0.05*fragment.texcoord), color, smoothstep(0.2, 0.22, height));
+	color = mix(color, texture(snowmap, 0.05*fragment.texcoord), smoothstep(0.3, 0.4, height));
+
+	color = mix(color, texture(alpinemap, 0.05*fragment.texcoord), alpmask*smoothstep(0.25, 0.4, slope));
+	//color = mix(color, texture(alpinemap, 0.05*fragment.texcoord), alpmask);
 	color = mix(color, texture(desertmap, 0.05*fragment.texcoord), desertmask);
+	color = mix(color, texture(desertmap, 0.05*fragment.texcoord), badlandsmask);
 	color = mix(color, texture(savannamap, 0.05*fragment.texcoord), savannamask);
-	color = mix(color, texture(badlandsmap, 0.05*fragment.texcoord), badlandsmask);
+	color = mix(color, texture(badlandsmap, 0.05*fragment.texcoord), 0.7*badlandsmask);
 
 	vec3 lightdirection = vec3(0.5, 0.5, 0.5);
-	vec3 normal = texture(normalmap, mapscale*fragment.texcoord).rgb;
 	float diffuse = max(0.0, dot(normal, lightdirection));
 
-	color = mix(color, texture(colormap, mapscale*fragment.texcoord), 0.4);
+	//color = mix(color, texture(colormap, mapscale*fragment.texcoord), 0.4);
 	color.rgb *= diffuse;
 }

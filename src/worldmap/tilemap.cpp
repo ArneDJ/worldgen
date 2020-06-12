@@ -233,6 +233,15 @@ void Tilemap::gen_tiles(size_t max, const struct floatimage *heightimage, const 
 			t.relief = PLAIN;
 			t.biome = MARSH;
 		}
+
+		// assign ocean and sea tiles
+		if (t.relief == WATER) {
+			if (t.coast == true) {
+				t.biome = SEA;
+			} else {
+				t.biome = OCEAN;
+			}
+		}
 	}
 
 	// find coastal corners

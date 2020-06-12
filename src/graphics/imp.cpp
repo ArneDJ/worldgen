@@ -197,4 +197,3 @@ void gauss_blur_image(struct byteimage *image, float sigma)
 
 	iir_gauss_blur(image->width, image->height, image->nchannels, image->data, sigma);
 }
-
