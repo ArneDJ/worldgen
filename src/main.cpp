@@ -307,10 +307,17 @@ GLuint voronoi_texture(const Tilemap *map)
 	unsigned char delacolor[3] = {255, 0, 0};
 	unsigned char blue[3] = {0, 0, 255};
 	unsigned char white[3] = {255, 255, 255};
+	unsigned char red[3] = {255, 0, 0};
 
 	for (const auto &river : map->rivers) {
 		for (const auto &segment : river.segments) {
 			draw_line(segment.a->v->position.x, segment.a->v->position.y, segment.b->v->position.x, segment.b->v->position.y, image.data, image.width, image.height, image.nchannels, blue);
+		}
+	}
+
+	for (auto &c : map->corners) {
+		if (c.border == true) {
+			plot(c.v->position.x, c.v->position.y, image.data, image.width, image.height, image.nchannels, red);
 		}
 	}
 

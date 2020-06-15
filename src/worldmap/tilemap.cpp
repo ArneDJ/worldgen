@@ -203,6 +203,7 @@ void Tilemap::gen_tiles(size_t max, const struct floatimage *heightimage, const 
 			.index = vertex.index,
 			.coastal = false,
 			.river = false,
+			.border = false,
 			.v = &vertex,
 			.neighbors = neighbors,
 			.tiles = tils,
@@ -244,7 +245,7 @@ void Tilemap::gen_tiles(size_t max, const struct floatimage *heightimage, const 
 		}
 	}
 
-	// find coastal corners
+	// find coastal and border corners
 	for (auto &c : corners) {
 		bool sea = false;
 		bool land = false;
@@ -258,6 +259,11 @@ void Tilemap::gen_tiles(size_t max, const struct floatimage *heightimage, const 
 		}
 		if (sea == true && land == true ) {
 			c.coastal = true;
+		}
+
+		auto ncells = c.tiles.size();
+		if (ncells < 3) {
+			c.border = true;
 		}
 	}
 
@@ -290,6 +296,12 @@ void Tilemap::gen_tiles(size_t max, const struct floatimage *heightimage, const 
 
 				// if we still don't find a valid corner reject the river
 				if (next == nullptr) {
+					rejected = true;
+					break;
+				}
+
+				// don't let rivers flow at the edge of the map
+				if (next->border == true) {
 					rejected = true;
 					break;
 				}

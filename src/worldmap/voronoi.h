@@ -19,14 +19,6 @@ class Voronoi {
 public:
 	std::vector<struct cell> cells;
 	std::vector<struct vertex> vertices;
-	void gen_diagram(std::vector<glm::vec2> &locations, size_t width, size_t height);
-/*
 public:
-	Voronoi(std::vector<glm::vec2> &locations, size_t width, size_t height)
-	{
-		gen_diagram(locations, width, height);
-	}
-private:
 	void gen_diagram(std::vector<glm::vec2> &locations, size_t width, size_t height);
-	*/
 };

@@ -38,6 +38,7 @@ struct corner {
 	int index;
 	bool coastal;
 	bool river;
+	bool border;
 	const struct vertex *v;
 	std::vector<struct corner*> neighbors;
 	std::vector<const struct tile*> tiles;
@@ -77,5 +78,3 @@ public:
 public:
 	void gen_tiles(size_t max, const struct floatimage *heightimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage);
 };
-
-//Tilemap gen_tiles(size_t max, const struct floatimage *heightimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage);

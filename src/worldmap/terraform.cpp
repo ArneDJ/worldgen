@@ -40,7 +40,7 @@ static struct floatimage gen_heightmap(size_t side, long seed, float freq)
 	cellnoise.SetSeed(seed);
 	cellnoise.SetNoiseType(FastNoise::Cellular);
 	cellnoise.SetCellularDistanceFunction(FastNoise::Euclidean);
-	cellnoise.SetFrequency(1.4f*freq);
+	cellnoise.SetFrequency(1.5f*freq);
 	cellnoise.SetCellularReturnType(FastNoise::Distance2Div);
 	cellnoise.SetGradientPerturbAmp(200.f);
 
