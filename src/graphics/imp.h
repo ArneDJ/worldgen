@@ -32,3 +32,5 @@ void draw_triangle(float x0, float y0, float x1, float y1, float x2, float y2, u
 void plot(int x, int y, unsigned char *image, int width, int height, int nchannels, unsigned char *color);
 
 void draw_line(int x0, int y0, int x1, int y1, unsigned char *image, int width, int height, int nchannels, unsigned char *color);
+
+void draw_bezier(int x0, int y0, int x1, int y1, int x2, int y2, struct byteimage *image, unsigned char *color);

@@ -49,6 +49,11 @@ private:
 	struct mesh cube;
 };
 
+glm::vec2 midpoint(glm::vec2 a, glm::vec2 b)
+{
+	return glm::vec2((a.x+b.x)/2.f, (a.y+b.y)/2.f);
+}
+
 void Skybox::display(void) const
 {
 	glDepthFunc(GL_LEQUAL);
@@ -310,16 +315,30 @@ GLuint voronoi_texture(const Tilemap *map)
 	unsigned char red[3] = {255, 0, 0};
 
 	for (const auto &river : map->rivers) {
+		for (int i = 0; i < river.segments.size()-1; i++) {
+			const struct border &segment = river.segments[i];
+			const struct border &next = river.segments[i+1];
+			glm::vec2 halfa = midpoint(segment.a->v->position, segment.b->v->position);
+			glm::vec2 a = midpoint(halfa, segment.b->v->position);
+			glm::vec2 halfb = midpoint(next.a->v->position, next.b->v->position);
+			glm::vec2 b = midpoint(halfb, next.a->v->position);
+			//draw_line(segment.a->v->position.x, segment.a->v->position.y, segment.b->v->position.x, segment.b->v->position.y, image.data, image.width, image.height, image.nchannels, red);
+			draw_bezier(a.x, a.y, segment.b->v->position.x, segment.b->v->position.y, b.x, b.y, &image, blue);
+			glm::vec2 uh = midpoint(halfa, segment.a->v->position);
+			draw_line(uh.x, uh.y, a.x, a.y, image.data, image.width, image.height, image.nchannels, blue);
+		}
+		const struct border &mouth = river.segments[river.segments.size()-1];
+		glm::vec2 half = midpoint(mouth.a->v->position, mouth.b->v->position);
+		glm::vec2 quart = midpoint(mouth.a->v->position, half);
+		draw_line(quart.x, quart.y, mouth.b->v->position.x, mouth.b->v->position.y, image.data, image.width, image.height, image.nchannels, blue);
+	}
+	/*
+	for (const auto &river : map->rivers) {
 		for (const auto &segment : river.segments) {
 			draw_line(segment.a->v->position.x, segment.a->v->position.y, segment.b->v->position.x, segment.b->v->position.y, image.data, image.width, image.height, image.nchannels, blue);
 		}
 	}
-
-	for (auto &c : map->corners) {
-		if (c.border == true) {
-			plot(c.v->position.x, c.v->position.y, image.data, image.width, image.height, image.nchannels, red);
-		}
-	}
+	*/
 
 	GLuint texture = bind_byte_texture(&image, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
 
