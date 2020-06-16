@@ -301,6 +301,19 @@ struct byteimage river_image(const Tilemap *map)
 	for (const auto &river : map->rivers) {
 		for (int i = 0; i < river.segments.size()-1; i++) {
 			const struct border &segment = river.segments[i];
+			const struct corner *a_corner = segment.a;
+			bool mountainess = false;
+			int mountcount = 0;
+			for (const auto &tile : a_corner->tiles) {
+				if (tile->relief == MOUNTAIN) {
+					//mountainess = false;
+					mountcount++;
+				}
+			}
+			if (mountcount > 2) { mountainess = true; }
+			//std::vector<const struct tile*> tiles;
+			//const struct corner *b_corner = segment.b;
+			if (mountainess == false) {
 			const struct border &next = river.segments[i+1];
 			glm::vec2 halfa = midpoint(segment.a->v->position, segment.b->v->position);
 			glm::vec2 a = midpoint(halfa, segment.b->v->position);
@@ -309,6 +322,7 @@ struct byteimage river_image(const Tilemap *map)
 			draw_bezier(a.x, a.y, segment.b->v->position.x, segment.b->v->position.y, b.x, b.y, &image, white);
 			glm::vec2 uh = midpoint(halfa, segment.a->v->position);
 			draw_line(uh.x, uh.y, a.x, a.y, image.data, image.width, image.height, image.nchannels, white);
+			}
 		}
 		const struct border &mouth = river.segments[river.segments.size()-1];
 		glm::vec2 half = midpoint(mouth.a->v->position, mouth.b->v->position);
@@ -320,11 +334,11 @@ struct byteimage river_image(const Tilemap *map)
 
 	for (int i = 0; i < size*size; i++) {
 		float gradient = image.data[i] / 255.f;
-		if (gradient > 0.01f) { gradient = 1.f; }
+		if (gradient > 0.05f) { gradient = 1.f; }
 		image.data[i] = 255 * gradient;
 	}
 
-	gauss_blur_image(&image, 1.5f);
+	gauss_blur_image(&image, 1.f);
 
 	return image;
 }
@@ -541,16 +555,6 @@ struct floatimage gen_topology(const struct floatimage *heightmap, const struct 
 		}
 	}
 
-	index = 0;
-	for (int i = 0; i < width; i++) {
-		for (int j = 0; j < height; j++) {
-			float river = sample_byteimage(2.f*j, 2.f*i, 0, riverimage);
-			float height = glm::mix(image.data[index], 0.9f*image.data[index], river);
-			image.data[index] = height;
-			index++;
-		}
-	}
-
 	delete [] mountainmap.data;
 	delete [] badlands.data;
 	delete [] water.data;
@@ -617,6 +621,19 @@ void run_worldgen(SDL_Window *window)
 	struct byteimage riverimage = river_image(&tilecells);
 
 	struct floatimage topology = gen_topology(&terraform.heightmap, &riverimage, &tilecells, seed);
+
+	GLuint riverheight = bind_texture(&topology, GL_R8, GL_RED, GL_FLOAT);
+
+	unsigned index = 0;
+	for (int i = 0; i < topology.width; i++) {
+		for (int j = 0; j < topology.height; j++) {
+			float river = sample_byteimage(2.f*j, 2.f*i, 0, &riverimage);
+			float height = glm::mix(topology.data[index], 0.9f*topology.data[index], river);
+			topology.data[index] = height;
+			index++;
+		}
+	}
+
 	GLuint reliefheight = bind_texture(&topology, GL_R8, GL_RED, GL_FLOAT);
 	struct floatimage normalimage = gen_normalmap(&topology);
 	GLuint normalmap = bind_texture(&normalimage, GL_RGB8, GL_RGB, GL_FLOAT);
@@ -736,7 +753,7 @@ void run_worldgen(SDL_Window *window)
 		*/
 		  water_program.bind();
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_CUBE_MAP, skybox.cubemap);
-		activate_texture(GL_TEXTURE1, GL_TEXTURE_2D, reliefheight);
+		activate_texture(GL_TEXTURE1, GL_TEXTURE_2D, riverheight);
 		activate_texture(GL_TEXTURE2, GL_TEXTURE_2D, rivertex);
 		activate_texture(GL_TEXTURE4, GL_TEXTURE_2D, waternormal);
   glBindVertexArray(water_mesh.VAO);

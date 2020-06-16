@@ -27,9 +27,13 @@ void main(void)
 	pos.y = 10.0;
 
 	float river = texture(rivermap, mapscale*pos.xz).r;
-	river = smoothstep(0.0, 0.5, river);
+	river = smoothstep(0.0, 0.2, river);
 	float height = texture(heightmap, mapscale*pos.xz).r;
-	pos.y = mix(pos.y, amplitude*height+0.25, river);
+	pos.y = mix(pos.y, amplitude*height*0.98, river);
+
+	if (pos.y < 10.0) {
+		pos.y = 10.0;
+	}
 
 	vec4 vertex = view * pos;
 
