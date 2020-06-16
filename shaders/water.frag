@@ -47,6 +47,6 @@ void main(void)
 
 	fcolor = mix(refractionColor, reflectionColor, fresnel);
 	fcolor.rgb *= vec3(0.4, 0.75, 0.8) * 0.7;
-	fcolor.a = 0.95;
+	fcolor.a = 0.8;
 }
 

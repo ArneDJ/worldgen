@@ -99,6 +99,30 @@ Shader base_shader(const char *vertpath, const char *fragpath)
 	return shader;
 }
 
+Shader water_shader(void)
+{
+ struct shaderinfo pipeline[] = {
+  {GL_VERTEX_SHADER, "shaders/water.vert"},
+  {GL_TESS_CONTROL_SHADER, "shaders/water.tesc"},
+  {GL_TESS_EVALUATION_SHADER, "shaders/water.tese"},
+  {GL_FRAGMENT_SHADER, "shaders/water.frag"},
+  {GL_NONE, NULL}
+ };
+
+  Shader shader(pipeline);
+
+ shader.bind();
+
+ const float aspect = (float)WINDOW_WIDTH/(float)WINDOW_HEIGHT;
+ glm::mat4 project = glm::perspective(glm::radians(FOV), aspect, NEAR_CLIP, FAR_CLIP);
+ shader.uniform_mat4("project", project);
+ shader.uniform_vec3("fogcolor", glm::vec3(0.46, 0.7, 0.99));
+ shader.uniform_float("fogfactor", 0.025);
+
+ return shader;
+}
+
+
 Shader worldmap_shader(void)
 {
 	struct shaderinfo pipeline[] = {
@@ -257,6 +281,54 @@ void badlands_image(float *image, size_t sidelength, long seed, float freq)
 	}
 }
 
+struct byteimage river_image(const Tilemap *map)
+{
+	const size_t size = 4096;
+
+	struct byteimage image = {
+		.data = new unsigned char[size*size],
+		.nchannels = 1,
+		.width = size,
+		.height = size,
+	};
+
+	for (int i = 0; i < size*size; i++) {
+		image.data[i] = 0;
+	}
+
+	unsigned char white[1] = { 255 };
+
+	for (const auto &river : map->rivers) {
+		for (int i = 0; i < river.segments.size()-1; i++) {
+			const struct border &segment = river.segments[i];
+			const struct border &next = river.segments[i+1];
+			glm::vec2 halfa = midpoint(segment.a->v->position, segment.b->v->position);
+			glm::vec2 a = midpoint(halfa, segment.b->v->position);
+			glm::vec2 halfb = midpoint(next.a->v->position, next.b->v->position);
+			glm::vec2 b = midpoint(halfb, next.a->v->position);
+			draw_bezier(a.x, a.y, segment.b->v->position.x, segment.b->v->position.y, b.x, b.y, &image, white);
+			glm::vec2 uh = midpoint(halfa, segment.a->v->position);
+			draw_line(uh.x, uh.y, a.x, a.y, image.data, image.width, image.height, image.nchannels, white);
+		}
+		const struct border &mouth = river.segments[river.segments.size()-1];
+		glm::vec2 half = midpoint(mouth.a->v->position, mouth.b->v->position);
+		glm::vec2 quart = midpoint(mouth.a->v->position, half);
+		draw_line(quart.x, quart.y, mouth.b->v->position.x, mouth.b->v->position.y, image.data, image.width, image.height, image.nchannels, white);
+	}
+
+	gauss_blur_image(&image, 1.f);
+
+	for (int i = 0; i < size*size; i++) {
+		float gradient = image.data[i] / 255.f;
+		if (gradient > 0.01f) { gradient = 1.f; }
+		image.data[i] = 255 * gradient;
+	}
+
+	gauss_blur_image(&image, 1.5f);
+
+	return image;
+}
+
 GLuint voronoi_texture(const Tilemap *map)
 {
 	const size_t size = 4096;
@@ -406,7 +478,7 @@ struct byteimage biome_mask(const Tilemap *map, enum BIOME biome, size_t width, 
 }
 
 // all images should only have a single color channel
-struct floatimage gen_topology(const struct floatimage *heightmap, const Tilemap *map, long seed)
+struct floatimage gen_topology(const struct floatimage *heightmap, const struct byteimage *riverimage, const Tilemap *map, long seed)
 {
 	const size_t width = 2048;
 	const size_t height = 2048;
@@ -469,6 +541,16 @@ struct floatimage gen_topology(const struct floatimage *heightmap, const Tilemap
 		}
 	}
 
+	index = 0;
+	for (int i = 0; i < width; i++) {
+		for (int j = 0; j < height; j++) {
+			float river = sample_byteimage(2.f*j, 2.f*i, 0, riverimage);
+			float height = glm::mix(image.data[index], 0.9f*image.data[index], river);
+			image.data[index] = height;
+			index++;
+		}
+	}
+
 	delete [] mountainmap.data;
 	delete [] badlands.data;
 	delete [] water.data;
@@ -513,7 +595,8 @@ void run_worldgen(SDL_Window *window)
 	Skybox skybox = init_skybox();
 	Shader skybox_program = skybox_shader();
 	Shader map_program = base_shader("shaders/map.vert", "shaders/map.frag");
-	Shader water_program = base_shader("shaders/worldwater.vert", "shaders/worldwater.frag");
+	//Shader water_program = base_shader("shaders/worldwater.vert", "shaders/worldwater.frag");
+	Shader water_program = water_shader();
 	Shader worldmap_program = worldmap_shader();
 
 	std::random_device rd;
@@ -531,16 +614,22 @@ void run_worldgen(SDL_Window *window)
 	tilecells.gen_tiles(4096, &terraform.heightmap, &terraform.rainfall, &terraform.temperature);
 	GLuint voronoi = voronoi_texture(&tilecells);
 
-	struct floatimage topology = gen_topology(&terraform.heightmap, &tilecells, seed);
+	struct byteimage riverimage = river_image(&tilecells);
+
+	struct floatimage topology = gen_topology(&terraform.heightmap, &riverimage, &tilecells, seed);
 	GLuint reliefheight = bind_texture(&topology, GL_R8, GL_RED, GL_FLOAT);
 	struct floatimage normalimage = gen_normalmap(&topology);
 	GLuint normalmap = bind_texture(&normalimage, GL_RGB8, GL_RGB, GL_FLOAT);
+
+	gauss_blur_image(&riverimage, 5.f);
+	GLuint rivertex = bind_byte_texture(&riverimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
 	struct mesh worldmap_mesh = gen_patch_grid(32, 32.f);
 	worldmap_program.uniform_float("mapscale", 1.f / (32.f*32.f));
 	worldmap_program.uniform_float("amplitude", 48.f);
 
 	water_program.uniform_float("mapscale", 1.f / (32.f*32.f));
+	water_program.uniform_float("amplitude", 48.f);
 
 	GLuint masks_array = gen_biomemask_texture(&tilecells);
 	GLuint grassmap = load_DDS_texture("media/textures/worldmap/grass.dds");
@@ -561,7 +650,8 @@ void run_worldgen(SDL_Window *window)
 	};
 
 	struct mesh map = gen_quad(glm::vec3(0.f, 100.f, 0.f), glm::vec3(100.f, 100.f, 0.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(100.f, 0.f, 0.f));
-	struct mesh water_mesh = gen_quad(glm::vec3(0.f, 10.f, 0.f), glm::vec3(1024.f, 10.f, 0.f), glm::vec3(0.f, 10.f, 1024.f), glm::vec3(1024.f, 10.f, 1024.f));
+	//struct mesh water_mesh = gen_quad(glm::vec3(0.f, 10.f, 0.f), glm::vec3(1024.f, 10.f, 0.f), glm::vec3(0.f, 10.f, 1024.f), glm::vec3(1024.f, 10.f, 1024.f));
+	struct mesh water_mesh = gen_patch_grid(32, 32.f);
 
 	float start = 0.f;
  	float end = 0.f;
@@ -607,6 +697,7 @@ void run_worldgen(SDL_Window *window)
 		activate_texture(GL_TEXTURE7, GL_TEXTURE_2D, savannamap);
 		activate_texture(GL_TEXTURE8, GL_TEXTURE_2D, badlandsmap);
 		activate_texture(GL_TEXTURE9, GL_TEXTURE_2D, snowmap);
+		activate_texture(GL_TEXTURE11, GL_TEXTURE_2D, rivertex);
 		glBindVertexArray(worldmap_mesh.VAO);
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		 glPatchParameteri(GL_PATCH_VERTICES, 4);
@@ -626,11 +717,15 @@ void run_worldgen(SDL_Window *window)
 		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(200.f, 32.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, temperature);
 		glDrawArrays(map.mode, 0, map.ecount);
+		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(300.f, 32.f, 0.f)));
+		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, rivertex);
+		glDrawArrays(map.mode, 0, map.ecount);
 		map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(400.f, 32.f, 0.f)));
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, voronoi);
 		glDrawArrays(map.mode, 0, map.ecount);
 
 		//map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 0.f)));
+		/*
 		water_program.bind();
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_CUBE_MAP, skybox.cubemap);
 		activate_texture(GL_TEXTURE1, GL_TEXTURE_2D, reliefheight);
@@ -638,6 +733,18 @@ void run_worldgen(SDL_Window *window)
 		glBindVertexArray(water_mesh.VAO);
 		glDrawArrays(water_mesh.mode, 0, water_mesh.ecount);
 		glEnable(GL_CULL_FACE);
+		*/
+		  water_program.bind();
+		activate_texture(GL_TEXTURE0, GL_TEXTURE_CUBE_MAP, skybox.cubemap);
+		activate_texture(GL_TEXTURE1, GL_TEXTURE_2D, reliefheight);
+		activate_texture(GL_TEXTURE2, GL_TEXTURE_2D, rivertex);
+		activate_texture(GL_TEXTURE4, GL_TEXTURE_2D, waternormal);
+  glBindVertexArray(water_mesh.VAO);
+ //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  glPatchParameteri(GL_PATCH_VERTICES, 4);
+  glDrawArrays(GL_PATCHES, 0, water_mesh.ecount);
+ //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
 
 		skybox_program.bind();
 		skybox.display();

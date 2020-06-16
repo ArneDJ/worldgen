@@ -32,7 +32,7 @@ static struct floatimage gen_heightmap(size_t side, long seed, float freq)
 	noise.SetFrequency(freq);
 	noise.SetFractalOctaves(6);
 	noise.SetFractalLacunarity(2.2f);
-	noise.SetGradientPerturbAmp(200.f);
+	noise.SetGradientPerturbAmp(300.f);
 
 	const glm::vec2 center = glm::vec2(0.5f*float(image.width), 0.5f*float(image.height));
 

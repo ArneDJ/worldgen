@@ -350,7 +350,7 @@ void Tilemap::gen_tiles(size_t max, const struct floatimage *heightimage, const 
 				}
 			}
 		}
-		if (river_count > 4 && tile.relief == PLAIN) {
+		if (river_count > 5 && tile.relief == PLAIN) {
 			tile.biome = MARSH;
 		}
 	}
