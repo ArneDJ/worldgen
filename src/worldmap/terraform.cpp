@@ -93,8 +93,8 @@ static struct byteimage gen_temperature(size_t side, long seed)
 	FastNoise noise;
 	noise.SetSeed(seed);
 	noise.SetNoiseType(FastNoise::Perlin);
-	noise.SetFrequency(0.005f);
-	noise.SetGradientPerturbAmp(100.f);
+	noise.SetFrequency(0.002f);
+	noise.SetGradientPerturbAmp(400.f);
 
 	const float height = float(image.height);
 	unsigned int index = 0;

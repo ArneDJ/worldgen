@@ -83,7 +83,6 @@ void Voronoi::gen_diagram(std::vector<glm::vec2> &locations, size_t width, size_
 
 	const jcv_site *sites = jcv_diagram_get_sites(&diagram);
 
-	//struct cell *cells = new struct cell[diagram.numsites];
 	cells.resize(diagram.numsites);
 	// get each cell
 	for (int i = 0; i < diagram.numsites; i++) {

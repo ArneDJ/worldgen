@@ -401,30 +401,15 @@ GLuint voronoi_texture(const Tilemap *map)
 	unsigned char red[3] = {255, 0, 0};
 
 	for (const auto &river : map->rivers) {
-		for (int i = 0; i < river.segments.size()-1; i++) {
-			const struct border &segment = river.segments[i];
-			const struct border &next = river.segments[i+1];
-			glm::vec2 halfa = midpoint(segment.a->v->position, segment.b->v->position);
-			glm::vec2 a = midpoint(halfa, segment.b->v->position);
-			glm::vec2 halfb = midpoint(next.a->v->position, next.b->v->position);
-			glm::vec2 b = midpoint(halfb, next.a->v->position);
-			//draw_line(segment.a->v->position.x, segment.a->v->position.y, segment.b->v->position.x, segment.b->v->position.y, image.data, image.width, image.height, image.nchannels, red);
-			draw_bezier(a.x, a.y, segment.b->v->position.x, segment.b->v->position.y, b.x, b.y, &image, blue);
-			glm::vec2 uh = midpoint(halfa, segment.a->v->position);
-			draw_line(uh.x, uh.y, a.x, a.y, image.data, image.width, image.height, image.nchannels, blue);
-		}
-		const struct border &mouth = river.segments[river.segments.size()-1];
-		glm::vec2 half = midpoint(mouth.a->v->position, mouth.b->v->position);
-		glm::vec2 quart = midpoint(mouth.a->v->position, half);
-		draw_line(quart.x, quart.y, mouth.b->v->position.x, mouth.b->v->position.y, image.data, image.width, image.height, image.nchannels, blue);
-	}
-	/*
-	for (const auto &river : map->rivers) {
 		for (const auto &segment : river.segments) {
+			//const struct border &segment = river.segments[i];
 			draw_line(segment.a->v->position.x, segment.a->v->position.y, segment.b->v->position.x, segment.b->v->position.y, image.data, image.width, image.height, image.nchannels, blue);
 		}
 	}
-	*/
+
+	for (const auto &river : map->rivers) {
+		plot(river.source->v->position.x, river.source->v->position.y, image.data, image.width, image.height, image.nchannels, red);
+	}
 
 	GLuint texture = bind_byte_texture(&image, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
 
@@ -547,10 +532,10 @@ struct floatimage gen_topology(const struct floatimage *heightmap, const struct 
 	for (int i = 0; i < width; i++) {
 		for (int j = 0; j < height; j++) {
 			float mask = sample_byteimage(j, i, 0, &mountain);
-			float watermask = sample_byteimage(j, i, 0, &water);
 			float ridge = (0.4f*mountainmap.data[index]) + 0.35f;
 			float height = glm::mix(image.data[index], ridge, mask*mask*mask*mask);
-			height = glm::mix(height, 0.75f*height, watermask);
+			float watermask = sample_byteimage(j, i, 0, &water);
+			height = glm::mix(height, 0.8f*height, watermask);
 			image.data[index++] = height;
 		}
 	}

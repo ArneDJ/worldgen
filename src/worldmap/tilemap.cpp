@@ -15,6 +15,7 @@
 #include "voronoi.h"
 #include "tilemap.h"
 
+#define MIN_RIVER_SIZE 10
 #define MAX_RIVER_SIZE 2000
 #define SEA_LEVEL 0.43f
 #define MOUNTAIN_LEVEL 0.69f
@@ -114,6 +115,128 @@ static enum BIOME generate_biome(enum RELIEF relief, enum TEMPERATURE temperatur
 
 	return biome;
 };
+
+static void gen_rivers(std::vector<struct river> &rivers, std::vector<struct corner> &corners, const floatimage *heightimage, float ratio)
+{
+	std::random_device rd;
+	std::mt19937 gen(rd());
+
+	size_t size = heightimage->width;
+	struct byteimage image = {
+		.data = new unsigned char[size*size],
+		.nchannels = 1,
+		.width = size,
+		.height = size,
+	};
+
+	for (int i = 0; i < size*size; i++) {
+		image.data[i] = 255 * heightimage->data[i];
+	}
+
+	gauss_blur_image(&image, 20.f);
+
+	std::uniform_int_distribution<size_t> distr(0, corners.size() - 1);
+	for (int i = 0; i < 1000; i++) {
+	//for (int i = 0; i < corners.size(); i++) {
+		struct river river;
+		size_t start = distr(gen);
+		struct corner *source = &corners[start];
+		if (source->river == false) {
+		bool rejected = true;
+		//float height = sample_floatimage(ratio*source->v->position.x, ratio*source->v->position.y, 0, heightimage);
+		float height = sample_byteimage(ratio*source->v->position.x, ratio*source->v->position.y, 0, &image);
+		// river sources may only start above a certain height
+		size_t river_size = 0;
+		if (height > 0.5f) {
+			river.source = source;
+			struct corner *start = source;
+			struct corner *previous = source;
+			while (start->coastal == false && river_size < MAX_RIVER_SIZE) {
+				//float min = sample_floatimage(ratio*start->v->position.x, ratio*start->v->position.y, 0, heightimage);
+				float min = sample_byteimage(ratio*start->v->position.x, ratio*start->v->position.y, 0, &image);
+				struct corner *next = nullptr;
+				for (auto &neighbor : start->neighbors) {
+					if (neighbor != previous && neighbor->river == true) {
+						next = neighbor;
+						break;
+					} 
+					if (neighbor != previous) {
+						for (auto &adjneighbor : neighbor->neighbors) {
+							if (adjneighbor != start && adjneighbor->river == true){
+						next = neighbor;
+						break;
+							}
+						}
+
+					}
+					//if (neighbor != previous) {
+					//float neighborheight = sample_floatimage(ratio*neighbor->v->position.x, ratio*neighbor->v->position.y, 0, heightimage);
+					float neighborheight = sample_byteimage(ratio*neighbor->v->position.x, ratio*neighbor->v->position.y, 0, &image);
+					if (neighborheight < min) { 
+						next = neighbor;
+						min = neighborheight;
+					}
+					//}
+				}
+
+				if (next == nullptr) {
+				min = 1.f;
+				for (auto &neighbor : start->neighbors) {
+					//if (neighbor != previous) {
+					float neighborheight = sample_byteimage(ratio*neighbor->v->position.x, ratio*neighbor->v->position.y, 0, &image);
+					if (neighborheight < min) { 
+						next = neighbor;
+						min = neighborheight;
+					}
+					//}
+				}
+				}
+
+				// if we still don't find a valid corner reject the river
+				if (next == nullptr) {
+					rejected = true;
+					break;
+				}
+
+				// don't let rivers flow at the edge of the map
+				if (next->border == true) {
+					rejected = true;
+					break;
+				}
+
+				glm::vec2 direction = glm::vec2(next->v->position.x, next->v->position.y) - glm::vec2(start->v->position.x, start->v->position.y);
+				struct border segment = {
+					.a = start,
+					.b = next,
+					.direction = direction,
+				};
+
+				river.segments.push_back(segment);
+
+				if (next->coastal == true) {
+					rejected = false;
+					river.mouth = next;
+				}
+
+				previous = start;
+				start = next;
+				river_size++;
+			}
+		}
+
+		if (rejected == false && river_size > MIN_RIVER_SIZE) {
+			for (const auto &segment : river.segments) {
+				corners[segment.a->index].river = true;
+				corners[segment.b->index].river = true;
+			}
+
+			rivers.push_back(river);
+		}
+		}
+	}
+
+	delete [] image.data;
+}
 
 void Tilemap::gen_tiles(size_t max, const struct floatimage *heightimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage)
 {
@@ -268,76 +391,7 @@ void Tilemap::gen_tiles(size_t max, const struct floatimage *heightimage, const 
 	}
 
 	// generate rivers
-	std::uniform_int_distribution<size_t> distr(0, corners.size() - 1);
-	for (int i = 0; i < 500; i++) {
-		struct river river;
-		size_t start = distr(gen);
-		struct corner *source = &corners[start];
-		bool rejected = true;
-		float height = sample_floatimage(ratio*source->v->position.x, ratio*source->v->position.y, 0, heightimage);
-		// river sources may only start above a certain height
-		if (height > 0.5f) {
-			river.source = source;
-			struct corner *start = source;
-			struct corner *previous = source;
-			size_t river_size = 0;
-			while (start->coastal == false && river_size < MAX_RIVER_SIZE) {
-				float min = 1.f;
-				struct corner *next = nullptr;
-				for (auto &neighbor : start->neighbors) {
-					if (neighbor != previous) {
-						float neighborheight = sample_floatimage(ratio*neighbor->v->position.x, ratio*neighbor->v->position.y, 0, heightimage);
-						if (neighborheight < min) { 
-							next = neighbor;
-							min = neighborheight;
-						}
-					}
-				}
-
-				// if we still don't find a valid corner reject the river
-				if (next == nullptr) {
-					rejected = true;
-					break;
-				}
-
-				// don't let rivers flow at the edge of the map
-				if (next->border == true) {
-					rejected = true;
-					break;
-				}
-
-				glm::vec2 direction = glm::vec2(next->v->position.x, next->v->position.y) - glm::vec2(start->v->position.x, start->v->position.y);
-				struct border segment = {
-					.a = start,
-					.b = next,
-					.direction = direction,
-				};
-
-				river.segments.push_back(segment);
-
-				if (next->coastal == true) {
-					rejected = false;
-					river.mouth = next;
-				}
-
-				previous = start;
-				start = next;
-				river_size++;
-			}
-		}
-
-		if (rejected == false) {
-			rivers.push_back(river);
-		}
-	}
-
-	// validate rivers
-	for (const auto &river : rivers) {
-		for (const auto &segment : river.segments) {
-			corners[segment.a->index].river = true;
-			corners[segment.b->index].river = true;
-		}
-	}
+	gen_rivers(rivers, corners, heightimage, ratio);
 
 	// assign floodplains and marshes 
 	for (auto &tile : tiles) {
