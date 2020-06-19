@@ -19,6 +19,7 @@
 #include "external/imgui/imgui_impl_opengl3.h"
 #include "external/fastnoise/FastNoise.h"
 
+#include "gmath.h"
 #include "graphics/imp.h"
 #include "graphics/dds.h"
 #include "graphics/glwrapper.h"
@@ -35,6 +36,7 @@
 #define FAR_CLIP 1600.f
 
 #define FOG_DENSITY 0.015f
+
 class Skybox {
 public:
 	GLuint cubemap;
@@ -70,6 +72,23 @@ GLuint bind_byte_texture(const struct byteimage *image, GLenum internalformat, G
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexStorage2D(GL_TEXTURE_2D, 1, internalformat, image->width, image->height);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height, format, type, image->data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return texture;
+}
+
+GLuint bind_dynamic_texture(const struct byteimage *image, GLenum internalformat, GLenum format, GLenum type)
+{
+	GLuint texture;
+
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	//glTexStorage2D(GL_TEXTURE_2D, 1, internalformat, image->width, image->height);
+	glTexImage2D(GL_TEXTURE_2D, 1, internalformat, image->width, image->height, 0, format, type, image->data); 
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height, format, type, image->data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -283,7 +302,8 @@ void badlands_image(float *image, size_t sidelength, long seed, float freq)
 
 struct byteimage river_image(const Tilemap *map)
 {
-	const size_t size = 4096;
+	const size_t size = 4 * map->realmax;
+	const float ratio = float(size) / float(map->realmax);
 
 	struct byteimage image = {
 		.data = new unsigned char[size*size],
@@ -319,15 +339,15 @@ struct byteimage river_image(const Tilemap *map)
 			glm::vec2 a = midpoint(halfa, segment.b->v->position);
 			glm::vec2 halfb = midpoint(next.a->v->position, next.b->v->position);
 			glm::vec2 b = midpoint(halfb, next.a->v->position);
-			draw_bezier(a.x, a.y, segment.b->v->position.x, segment.b->v->position.y, b.x, b.y, &image, white);
+			draw_bezier(ratio*a.x, ratio*a.y, ratio*segment.b->v->position.x, ratio*segment.b->v->position.y, ratio*b.x, ratio*b.y, &image, white);
 			glm::vec2 uh = midpoint(halfa, segment.a->v->position);
-			draw_line(uh.x, uh.y, a.x, a.y, image.data, image.width, image.height, image.nchannels, white);
+			draw_line(ratio*uh.x, ratio*uh.y, ratio*a.x, ratio*a.y, image.data, image.width, image.height, image.nchannels, white);
 			}
 		}
 		const struct border &mouth = river.segments[river.segments.size()-1];
 		glm::vec2 half = midpoint(mouth.a->v->position, mouth.b->v->position);
 		glm::vec2 quart = midpoint(mouth.a->v->position, half);
-		draw_line(quart.x, quart.y, mouth.b->v->position.x, mouth.b->v->position.y, image.data, image.width, image.height, image.nchannels, white);
+		draw_line(ratio*quart.x, ratio*quart.y, ratio*mouth.b->v->position.x, ratio*mouth.b->v->position.y, image.data, image.width, image.height, image.nchannels, white);
 	}
 
 	gauss_blur_image(&image, 1.f);
@@ -343,9 +363,35 @@ struct byteimage river_image(const Tilemap *map)
 	return image;
 }
 
-GLuint voronoi_texture(const Tilemap *map)
+void city_image(Tilemap *map, struct byteimage *image)
 {
-	const size_t size = 4096;
+	unsigned char purple[3] = {255, 0, 255};
+	const float ratio = float(map->realmax) / float(image->width);
+	// give priority to port cities
+	for (auto &tile : map->tiles) {
+		if (tile.coast == true && tile.river == true) {
+			if (tile.relief == PLAIN || tile.relief == HILLS) {
+				bool valid = true;
+				for (const auto &neighbor : tile.neighbors) {
+					for (const auto &neighborneighbor : neighbor->neighbors) {
+					if (neighbor->city == true || neighborneighbor->city == true) {
+						valid = false;
+					}
+					}
+				}
+				if (valid == true) {
+					tile.city = true;
+				plot(tile.site->center.x, tile.site->center.y, image->data, image->width, image->height, image->nchannels, purple);
+				}
+			}
+		}
+	}
+}
+
+
+GLuint voronoi_texture(Tilemap *map)
+{
+	const size_t size = map->realmax;
 
 	struct byteimage image = {
 		.data = new unsigned char[size*size*3],
@@ -411,6 +457,8 @@ GLuint voronoi_texture(const Tilemap *map)
 		plot(river.source->v->position.x, river.source->v->position.y, image.data, image.width, image.height, image.nchannels, red);
 	}
 
+	city_image(map, &image);
+
 	GLuint texture = bind_byte_texture(&image, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
 
 	return texture;
@@ -429,7 +477,7 @@ struct byteimage relief_mask(const Tilemap *map, enum RELIEF relief, size_t widt
 		image.data[i] = 0;
 	}
 
-	const float ratio = float(width) / float(4096);
+	const float ratio = float(width) / float(map->realmax);
 
 	unsigned char mask[3] = {255, 255, 255};
 
@@ -459,7 +507,7 @@ struct byteimage biome_mask(const Tilemap *map, enum BIOME biome, size_t width, 
 		image.data[i] = 0;
 	}
 
-	const float ratio = float(width) / float(4096);
+	const float ratio = float(width) / float(map->realmax);
 
 	unsigned char mask[3] = {255, 255, 255};
 
@@ -584,6 +632,7 @@ void run_worldgen(SDL_Window *window)
 	Skybox skybox = init_skybox();
 	Shader skybox_program = skybox_shader();
 	Shader map_program = base_shader("shaders/map.vert", "shaders/map.frag");
+	Shader box_program = base_shader("shaders/vertex.glsl", "shaders/fragment.glsl");
 	//Shader water_program = base_shader("shaders/worldwater.vert", "shaders/worldwater.frag");
 	Shader water_program = water_shader();
 	Shader worldmap_program = worldmap_shader();
@@ -593,14 +642,14 @@ void run_worldgen(SDL_Window *window)
 	std::uniform_int_distribution<long> dis;
 	long seed = dis(gen);
 
-	Terraform terraform = { 2048, seed, 0.001f, };
+	Terraform terraform = { 2048, seed, 0.0008f, };
 
 	GLuint heightmap = bind_texture(&terraform.heightmap, GL_R8, GL_RED, GL_FLOAT);
 	GLuint temperature = bind_byte_texture(&terraform.temperature, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 	GLuint rainfall = bind_byte_texture(&terraform.rainfall, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
 	Tilemap tilecells; 
-	tilecells.gen_tiles(4096, &terraform.heightmap, &terraform.rainfall, &terraform.temperature);
+	tilecells.gen_tiles(1024, &terraform.heightmap, &terraform.rainfall, &terraform.temperature);
 	GLuint voronoi = voronoi_texture(&tilecells);
 
 	struct byteimage riverimage = river_image(&tilecells);
@@ -626,12 +675,24 @@ void run_worldgen(SDL_Window *window)
 	gauss_blur_image(&riverimage, 5.f);
 	GLuint rivertex = bind_byte_texture(&riverimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
+	struct byteimage selectimage = {
+		.data = new unsigned char[1024*1024],
+		.nchannels = 1,
+		.width = 1024,
+		.height = 1024
+	};
+	for (int i = 0; i < selectimage.width*selectimage.height; i++) {
+		selectimage.data[i] = 0;
+	}
+	GLuint selecttexture = bind_dynamic_texture(&selectimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
+
+	const float amplitude = 48.f;
 	struct mesh worldmap_mesh = gen_patch_grid(32, 32.f);
 	worldmap_program.uniform_float("mapscale", 1.f / (32.f*32.f));
-	worldmap_program.uniform_float("amplitude", 48.f);
+	worldmap_program.uniform_float("amplitude", amplitude);
 
 	water_program.uniform_float("mapscale", 1.f / (32.f*32.f));
-	water_program.uniform_float("amplitude", 48.f);
+	water_program.uniform_float("amplitude", amplitude);
 
 	GLuint masks_array = gen_biomemask_texture(&tilecells);
 	GLuint grassmap = load_DDS_texture("media/textures/worldmap/grass.dds");
@@ -652,8 +713,34 @@ void run_worldgen(SDL_Window *window)
 	};
 
 	struct mesh map = gen_quad(glm::vec3(0.f, 100.f, 0.f), glm::vec3(100.f, 100.f, 0.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(100.f, 0.f, 0.f));
-	//struct mesh water_mesh = gen_quad(glm::vec3(0.f, 10.f, 0.f), glm::vec3(1024.f, 10.f, 0.f), glm::vec3(0.f, 10.f, 1024.f), glm::vec3(1024.f, 10.f, 1024.f));
 	struct mesh water_mesh = gen_patch_grid(32, 32.f);
+
+	struct mesh cube_mesh = create_cube();
+
+	std::vector<glm::vec3> city_locations;
+	for (const auto &tile : tilecells.tiles) {
+		if (tile.city == true) {
+			glm::vec3 t = glm::vec3(tile.site->center.x, 10.f, tile.site->center.y);
+			city_locations.push_back(t);
+		}
+	}
+
+	std::vector<struct triangle> triangles;
+			
+	const float ratio = 2.f;
+	for (const auto &tile : tilecells.tiles) {
+		for (const auto &border : tile.site->borders) {
+			glm::vec3 a = glm::vec3(tile.site->center.x, amplitude*sample_floatimage(ratio*tile.site->center.x, ratio*tile.site->center.y, 0, &topology), tile.site->center.y);
+			glm::vec3 b = glm::vec3(border.x, amplitude*sample_floatimage(ratio*border.x, ratio*border.y, 0, &topology), border.y);
+			glm::vec3 c = glm::vec3(border.z, amplitude*sample_floatimage(ratio*border.z, ratio*border.w, 0, &topology), border.w);
+			struct triangle tri = {
+				.a = c,
+				.b = b,
+				.c = a,
+			};
+			triangles.push_back(tri);
+		}
+	}
 
 	float start = 0.f;
  	float end = 0.f;
@@ -672,6 +759,24 @@ void run_worldgen(SDL_Window *window)
 		if (keystates[SDL_SCANCODE_ESCAPE]) { running = false; }
 
 		cam.update_center(delta);
+
+		unsigned char c[1] = { 255 };
+		bool intersect = false;
+		glm::vec3 point = glm::vec3(0.f);
+		for (const auto tri : triangles) {
+			if (ray_intersects_triangle(cam.eye, cam.center, &tri) == true) {
+				intersect = true;
+				point = tri.a;
+		if (keystates[SDL_SCANCODE_SPACE]) {
+				draw_triangle(tri.c.x, tri.c.z, tri.b.x, tri.b.z, tri.a.x, tri.a.z, selectimage.data, selectimage.width, selectimage.height, selectimage.nchannels, c);
+				//glBindTexture(GL_TEXTURE_2D, selecttexture);
+				//activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, selecttexture);
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, selectimage.width, selectimage.height, GL_RED, GL_UNSIGNED_BYTE, selectimage.data);
+		}
+				break;
+			}
+
+		}
 		cam.update_view();
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -679,11 +784,12 @@ void run_worldgen(SDL_Window *window)
 
 		glm::mat4 VP = cam.project * cam.view;
 		skybox_program.uniform_mat4("view", cam.view);
+		box_program.uniform_mat4("view", cam.view);
+		box_program.uniform_mat4("project", cam.project);
+		box_program.uniform_vec3("RGB", glm::vec3(1.f, 0.f, 1.f));
 		water_program.uniform_mat4("view", cam.view);
 		water_program.uniform_mat4("project", cam.project);
 		water_program.uniform_vec3("camerapos", cam.eye);
-		//water_program.uniform_vec3 fogcolor;
-		//water_program.uniform_float fogfactor;
 		water_program.uniform_float("time", start);
 		map_program.uniform_mat4("VIEW_PROJECT", VP);
 		worldmap_program.uniform_mat4("VIEW_PROJECT", VP);
@@ -700,6 +806,7 @@ void run_worldgen(SDL_Window *window)
 		activate_texture(GL_TEXTURE8, GL_TEXTURE_2D, badlandsmap);
 		activate_texture(GL_TEXTURE9, GL_TEXTURE_2D, snowmap);
 		activate_texture(GL_TEXTURE11, GL_TEXTURE_2D, rivertex);
+		activate_texture(GL_TEXTURE12, GL_TEXTURE_2D, selecttexture);
 		glBindVertexArray(worldmap_mesh.VAO);
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		 glPatchParameteri(GL_PATCH_VERTICES, 4);
@@ -726,27 +833,23 @@ void run_worldgen(SDL_Window *window)
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, voronoi);
 		glDrawArrays(map.mode, 0, map.ecount);
 
-		//map_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 0.f)));
-		/*
-		water_program.bind();
-		activate_texture(GL_TEXTURE0, GL_TEXTURE_CUBE_MAP, skybox.cubemap);
-		activate_texture(GL_TEXTURE1, GL_TEXTURE_2D, reliefheight);
-		activate_texture(GL_TEXTURE4, GL_TEXTURE_2D, waternormal);
-		glBindVertexArray(water_mesh.VAO);
-		glDrawArrays(water_mesh.mode, 0, water_mesh.ecount);
-		glEnable(GL_CULL_FACE);
-		*/
 		  water_program.bind();
 		activate_texture(GL_TEXTURE0, GL_TEXTURE_CUBE_MAP, skybox.cubemap);
 		activate_texture(GL_TEXTURE1, GL_TEXTURE_2D, riverheight);
 		activate_texture(GL_TEXTURE2, GL_TEXTURE_2D, rivertex);
 		activate_texture(GL_TEXTURE4, GL_TEXTURE_2D, waternormal);
-  glBindVertexArray(water_mesh.VAO);
- //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  glPatchParameteri(GL_PATCH_VERTICES, 4);
-  glDrawArrays(GL_PATCHES, 0, water_mesh.ecount);
- //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
+		glBindVertexArray(water_mesh.VAO);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glPatchParameteri(GL_PATCH_VERTICES, 4);
+		glDrawArrays(GL_PATCHES, 0, water_mesh.ecount);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		//
+		box_program.bind();
+		glBindVertexArray(cube_mesh.VAO);
+		for (const auto &t : city_locations) {
+		box_program.uniform_mat4("model", glm::translate(glm::mat4(1.f), t));
+		glDrawElements(GL_TRIANGLE_STRIP, water_mesh.ecount, GL_UNSIGNED_SHORT, NULL);
+		}
 
 		skybox_program.bind();
 		skybox.display();
@@ -758,6 +861,10 @@ void run_worldgen(SDL_Window *window)
 		ImGui::SetWindowSize(ImVec2(400, 200));
 		ImGui::Text("%d ms per frame", msperframe);
 		ImGui::Text("camera position: %.2f, %.2f, %.2f", cam.eye.x, cam.eye.y, cam.eye.z);
+		if (intersect == true) {
+		ImGui::Text("intersect position: %.2f, %.2f, %.2f", point.x, point.y, point.z);
+
+		}
 
 		//if (ImGui::Button("Exit")) { running = false; }
 

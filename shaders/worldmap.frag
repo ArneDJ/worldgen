@@ -15,6 +15,7 @@ layout(binding = 9) uniform sampler2D snowmap;
 layout(binding = 10) uniform sampler2DArrayShadow shadowmap;
 
 layout(binding = 11) uniform sampler2D rivermask;
+layout(binding = 12) uniform sampler2D selectmask;
 
 uniform float mapscale;
 uniform vec3 camerapos;
@@ -197,7 +198,7 @@ void main(void)
 	vec4 purple = vec4(1.0, 0.0, 1.0, 1.0);
 	float river = texture(rivermask, mapscale*fragment.texcoord).r;
 	//color = mix(color, purple, river);
-
-	//color = mix(color, texture(colormap, mapscale*fragment.texcoord), 0.4);
+	float paintmask = texture(colormap, mapscale*fragment.texcoord).r;
+	color = mix(color, purple, paintmask);
 	color.rgb *= diffuse;
 }

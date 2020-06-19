@@ -64,6 +64,7 @@ struct tile {
 	enum BIOME biome;
 	bool coast;
 	bool river;
+	bool city;
 	const struct cell *site;
 	std::vector<const struct tile*> neighbors;
 	std::vector<const struct corner*> corners;
@@ -75,6 +76,7 @@ public:
 	std::vector<struct tile> tiles;
 	std::vector<struct corner> corners;
 	std::vector<struct river> rivers;
+	size_t realmax;
 public:
 	void gen_tiles(size_t max, const struct floatimage *heightimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage);
 };

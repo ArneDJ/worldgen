@@ -18,7 +18,7 @@
 #define MIN_RIVER_SIZE 10
 #define MAX_RIVER_SIZE 2000
 #define SEA_LEVEL 0.43f
-#define MOUNTAIN_LEVEL 0.69f
+#define MOUNTAIN_LEVEL 0.7f
 #define NSITES 256*256
 
 static enum TEMPERATURE sample_temperature(float warmth)
@@ -240,6 +240,7 @@ static void gen_rivers(std::vector<struct river> &rivers, std::vector<struct cor
 
 void Tilemap::gen_tiles(size_t max, const struct floatimage *heightimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage)
 {
+	realmax = max;
 	// generate random points in real space, not image space
 	std::random_device rd;
 	std::mt19937 gen(rd());
@@ -304,6 +305,7 @@ void Tilemap::gen_tiles(size_t max, const struct floatimage *heightimage, const 
 			.biome = biome,
 			.coast = false,
 			.river = false,
+			.city = false,
 			.site = &cell,
 			.neighbors = neighbors,
 			.corners = corn,
@@ -398,6 +400,7 @@ void Tilemap::gen_tiles(size_t max, const struct floatimage *heightimage, const 
 		size_t river_count = 0;
 		for (const auto &corner : tile.corners) {
 			if (corner->river == true) {
+				tile.river = true;
 				river_count++;
 				if (tile.biome == DESERT) {
 					tile.biome = FLOODPLAIN;
