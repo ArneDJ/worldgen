@@ -79,4 +79,27 @@ public:
 	size_t realmax;
 public:
 	void gen_tiles(size_t max, const struct floatimage *heightimage, const struct byteimage *rainimage, const struct byteimage *temperatureimage);
+	void gen_cities(void)
+{
+	// give priority to port cities
+	for (auto &tile : tiles) {
+		if (tile.coast == true && tile.river == true) {
+			if (tile.relief == PLAIN || tile.relief == HILLS) {
+				bool valid = true;
+				for (const auto &neighbor : tile.neighbors) {
+					for (const auto &neighborneighbor : neighbor->neighbors) {
+					if (neighbor->city == true || neighborneighbor->city == true) {
+						valid = false;
+					}
+					}
+				}
+				if (valid == true) {
+					tile.city = true;
+				}
+			}
+		}
+	}
+}
+
+
 };

@@ -25,6 +25,7 @@
 #include "graphics/glwrapper.h"
 #include "graphics/shader.h"
 #include "graphics/camera.h"
+#include "graphics/sky.h"
 #include "worldmap/voronoi.h"
 #include "worldmap/terraform.h"
 #include "worldmap/tilemap.h"
@@ -37,34 +38,6 @@
 
 #define FOG_DENSITY 0.015f
 
-class Skybox {
-public:
-	GLuint cubemap;
-public:
-	Skybox(GLuint cubemapbind)
-	{
-		cubemap = cubemapbind;
-		cube = gen_mapcube();
-	};
-	void display(void) const;
-private:
-	struct mesh cube;
-};
-
-glm::vec2 midpoint(glm::vec2 a, glm::vec2 b)
-{
-	return glm::vec2((a.x+b.x)/2.f, (a.y+b.y)/2.f);
-}
-
-void Skybox::display(void) const
-{
-	glDepthFunc(GL_LEQUAL);
-	activate_texture(GL_TEXTURE0, GL_TEXTURE_CUBE_MAP, cubemap);
-	glBindVertexArray(cube.VAO);
-	glDrawElements(cube.mode, cube.ecount, GL_UNSIGNED_SHORT, NULL);
-	glDepthFunc(GL_LESS);
-};
-
 GLuint bind_byte_texture(const struct byteimage *image, GLenum internalformat, GLenum format, GLenum type)
 {
 	GLuint texture;
@@ -72,23 +45,6 @@ GLuint bind_byte_texture(const struct byteimage *image, GLenum internalformat, G
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexStorage2D(GL_TEXTURE_2D, 1, internalformat, image->width, image->height);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height, format, type, image->data);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	return texture;
-}
-
-GLuint bind_dynamic_texture(const struct byteimage *image, GLenum internalformat, GLenum format, GLenum type)
-{
-	GLuint texture;
-
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	//glTexStorage2D(GL_TEXTURE_2D, 1, internalformat, image->width, image->height);
-	glTexImage2D(GL_TEXTURE_2D, 1, internalformat, image->width, image->height, 0, format, type, image->data); 
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height, format, type, image->data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -120,27 +76,26 @@ Shader base_shader(const char *vertpath, const char *fragpath)
 
 Shader water_shader(void)
 {
- struct shaderinfo pipeline[] = {
-  {GL_VERTEX_SHADER, "shaders/water.vert"},
-  {GL_TESS_CONTROL_SHADER, "shaders/water.tesc"},
-  {GL_TESS_EVALUATION_SHADER, "shaders/water.tese"},
-  {GL_FRAGMENT_SHADER, "shaders/water.frag"},
-  {GL_NONE, NULL}
- };
+	struct shaderinfo pipeline[] = {
+	{GL_VERTEX_SHADER, "shaders/water.vert"},
+	{GL_TESS_CONTROL_SHADER, "shaders/water.tesc"},
+	{GL_TESS_EVALUATION_SHADER, "shaders/water.tese"},
+	{GL_FRAGMENT_SHADER, "shaders/water.frag"},
+	{GL_NONE, NULL}
+	};
 
-  Shader shader(pipeline);
+	Shader shader(pipeline);
 
- shader.bind();
+	shader.bind();
 
- const float aspect = (float)WINDOW_WIDTH/(float)WINDOW_HEIGHT;
- glm::mat4 project = glm::perspective(glm::radians(FOV), aspect, NEAR_CLIP, FAR_CLIP);
- shader.uniform_mat4("project", project);
- shader.uniform_vec3("fogcolor", glm::vec3(0.46, 0.7, 0.99));
- shader.uniform_float("fogfactor", 0.025);
+	const float aspect = (float)WINDOW_WIDTH/(float)WINDOW_HEIGHT;
+	glm::mat4 project = glm::perspective(glm::radians(FOV), aspect, NEAR_CLIP, FAR_CLIP);
+	shader.uniform_mat4("project", project);
+	shader.uniform_vec3("fogcolor", glm::vec3(0.46, 0.7, 0.99));
+	shader.uniform_float("fogfactor", 0.025);
 
- return shader;
+	return shader;
 }
-
 
 Shader worldmap_shader(void)
 {
@@ -179,18 +134,6 @@ Shader skybox_shader(void)
 	const float aspect = (float)WINDOW_WIDTH/(float)WINDOW_HEIGHT;
 	glm::mat4 project = glm::perspective(glm::radians(FOV), aspect, NEAR_CLIP, FAR_CLIP);
 	shader.uniform_mat4("project", project);
-
-	return shader;
-}
-
-Shader compute_shader(void)
-{
-	struct shaderinfo pipeline[] = {
-	{GL_COMPUTE_SHADER, "shaders/particle.comp"},
-	{GL_NONE, NULL}
-	};
-
-	Shader shader(pipeline);
 
 	return shader;
 }
@@ -363,32 +306,6 @@ struct byteimage river_image(const Tilemap *map)
 	return image;
 }
 
-void city_image(Tilemap *map, struct byteimage *image)
-{
-	unsigned char purple[3] = {255, 0, 255};
-	const float ratio = float(map->realmax) / float(image->width);
-	// give priority to port cities
-	for (auto &tile : map->tiles) {
-		if (tile.coast == true && tile.river == true) {
-			if (tile.relief == PLAIN || tile.relief == HILLS) {
-				bool valid = true;
-				for (const auto &neighbor : tile.neighbors) {
-					for (const auto &neighborneighbor : neighbor->neighbors) {
-					if (neighbor->city == true || neighborneighbor->city == true) {
-						valid = false;
-					}
-					}
-				}
-				if (valid == true) {
-					tile.city = true;
-				plot(tile.site->center.x, tile.site->center.y, image->data, image->width, image->height, image->nchannels, purple);
-				}
-			}
-		}
-	}
-}
-
-
 GLuint voronoi_texture(Tilemap *map)
 {
 	const size_t size = map->realmax;
@@ -457,7 +374,7 @@ GLuint voronoi_texture(Tilemap *map)
 		plot(river.source->v->position.x, river.source->v->position.y, image.data, image.width, image.height, image.nchannels, red);
 	}
 
-	city_image(map, &image);
+	//city_image(map);
 
 	GLuint texture = bind_byte_texture(&image, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
 
@@ -632,13 +549,10 @@ struct tilegrid {
 
 void run_worldgen(SDL_Window *window)
 {
-	//SDL_SetRelativeMouseMode(SDL_TRUE);
-
 	Skybox skybox = init_skybox();
 	Shader skybox_program = skybox_shader();
 	Shader map_program = base_shader("shaders/map.vert", "shaders/map.frag");
 	Shader box_program = base_shader("shaders/vertex.glsl", "shaders/fragment.glsl");
-	//Shader water_program = base_shader("shaders/worldwater.vert", "shaders/worldwater.frag");
 	Shader water_program = water_shader();
 	Shader worldmap_program = worldmap_shader();
 
@@ -655,6 +569,7 @@ void run_worldgen(SDL_Window *window)
 
 	Tilemap tilecells; 
 	tilecells.gen_tiles(1024, &terraform.heightmap, &terraform.rainfall, &terraform.temperature);
+	tilecells.gen_cities();
 	GLuint voronoi = voronoi_texture(&tilecells);
 
 	struct byteimage riverimage = river_image(&tilecells);
@@ -689,7 +604,6 @@ void run_worldgen(SDL_Window *window)
 	for (int i = 0; i < selectimage.width*selectimage.height; i++) {
 		selectimage.data[i] = 0;
 	}
-	//GLuint selecttexture = bind_dynamic_texture(&selectimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 	GLuint selecttexture = bind_byte_texture(&selectimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
 	const float amplitude = 48.f;
@@ -779,31 +693,20 @@ void run_worldgen(SDL_Window *window)
 		cam.update_center(delta);
 		SDL_GetMouseState(&x, &y);
 
-		glm::vec4 mouse_clip = glm::vec4(
-		(2.0f * float(x)) / float(WINDOW_WIDTH) - 1.0f,
-		1.0f - (2.0f * float(y)) / float(WINDOW_HEIGHT),
-		-1.0f,
-		1.f);
-		//mouse_clip.y += 0.5f;
-		glm::vec4 mouse_worldspace = glm::inverse(cam.project) * mouse_clip;
-		glm::vec4 ray_eye = glm::vec4(mouse_worldspace.x, mouse_worldspace.y, -1.f, 0.f);
-		glm::vec3 ray_world = glm::vec3(glm::inverse(cam.view) * ray_eye);
-		glm::vec3 mouse_ray = glm::normalize(ray_world);
-		//glm::vec3 mouse_ray = glm::normalize(glm::vec3(mouse_worldspace.x, mouse_worldspace.y, mouse_worldspace.z));
+		glm::vec3 mouse_ray = screenpos_to_ray(x, y, WINDOW_WIDTH, WINDOW_HEIGHT, cam.view, cam.project);
 
 		unsigned char c[1] = { 255 };
 		bool intersect = false;
 		glm::vec3 point = glm::vec3(0.f);
 		if (event.button.button == SDL_BUTTON_LEFT && event.type == SDL_MOUSEBUTTONDOWN) {
 		for (const auto grid : grids) {
-			if (ray_intersects_triangle(cam.eye, mouse_ray, &grid.tri) == true) {
+			if (ray_in_triangle(cam.eye, mouse_ray, &grid.tri) == true) {
 				intersect = true;
 				point = grid.tri.a;
 			for (const auto &border : grid.parent->site->borders) {
 				draw_triangle(grid.parent->site->center.x, grid.parent->site->center.y, border.x, border.y, border.z, border.w, selectimage.data, selectimage.width, selectimage.height, selectimage.nchannels, c);
 			}
 				glBindTexture(GL_TEXTURE_2D, selecttexture);
-				//activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, selecttexture);
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, selectimage.width, selectimage.height, GL_RED, GL_UNSIGNED_BYTE, selectimage.data);
 				break;
 		}
@@ -893,16 +796,7 @@ void run_worldgen(SDL_Window *window)
 		ImGui::Begin("Debug");
 		ImGui::SetWindowSize(ImVec2(400, 200));
 		ImGui::Text("%d ms per frame", msperframe);
-		ImGui::Text("%d, %d mouse coords", x, y);
-		ImGui::Text("%.2f, %.2f relative mouse coords", mouse_clip.x, mouse_clip.y);
-		ImGui::Text("%.2f, %.2f, %.2f mouse worldpace", mouse_worldspace.x, mouse_worldspace.y, mouse_worldspace.z);
 		ImGui::Text("camera position: %.2f, %.2f, %.2f", cam.eye.x, cam.eye.y, cam.eye.z);
-		ImGui::Text("camera center: %.2f, %.2f, %.2f", cam.center.x, cam.center.y, cam.center.z);
-		ImGui::Text("mouse ray: %.2f, %.2f, %.2f", mouse_ray.x, mouse_ray.y, mouse_ray.z);
-		if (intersect == true) {
-		ImGui::Text("intersect position: %.2f, %.2f, %.2f", point.x, point.y, point.z);
-
-		}
 
 		//if (ImGui::Button("Exit")) { running = false; }
 
