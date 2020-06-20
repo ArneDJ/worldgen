@@ -198,7 +198,7 @@ void main(void)
 	vec4 purple = vec4(1.0, 0.0, 1.0, 1.0);
 	float river = texture(rivermask, mapscale*fragment.texcoord).r;
 	//color = mix(color, purple, river);
-	float paintmask = texture(colormap, mapscale*fragment.texcoord).r;
-	color = mix(color, purple, paintmask);
+	float paintmask = texture(selectmask, mapscale*fragment.texcoord).r;
+	color = mix(color, purple, 0.5*paintmask);
 	color.rgb *= diffuse;
 }

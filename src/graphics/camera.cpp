@@ -23,6 +23,7 @@ Camera::Camera(glm::vec3 pos, float fov, float aspect, float near, float far)
 
 	view = glm::mat4{1.f};
 	project = glm::perspective(glm::radians(fov), aspect, near, far);
+	project[3][3] = 0;
 
 	FOV = fov;
 	aspectratio = aspect;
@@ -51,10 +52,11 @@ glm::mat4 make_view_matrix(glm::vec3 eye, glm::vec3 center, glm::vec3 up)
 
 void Camera::update_center(float delta)
 {
-	int x, y;
+	//int x, y;
 	const Uint8 *keystates = SDL_GetKeyboardState(NULL);
 	SDL_GetRelativeMouseState(&x, &y);
 
+	if (SDL_GetRelativeMouseMode() == SDL_FALSE) { x = 0; y = 0; }
 	yaw += (float)x * sensitivity * 0.01f;
 	pitch -= (float)y * sensitivity * 0.01f;
 

@@ -625,9 +625,14 @@ GLuint gen_biomemask_texture(const Tilemap *map)
 	return texture;
 }
 
+struct tilegrid {
+	const struct tile *parent;
+	struct triangle tri;
+};
+
 void run_worldgen(SDL_Window *window)
 {
-	SDL_SetRelativeMouseMode(SDL_TRUE);
+	//SDL_SetRelativeMouseMode(SDL_TRUE);
 
 	Skybox skybox = init_skybox();
 	Shader skybox_program = skybox_shader();
@@ -684,7 +689,8 @@ void run_worldgen(SDL_Window *window)
 	for (int i = 0; i < selectimage.width*selectimage.height; i++) {
 		selectimage.data[i] = 0;
 	}
-	GLuint selecttexture = bind_dynamic_texture(&selectimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
+	//GLuint selecttexture = bind_dynamic_texture(&selectimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
+	GLuint selecttexture = bind_byte_texture(&selectimage, GL_R8, GL_RED, GL_UNSIGNED_BYTE);
 
 	const float amplitude = 48.f;
 	struct mesh worldmap_mesh = gen_patch_grid(32, 32.f);
@@ -725,7 +731,7 @@ void run_worldgen(SDL_Window *window)
 		}
 	}
 
-	std::vector<struct triangle> triangles;
+	std::vector<struct tilegrid> grids;
 			
 	const float ratio = 2.f;
 	for (const auto &tile : tilecells.tiles) {
@@ -738,7 +744,12 @@ void run_worldgen(SDL_Window *window)
 				.b = b,
 				.c = a,
 			};
-			triangles.push_back(tri);
+			struct tilegrid grid = {
+				.parent = &tile,
+				.tri = tri,
+			};
+			//triangles.push_back(tri);
+			grids.push_back(grid);
 		}
 	}
 
@@ -746,6 +757,8 @@ void run_worldgen(SDL_Window *window)
  	float end = 0.f;
 	unsigned long frames = 0;
 	unsigned int msperframe = 0;
+
+	int x, y;
 
 	bool running = true;
 	SDL_Event event;
@@ -758,22 +771,42 @@ void run_worldgen(SDL_Window *window)
 		if (event.type == SDL_QUIT) { running = false; }
 		if (keystates[SDL_SCANCODE_ESCAPE]) { running = false; }
 
+		if (keystates[SDL_SCANCODE_SPACE]) {
+		SDL_SetRelativeMouseMode(SDL_TRUE);
+		} else {
+		SDL_SetRelativeMouseMode(SDL_FALSE);
+		}
 		cam.update_center(delta);
+		SDL_GetMouseState(&x, &y);
+
+		glm::vec4 mouse_clip = glm::vec4(
+		(2.0f * float(x)) / float(WINDOW_WIDTH) - 1.0f,
+		1.0f - (2.0f * float(y)) / float(WINDOW_HEIGHT),
+		-1.0f,
+		1.f);
+		//mouse_clip.y += 0.5f;
+		glm::vec4 mouse_worldspace = glm::inverse(cam.project) * mouse_clip;
+		glm::vec4 ray_eye = glm::vec4(mouse_worldspace.x, mouse_worldspace.y, -1.f, 0.f);
+		glm::vec3 ray_world = glm::vec3(glm::inverse(cam.view) * ray_eye);
+		glm::vec3 mouse_ray = glm::normalize(ray_world);
+		//glm::vec3 mouse_ray = glm::normalize(glm::vec3(mouse_worldspace.x, mouse_worldspace.y, mouse_worldspace.z));
 
 		unsigned char c[1] = { 255 };
 		bool intersect = false;
 		glm::vec3 point = glm::vec3(0.f);
-		for (const auto tri : triangles) {
-			if (ray_intersects_triangle(cam.eye, cam.center, &tri) == true) {
+		if (event.button.button == SDL_BUTTON_LEFT && event.type == SDL_MOUSEBUTTONDOWN) {
+		for (const auto grid : grids) {
+			if (ray_intersects_triangle(cam.eye, mouse_ray, &grid.tri) == true) {
 				intersect = true;
-				point = tri.a;
-		if (keystates[SDL_SCANCODE_SPACE]) {
-				draw_triangle(tri.c.x, tri.c.z, tri.b.x, tri.b.z, tri.a.x, tri.a.z, selectimage.data, selectimage.width, selectimage.height, selectimage.nchannels, c);
-				//glBindTexture(GL_TEXTURE_2D, selecttexture);
+				point = grid.tri.a;
+			for (const auto &border : grid.parent->site->borders) {
+				draw_triangle(grid.parent->site->center.x, grid.parent->site->center.y, border.x, border.y, border.z, border.w, selectimage.data, selectimage.width, selectimage.height, selectimage.nchannels, c);
+			}
+				glBindTexture(GL_TEXTURE_2D, selecttexture);
 				//activate_texture(GL_TEXTURE0, GL_TEXTURE_2D, selecttexture);
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, selectimage.width, selectimage.height, GL_RED, GL_UNSIGNED_BYTE, selectimage.data);
-		}
 				break;
+		}
 			}
 
 		}
@@ -860,7 +893,12 @@ void run_worldgen(SDL_Window *window)
 		ImGui::Begin("Debug");
 		ImGui::SetWindowSize(ImVec2(400, 200));
 		ImGui::Text("%d ms per frame", msperframe);
+		ImGui::Text("%d, %d mouse coords", x, y);
+		ImGui::Text("%.2f, %.2f relative mouse coords", mouse_clip.x, mouse_clip.y);
+		ImGui::Text("%.2f, %.2f, %.2f mouse worldpace", mouse_worldspace.x, mouse_worldspace.y, mouse_worldspace.z);
 		ImGui::Text("camera position: %.2f, %.2f, %.2f", cam.eye.x, cam.eye.y, cam.eye.z);
+		ImGui::Text("camera center: %.2f, %.2f, %.2f", cam.center.x, cam.center.y, cam.center.z);
+		ImGui::Text("mouse ray: %.2f, %.2f, %.2f", mouse_ray.x, mouse_ray.y, mouse_ray.z);
 		if (intersect == true) {
 		ImGui::Text("intersect position: %.2f, %.2f, %.2f", point.x, point.y, point.z);
 

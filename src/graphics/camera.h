@@ -18,5 +18,6 @@ private:
 	float pitch;
 	float sensitivity;
 	float speed;
+	int x, y;
 	glm::vec3 up;
 };
