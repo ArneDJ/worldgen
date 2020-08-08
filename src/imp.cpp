@@ -3,8 +3,8 @@
 #include <glm/vec3.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-//#define IIR_GAUSS_BLUR_IMPLEMENTATION
-//#include "../external/gauss/iir_gauss_blur.h"
+#define IIR_GAUSS_BLUR_IMPLEMENTATION
+#include "iir_gauss_blur.h"
 
 #include "geom.h"
 #include "imp.h"
@@ -277,7 +277,6 @@ int floodfill(int *image, size_t w, size_t h, int x, int y, int newcolor, int ol
 	return total;
 }
 
-/*
 void gauss_blur_image(struct byteimage *image, float sigma)
 {
 	if (image->data == nullptr) {
@@ -287,7 +286,6 @@ void gauss_blur_image(struct byteimage *image, float sigma)
 
 	iir_gauss_blur(image->width, image->height, image->nchannels, image->data, sigma);
 }
-*/
 
 static inline float sample_height(int x, int y, const struct floatimage *image)
 {
