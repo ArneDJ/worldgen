@@ -6,6 +6,7 @@
 //#define IIR_GAUSS_BLUR_IMPLEMENTATION
 //#include "../external/gauss/iir_gauss_blur.h"
 
+#include "geom.h"
 #include "imp.h"
 
 static void push(std::vector<int> &stack, int x, int y)
@@ -159,6 +160,13 @@ void draw_bezier(int x0, int y0, int x1, int y1, int x2, int y2, struct byteimag
 
 void draw_triangle(glm::vec2 a, glm::vec2 b, glm::vec2 c, unsigned char *image, int width, int height, int nchannel, unsigned char *color)
 {
+	// make sure the triangle is counter clockwise
+	if (clockwise(a, b, c)) {
+		glm::vec2 temp = b;
+		b = c;
+		c = temp;
+	}
+
 	int area = orient(a.x, a.y, b.x, b.y, c.x, c.y);
 	if (area == 0) { return; }
 
