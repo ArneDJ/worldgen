@@ -5,21 +5,23 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-#include "FastNoise.h"
+#include "extern/FastNoise.h"
 
 #include "imp.h"
 #include "terra.h"
 
 #define TEMP_RAIN_INFLUENCE 0.6f
+#define RAINMAP_BLUR 50.f
 
-static struct floatimage heightimage(size_t imageres, long seed, struct worldparams params)
+static struct byteimage heightimage(size_t imageres, long seed, struct worldparams params)
 {
-	struct floatimage image = {
-		.data = new float[imageres*imageres],
+	struct byteimage image = {
+		.data = new unsigned char[imageres*imageres],
 		.nchannels = 1,
 		.width = imageres,
 		.height = imageres,
 	};
+	memset(image.data, 0, image.nchannels*image.width*image.height);
 
 	FastNoise noise;
 	noise.SetSeed(seed);
@@ -37,21 +39,22 @@ static struct floatimage heightimage(size_t imageres, long seed, struct worldpar
 			float x = j; float y = i;
 			noise.GradientPerturbFractal(x, y);
 			float height = (noise.GetNoise(x, y) + 1.f) / 2.f;
-			image.data[index++] = glm::clamp(height, 0.f, 1.f);
+			image.data[index++] = 255 * glm::clamp(height, 0.f, 1.f);
 		}
 	}
 
 	return image;
 }
 
-static struct floatimage tempimage(size_t imageres, long seed, float freq, float perturb)
+static struct byteimage tempimage(size_t imageres, long seed, float freq, float perturb)
 {
-	struct floatimage image = {
-		.data = new float[imageres*imageres],
+	struct byteimage image = {
+		.data = new unsigned char[imageres*imageres],
 		.nchannels = 1,
 		.width = imageres,
 		.height = imageres,
 	};
+	memset(image.data, 0, image.nchannels*image.width*image.height);
 
 	FastNoise noise;
 	noise.SetSeed(seed);
@@ -67,15 +70,14 @@ static struct floatimage tempimage(size_t imageres, long seed, float freq, float
 			float y = i; float x = j;
 			noise.GradientPerturbFractal(x, y);
 			float temperature = 1.f - (y / longitude);
-			image.data[index++] = glm::clamp(temperature, 0.f, 1.f);
+			image.data[index++] = 255 * glm::clamp(temperature, 0.f, 1.f);
 		}
 	}
 
 	return image;
 }
 
-
-static struct byteimage rainimage(const struct floatimage *elevation, const struct floatimage *temperature, float sealevel, float blur)
+static struct byteimage rainimage(const struct byteimage *elevation, const struct byteimage *temperature, float sealevel, float blur)
 {
 	const size_t size = elevation->width * elevation->height;
 
@@ -85,8 +87,10 @@ static struct byteimage rainimage(const struct floatimage *elevation, const stru
 		.width = elevation->width,
 		.height = elevation->height,
 	};
+	memset(image.data, 0, image.nchannels*image.width*image.height);
+
 	for (int i = 0; i < elevation->width*elevation->height; i++) {
-		float h = elevation->data[i];
+		float h = elevation->data[i] / 255.f;
 		if (h > sealevel) { 
 			h = 1.f; 
 		} else {
@@ -98,7 +102,7 @@ static struct byteimage rainimage(const struct floatimage *elevation, const stru
 	gauss_blur_image(&image, blur);
 
 	for (auto i = 0; i < size; i++) {
-		float temp = 1.f - temperature->data[i];
+		float temp = 1.f - (temperature->data[i] / 255.f);
 		float rain = image.data[i] / 255.f;
 		rain = 1.f - rain;
 		rain = glm::mix(rain, temp, TEMP_RAIN_INFLUENCE*(1.f - temp));
@@ -112,12 +116,12 @@ Terraform::Terraform(size_t imageres, long seed, struct worldparams params)
 {
 	heightmap = heightimage(imageres, seed, params);
 	tempmap = tempimage(imageres, seed, params.tempfreq, params.tempperturb);
-	rainmap = rainimage(&heightmap, &tempmap, params.lowland, 50.f);
+	rainmap = rainimage(&heightmap, &tempmap, params.lowland, RAINMAP_BLUR);
 }
 
 Terraform::~Terraform(void) 
 {
-	delete_floatimage(&heightmap);
-	delete_floatimage(&tempmap);
+	delete_byteimage(&heightmap);
+	delete_byteimage(&tempmap);
 	delete_byteimage(&rainmap);
 }

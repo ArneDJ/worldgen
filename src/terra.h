@@ -17,8 +17,8 @@ struct worldparams {
 
 class Terraform {
 public:
-	struct floatimage heightmap;
-	struct floatimage tempmap;
+	struct byteimage heightmap;
+	struct byteimage tempmap;
 	struct byteimage rainmap;
 public:
 	Terraform(size_t imageres, long seed, struct worldparams params);

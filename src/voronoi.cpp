@@ -7,7 +7,7 @@
 #include <glm/vec3.hpp>
 
 #define JC_VORONOI_IMPLEMENTATION
-#include "jc_voronoi.h"
+#include "extern/jc_voronoi.h"
 
 #include "voronoi.h"
 

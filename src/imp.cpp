@@ -4,7 +4,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #define IIR_GAUSS_BLUR_IMPLEMENTATION
-#include "iir_gauss_blur.h"
+#include "extern/iir_gauss_blur.h"
 
 #include "geom.h"
 #include "imp.h"

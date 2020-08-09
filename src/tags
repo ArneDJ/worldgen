@@ -1,0 +1,713 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_FILESEP	slash	/slash or backslash/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	0.0.0	/a3c87ab5/
+AABB	geom.h	/^struct AABB {$/;"	s
+AABB_in_frustum	geom.cpp	/^bool AABB_in_frustum(glm::vec3 &Min, glm::vec3 &Max, glm::vec4 frustum_planes[6]) $/;"	f	typeref:typename:bool
+ALPHA	imp.h	/^	ALPHA = 3$/;"	e	enum:channel
+BIOME	worldmap.h	/^enum BIOME {$/;"	g
+BLUE	imp.h	/^	BLUE = 2,$/;"	e	enum:channel
+BROADLEAF_FOREST	worldmap.h	/^	BROADLEAF_FOREST,$/;"	e	enum:BIOME
+BROADLEAF_GRASSLAND	worldmap.h	/^	BROADLEAF_GRASSLAND,$/;"	e	enum:BIOME
+Billow	FastNoise.h	/^	enum FractalType { FBM, Billow, RigidMulti };$/;"	e	enum:FastNoise::FractalType
+CELL_2D_X	FastNoise.cpp	/^const FN_DECIMAL CELL_2D_X[] =$/;"	v	typeref:typename:const FN_DECIMAL[]
+CELL_2D_Y	FastNoise.cpp	/^const FN_DECIMAL CELL_2D_Y[] =$/;"	v	typeref:typename:const FN_DECIMAL[]
+CELL_3D_X	FastNoise.cpp	/^const FN_DECIMAL CELL_3D_X[] =$/;"	v	typeref:typename:const FN_DECIMAL[]
+CELL_3D_Y	FastNoise.cpp	/^const FN_DECIMAL CELL_3D_Y[] =$/;"	v	typeref:typename:const FN_DECIMAL[]
+CELL_3D_Z	FastNoise.cpp	/^const FN_DECIMAL CELL_3D_Z[] =$/;"	v	typeref:typename:const FN_DECIMAL[]
+CUBIC_2D_BOUNDING	FastNoise.cpp	/^const FN_DECIMAL CUBIC_2D_BOUNDING = 1 \/ (FN_DECIMAL(1.5) * FN_DECIMAL(1.5));$/;"	v	typeref:typename:const FN_DECIMAL
+CUBIC_3D_BOUNDING	FastNoise.cpp	/^const FN_DECIMAL CUBIC_3D_BOUNDING = 1 \/ (FN_DECIMAL(1.5) * FN_DECIMAL(1.5) * FN_DECIMAL(1.5));$/;"	v	typeref:typename:const FN_DECIMAL
+CalculateFractalBounding	FastNoise.cpp	/^void FastNoise::CalculateFractalBounding()$/;"	f	class:FastNoise	typeref:typename:void
+CellValue	FastNoise.h	/^	enum CellularReturnType { CellValue, NoiseLookup, Distance, Distance2, Distance2Add, Distance2S/;"	e	enum:FastNoise::CellularReturnType
+Cellular	FastNoise.h	/^	enum NoiseType { Value, ValueFractal, Perlin, PerlinFractal, Simplex, SimplexFractal, Cellular,/;"	e	enum:FastNoise::NoiseType
+CellularDistanceFunction	FastNoise.h	/^	enum CellularDistanceFunction { Euclidean, Manhattan, Natural };$/;"	g	class:FastNoise
+CellularReturnType	FastNoise.h	/^	enum CellularReturnType { CellValue, NoiseLookup, Distance, Distance2, Distance2Add, Distance2S/;"	g	class:FastNoise
+Cubic	FastNoise.h	/^	enum NoiseType { Value, ValueFractal, Perlin, PerlinFractal, Simplex, SimplexFractal, Cellular,/;"	e	enum:FastNoise::NoiseType
+CubicFractal	FastNoise.h	/^	enum NoiseType { Value, ValueFractal, Perlin, PerlinFractal, Simplex, SimplexFractal, Cellular,/;"	e	enum:FastNoise::NoiseType
+CubicLerp	FastNoise.cpp	/^static FN_DECIMAL CubicLerp(FN_DECIMAL a, FN_DECIMAL b, FN_DECIMAL c, FN_DECIMAL d, FN_DECIMAL t/;"	f	typeref:typename:FN_DECIMAL	file:
+DESERT	worldmap.h	/^	DESERT,$/;"	e	enum:BIOME
+DIM	main.cpp	/^static const size_t DIM = 256;$/;"	v	typeref:typename:const size_t	file:
+Distance	FastNoise.h	/^	enum CellularReturnType { CellValue, NoiseLookup, Distance, Distance2, Distance2Add, Distance2S/;"	e	enum:FastNoise::CellularReturnType
+Distance2	FastNoise.h	/^	enum CellularReturnType { CellValue, NoiseLookup, Distance, Distance2, Distance2Add, Distance2S/;"	e	enum:FastNoise::CellularReturnType
+Distance2Add	FastNoise.h	/^	enum CellularReturnType { CellValue, NoiseLookup, Distance, Distance2, Distance2Add, Distance2S/;"	e	enum:FastNoise::CellularReturnType
+Distance2Div	FastNoise.h	/^	enum CellularReturnType { CellValue, NoiseLookup, Distance, Distance2, Distance2Add, Distance2S/;"	e	enum:FastNoise::CellularReturnType
+Distance2Mul	FastNoise.h	/^	enum CellularReturnType { CellValue, NoiseLookup, Distance, Distance2, Distance2Add, Distance2S/;"	e	enum:FastNoise::CellularReturnType
+Distance2Sub	FastNoise.h	/^	enum CellularReturnType { CellValue, NoiseLookup, Distance, Distance2, Distance2Add, Distance2S/;"	e	enum:FastNoise::CellularReturnType
+Euclidean	FastNoise.h	/^	enum CellularDistanceFunction { Euclidean, Manhattan, Natural };$/;"	e	enum:FastNoise::CellularDistanceFunction
+F2	FastNoise.cpp	/^static const FN_DECIMAL F2 = FN_DECIMAL(0.5) * (SQRT3 - FN_DECIMAL(1.0));$/;"	v	typeref:typename:const FN_DECIMAL	file:
+F3	FastNoise.cpp	/^static const FN_DECIMAL F3 = 1 \/ FN_DECIMAL(3);$/;"	v	typeref:typename:const FN_DECIMAL	file:
+F4	FastNoise.cpp	/^static const FN_DECIMAL F4 = (sqrt(FN_DECIMAL(5)) - 1) \/ 4;$/;"	v	typeref:typename:const FN_DECIMAL	file:
+FASTNOISE_H	FastNoise.h	/^#define FASTNOISE_H$/;"	d
+FBM	FastNoise.h	/^	enum FractalType { FBM, Billow, RigidMulti };$/;"	e	enum:FastNoise::FractalType
+FJCVAllocFn	jc_voronoi.h	/^typedef void* (*FJCVAllocFn)(void* userctx, size_t size);$/;"	t	typeref:typename:void * (*)(void * userctx,size_t size)
+FJCVFreeFn	jc_voronoi.h	/^typedef void (*FJCVFreeFn)(void* userctx, void* p);$/;"	t	typeref:typename:void (*)(void * userctx,void * p)
+FJCVPriorityQueuePrint	jc_voronoi.h	/^typedef int  (*FJCVPriorityQueuePrint)(const void* node, int pos);$/;"	t	typeref:typename:int (*)(const void * node,int pos)
+FLOODPLAIN	worldmap.h	/^	FLOODPLAIN$/;"	e	enum:BIOME
+FN_CELLULAR_INDEX_MAX	FastNoise.h	/^#define FN_CELLULAR_INDEX_MAX /;"	d
+FN_DECIMAL	FastNoise.h	/^typedef double FN_DECIMAL;$/;"	t	typeref:typename:double
+FN_DECIMAL	FastNoise.h	/^typedef float FN_DECIMAL;$/;"	t	typeref:typename:float
+FRACTAL_LACUNARITY	main.cpp	/^static const float FRACTAL_LACUNARITY = 2.5f;$/;"	v	typeref:typename:const float	file:
+FRACTAL_OCTAVES	main.cpp	/^static const unsigned int FRACTAL_OCTAVES = 6;$/;"	v	typeref:typename:const unsigned int	file:
+FastAbs	FastNoise.cpp	/^static FN_DECIMAL FastAbs(FN_DECIMAL f) { return fabs(f); }$/;"	f	typeref:typename:FN_DECIMAL	file:
+FastAbs	FastNoise.cpp	/^static int FastAbs(int i) { return abs(i); }$/;"	f	typeref:typename:int	file:
+FastFloor	FastNoise.cpp	/^static int FastFloor(FN_DECIMAL f) { return (f >= 0 ? (int)f : (int)f - 1); }$/;"	f	typeref:typename:int	file:
+FastNoise	FastNoise.h	/^	explicit FastNoise(int seed = 1337) { SetSeed(seed); CalculateFractalBounding(); }$/;"	f	class:FastNoise
+FastNoise	FastNoise.h	/^class FastNoise$/;"	c
+FastRound	FastNoise.cpp	/^static int FastRound(FN_DECIMAL f) { return (f >= 0) ? (int)(f + FN_DECIMAL(0.5)) : (int)(f - FN/;"	f	typeref:typename:int	file:
+FractalType	FastNoise.h	/^	enum FractalType { FBM, Billow, RigidMulti };$/;"	g	class:FastNoise
+G2	FastNoise.cpp	/^static const FN_DECIMAL G2 = (FN_DECIMAL(3.0) - SQRT3) \/ FN_DECIMAL(6.0);$/;"	v	typeref:typename:const FN_DECIMAL	file:
+G3	FastNoise.cpp	/^static const FN_DECIMAL G3 = 1 \/ FN_DECIMAL(6);$/;"	v	typeref:typename:const FN_DECIMAL	file:
+G4	FastNoise.cpp	/^static const FN_DECIMAL G4 = (5 - sqrt(FN_DECIMAL(5))) \/ 20;$/;"	v	typeref:typename:const FN_DECIMAL	file:
+GLACIER	worldmap.h	/^	GLACIER,$/;"	e	enum:BIOME
+GRAD_4D	FastNoise.cpp	/^const FN_DECIMAL GRAD_4D[] =$/;"	v	typeref:typename:const FN_DECIMAL[]
+GRAD_X	FastNoise.cpp	/^const FN_DECIMAL GRAD_X[] =$/;"	v	typeref:typename:const FN_DECIMAL[]
+GRAD_Y	FastNoise.cpp	/^const FN_DECIMAL GRAD_Y[] =$/;"	v	typeref:typename:const FN_DECIMAL[]
+GRAD_Z	FastNoise.cpp	/^const FN_DECIMAL GRAD_Z[] =$/;"	v	typeref:typename:const FN_DECIMAL[]
+GREEN	imp.h	/^	GREEN = 1,$/;"	e	enum:channel
+Get	INIReader.h	/^inline std::string INIReader::Get(std::string section, std::string name, std::string default_val/;"	f	class:INIReader	typeref:typename:std::string
+GetBoolean	INIReader.h	/^inline bool INIReader::GetBoolean(std::string section, std::string name, bool default_value) con/;"	f	class:INIReader	typeref:typename:bool
+GetCellular	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetCellular(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetCellular	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetCellular(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetCellularDistance2Indices	FastNoise.cpp	/^void FastNoise::GetCellularDistance2Indices(int& cellularDistanceIndex0, int& cellularDistanceIn/;"	f	class:FastNoise	typeref:typename:void
+GetCellularDistanceFunction	FastNoise.h	/^	CellularDistanceFunction GetCellularDistanceFunction() const { return m_cellularDistanceFunctio/;"	f	class:FastNoise	typeref:typename:CellularDistanceFunction
+GetCellularJitter	FastNoise.h	/^	FN_DECIMAL GetCellularJitter() const { return m_cellularJitter; }$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetCellularNoiseLookup	FastNoise.h	/^	FastNoise* GetCellularNoiseLookup() const { return m_cellularNoiseLookup; }$/;"	f	class:FastNoise	typeref:typename:FastNoise *
+GetCellularReturnType	FastNoise.h	/^	CellularReturnType GetCellularReturnType() const { return m_cellularReturnType; }$/;"	f	class:FastNoise	typeref:typename:CellularReturnType
+GetCubic	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetCubic(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetCubic	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetCubic(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetCubicFractal	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetCubicFractal(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetCubicFractal	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetCubicFractal(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetFloat	INIReader.h	/^inline float INIReader::GetFloat(std::string section, std::string name, float default_value) con/;"	f	class:INIReader	typeref:typename:float
+GetFractalGain	FastNoise.h	/^	FN_DECIMAL GetFractalGain() const { return m_gain; }$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetFractalLacunarity	FastNoise.h	/^	FN_DECIMAL GetFractalLacunarity() const { return m_lacunarity; }$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetFractalOctaves	FastNoise.h	/^	int GetFractalOctaves() const { return m_octaves; }$/;"	f	class:FastNoise	typeref:typename:int
+GetFractalType	FastNoise.h	/^	FractalType GetFractalType() const { return m_fractalType; }$/;"	f	class:FastNoise	typeref:typename:FractalType
+GetFrequency	FastNoise.h	/^	FN_DECIMAL GetFrequency() const { return m_frequency; }$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetGradientPerturbAmp	FastNoise.h	/^	FN_DECIMAL GetGradientPerturbAmp() const { return m_gradientPerturbAmp; }$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetInteger	INIReader.h	/^inline long INIReader::GetInteger(std::string section, std::string name, long default_value) con/;"	f	class:INIReader	typeref:typename:long
+GetInterp	FastNoise.h	/^	Interp GetInterp() const { return m_interp; }$/;"	f	class:FastNoise	typeref:typename:Interp
+GetNoise	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetNoise(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetNoise	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetNoise(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetNoiseType	FastNoise.h	/^	NoiseType GetNoiseType() const { return m_noiseType; }$/;"	f	class:FastNoise	typeref:typename:NoiseType
+GetPerlin	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetPerlin(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetPerlin	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetPerlin(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetPerlinFractal	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetPerlinFractal(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetPerlinFractal	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetPerlinFractal(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetReal	INIReader.h	/^inline double INIReader::GetReal(std::string section, std::string name, double default_value) co/;"	f	class:INIReader	typeref:typename:double
+GetSeed	FastNoise.h	/^	int GetSeed() const { return m_seed; }$/;"	f	class:FastNoise	typeref:typename:int
+GetSimplex	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetSimplex(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetSimplex	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetSimplex(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetSimplex	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetSimplex(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, FN_DECIMAL w) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetSimplexFractal	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetSimplexFractal(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetSimplexFractal	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetSimplexFractal(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetValue	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetValue(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetValue	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetValue(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetValueFractal	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetValueFractal(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetValueFractal	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetValueFractal(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetWhiteNoise	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetWhiteNoise(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetWhiteNoise	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetWhiteNoise(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetWhiteNoise	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetWhiteNoise(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z, FN_DECIMAL w) cons/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetWhiteNoiseInt	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetWhiteNoiseInt(int x, int y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetWhiteNoiseInt	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetWhiteNoiseInt(int x, int y, int z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GetWhiteNoiseInt	FastNoise.cpp	/^FN_DECIMAL FastNoise::GetWhiteNoiseInt(int x, int y, int z, int w) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GradCoord2D	FastNoise.cpp	/^FN_DECIMAL FastNoise::GradCoord2D(unsigned char offset, int x, int y, FN_DECIMAL xd, FN_DECIMAL /;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GradCoord3D	FastNoise.cpp	/^FN_DECIMAL FastNoise::GradCoord3D(unsigned char offset, int x, int y, int z, FN_DECIMAL xd, FN_D/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GradCoord4D	FastNoise.cpp	/^FN_DECIMAL FastNoise::GradCoord4D(unsigned char offset, int x, int y, int z, int w, FN_DECIMAL x/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+GradientPerturb	FastNoise.cpp	/^void FastNoise::GradientPerturb(FN_DECIMAL& x, FN_DECIMAL& y) const$/;"	f	class:FastNoise	typeref:typename:void
+GradientPerturb	FastNoise.cpp	/^void FastNoise::GradientPerturb(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z) const$/;"	f	class:FastNoise	typeref:typename:void
+GradientPerturbFractal	FastNoise.cpp	/^void FastNoise::GradientPerturbFractal(FN_DECIMAL& x, FN_DECIMAL& y) const$/;"	f	class:FastNoise	typeref:typename:void
+GradientPerturbFractal	FastNoise.cpp	/^void FastNoise::GradientPerturbFractal(FN_DECIMAL& x, FN_DECIMAL& y, FN_DECIMAL& z) const$/;"	f	class:FastNoise	typeref:typename:void
+HEIGHT_FREQUENCY	main.cpp	/^static const float HEIGHT_FREQUENCY = 0.001f;$/;"	v	typeref:typename:const float	file:
+HIGHLAND	worldmap.h	/^	HIGHLAND$/;"	e	enum:RELIEF
+HIGHLAND_ELEVATION	main.cpp	/^static const float HIGHLAND_ELEVATION = 0.66f;$/;"	v	typeref:typename:const float	file:
+Hermite	FastNoise.h	/^	enum Interp { Linear, Hermite, Quintic };$/;"	e	enum:FastNoise::Interp
+IDX	iir_gauss_blur.h	/^	#define IDX(/;"	d
+IIR_GAUSS_BLUR_HEADER	iir_gauss_blur.h	/^#define IIR_GAUSS_BLUR_HEADER$/;"	d
+IIR_GAUSS_BLUR_IMPLEMENTATION	imp.cpp	/^#define IIR_GAUSS_BLUR_IMPLEMENTATION$/;"	d	file:
+INCLUDE_STB_IMAGE_WRITE_H	stb_image_write.h	/^#define INCLUDE_STB_IMAGE_WRITE_H$/;"	d
+INIReader	INIReader.h	/^    INIReader() {};$/;"	f	class:INIReader
+INIReader	INIReader.h	/^class INIReader$/;"	c
+INIReader	INIReader.h	/^inline INIReader::INIReader(FILE *file)$/;"	f	class:INIReader
+INIReader	INIReader.h	/^inline INIReader::INIReader(std::string filename)$/;"	f	class:INIReader
+INI_ALLOW_BOM	INIReader.h	/^#define INI_ALLOW_BOM /;"	d
+INI_ALLOW_INLINE_COMMENTS	INIReader.h	/^#define INI_ALLOW_INLINE_COMMENTS /;"	d
+INI_ALLOW_MULTILINE	INIReader.h	/^#define INI_ALLOW_MULTILINE /;"	d
+INI_INLINE_COMMENT_PREFIXES	INIReader.h	/^#define INI_INLINE_COMMENT_PREFIXES /;"	d
+INI_MAX_LINE	INIReader.h	/^#define INI_MAX_LINE /;"	d
+INI_STOP_ON_FIRST_ERROR	INIReader.h	/^#define INI_STOP_ON_FIRST_ERROR /;"	d
+INI_USE_STACK	INIReader.h	/^#define INI_USE_STACK /;"	d
+Index2D_12	FastNoise.cpp	/^unsigned char FastNoise::Index2D_12(unsigned char offset, int x, int y) const$/;"	f	class:FastNoise	typeref:typename:unsigned char
+Index2D_256	FastNoise.cpp	/^unsigned char FastNoise::Index2D_256(unsigned char offset, int x, int y) const$/;"	f	class:FastNoise	typeref:typename:unsigned char
+Index3D_12	FastNoise.cpp	/^unsigned char FastNoise::Index3D_12(unsigned char offset, int x, int y, int z) const$/;"	f	class:FastNoise	typeref:typename:unsigned char
+Index3D_256	FastNoise.cpp	/^unsigned char FastNoise::Index3D_256(unsigned char offset, int x, int y, int z) const$/;"	f	class:FastNoise	typeref:typename:unsigned char
+Index4D_256	FastNoise.cpp	/^unsigned char FastNoise::Index4D_256(unsigned char offset, int x, int y, int z, int w) const$/;"	f	class:FastNoise	typeref:typename:unsigned char
+Index4D_32	FastNoise.cpp	/^unsigned char FastNoise::Index4D_32(unsigned char offset, int x, int y, int z, int w) const$/;"	f	class:FastNoise	typeref:typename:unsigned char
+Interp	FastNoise.h	/^	enum Interp { Linear, Hermite, Quintic };$/;"	g	class:FastNoise
+InterpHermiteFunc	FastNoise.cpp	/^static FN_DECIMAL InterpHermiteFunc(FN_DECIMAL t) { return t*t*(3 - 2 * t); }$/;"	f	typeref:typename:FN_DECIMAL	file:
+InterpQuinticFunc	FastNoise.cpp	/^static FN_DECIMAL InterpQuinticFunc(FN_DECIMAL t) { return t*t*t*(t*(t * 6 - 15) + 10); }$/;"	f	typeref:typename:FN_DECIMAL	file:
+JCV_ATAN2	jc_voronoi.h	/^    #define JCV_ATAN2(/;"	d
+JCV_DIRECTION_LEFT	jc_voronoi.h	/^static const int JCV_DIRECTION_LEFT  = 0;$/;"	v	typeref:typename:const int
+JCV_DIRECTION_RIGHT	jc_voronoi.h	/^static const int JCV_DIRECTION_RIGHT = 1;$/;"	v	typeref:typename:const int
+JCV_EDGE_SIZE	jc_voronoi.h	/^static const int JCV_EDGE_SIZE = (sizeof(jcv_edge) > sizeof(jcv_altered_edge)) ? sizeof(jcv_edge/;"	v	typeref:typename:const int
+JCV_FLT_MAX	jc_voronoi.h	/^    #define JCV_FLT_MAX /;"	d
+JCV_INVALID_VALUE	jc_voronoi.h	/^static const jcv_real JCV_INVALID_VALUE = (jcv_real)-JCV_FLT_MAX;$/;"	v	typeref:typename:const jcv_real
+JCV_PI	jc_voronoi.h	/^    #define JCV_PI /;"	d
+JCV_REAL_TYPE	jc_voronoi.h	/^    #define JCV_REAL_TYPE /;"	d
+JCV_SQRT	jc_voronoi.h	/^    #define JCV_SQRT(/;"	d
+JC_VORONOI_H	jc_voronoi.h	/^#define JC_VORONOI_H$/;"	d
+JC_VORONOI_IMPLEMENTATION	voronoi.cpp	/^#define JC_VORONOI_IMPLEMENTATION$/;"	d	file:
+LOWLAND	worldmap.h	/^	LOWLAND,$/;"	e	enum:RELIEF
+LOWLAND_ELEVATION	main.cpp	/^static const float LOWLAND_ELEVATION = 0.48f;$/;"	v	typeref:typename:const float	file:
+Lerp	FastNoise.cpp	/^static FN_DECIMAL Lerp(FN_DECIMAL a, FN_DECIMAL b, FN_DECIMAL t) { return a + t * (b - a); }$/;"	f	typeref:typename:FN_DECIMAL	file:
+Linear	FastNoise.h	/^	enum Interp { Linear, Hermite, Quintic };$/;"	e	enum:FastNoise::Interp
+MAX_NAME	INIReader.h	/^#define MAX_NAME /;"	d
+MAX_SECTION	INIReader.h	/^#define MAX_SECTION /;"	d
+MakeKey	INIReader.h	/^inline std::string INIReader::MakeKey(std::string section, std::string name)$/;"	f	class:INIReader	typeref:typename:std::string
+Manhattan	FastNoise.h	/^	enum CellularDistanceFunction { Euclidean, Manhattan, Natural };$/;"	e	enum:FastNoise::CellularDistanceFunction
+Natural	FastNoise.h	/^	enum CellularDistanceFunction { Euclidean, Manhattan, Natural };$/;"	e	enum:FastNoise::CellularDistanceFunction
+NoiseLookup	FastNoise.h	/^	enum CellularReturnType { CellValue, NoiseLookup, Distance, Distance2, Distance2Add, Distance2S/;"	e	enum:FastNoise::CellularReturnType
+NoiseType	FastNoise.h	/^	enum NoiseType { Value, ValueFractal, Perlin, PerlinFractal, Simplex, SimplexFractal, Cellular,/;"	g	class:FastNoise
+P0	geom.h	/^	glm::vec2 P0, P1;$/;"	m	struct:segment	typeref:typename:glm::vec2
+P1	geom.h	/^	glm::vec2 P0, P1;$/;"	m	struct:segment	typeref:typename:glm::vec2
+PERTURB_AMP	main.cpp	/^static const float PERTURB_AMP = 200.f;$/;"	v	typeref:typename:const float	file:
+PERTURB_FREQUENCY	main.cpp	/^static const float PERTURB_FREQUENCY = 0.001f;$/;"	v	typeref:typename:const float	file:
+PINE_FOREST	worldmap.h	/^	PINE_FOREST,$/;"	e	enum:BIOME
+PINE_GRASSLAND	worldmap.h	/^	PINE_GRASSLAND,$/;"	e	enum:BIOME
+ParseError	INIReader.h	/^inline int INIReader::ParseError() const$/;"	f	class:INIReader	typeref:typename:int
+Perlin	FastNoise.h	/^	enum NoiseType { Value, ValueFractal, Perlin, PerlinFractal, Simplex, SimplexFractal, Cellular,/;"	e	enum:FastNoise::NoiseType
+PerlinFractal	FastNoise.h	/^	enum NoiseType { Value, ValueFractal, Perlin, PerlinFractal, Simplex, SimplexFractal, Cellular,/;"	e	enum:FastNoise::NoiseType
+Quintic	FastNoise.h	/^	enum Interp { Linear, Hermite, Quintic };$/;"	e	enum:FastNoise::Interp
+RED	imp.h	/^	RED = 0,$/;"	e	enum:channel
+RELIEF	worldmap.h	/^enum RELIEF {$/;"	g
+RGB_to_int	imp.cpp	/^int RGB_to_int(unsigned char r, unsigned char g, unsigned char b)$/;"	f	typeref:typename:int
+RigidMulti	FastNoise.h	/^	enum FractalType { FBM, Billow, RigidMulti };$/;"	e	enum:FastNoise::FractalType
+SAVANNA	worldmap.h	/^	SAVANNA,$/;"	e	enum:BIOME
+SEA	worldmap.h	/^	SEA,$/;"	e	enum:BIOME
+SEABED	worldmap.h	/^	SEABED,$/;"	e	enum:RELIEF
+SHRUBLAND	worldmap.h	/^	SHRUBLAND,$/;"	e	enum:BIOME
+SMALL_NUM	geom.cpp	/^#define SMALL_NUM /;"	d	file:
+SQRT3	FastNoise.cpp	/^static const FN_DECIMAL SQRT3 = FN_DECIMAL(1.7320508075688772935274463415059);$/;"	v	typeref:typename:const FN_DECIMAL	file:
+STBIWDEF	stb_image_write.h	/^#define STBIWDEF /;"	d
+STBIW_ASSERT	stb_image_write.h	/^#define STBIW_ASSERT(/;"	d
+STBIW_EXTERN	stb_image_write.h	/^#define STBIW_EXTERN /;"	d
+STBIW_FREE	stb_image_write.h	/^#define STBIW_FREE(/;"	d
+STBIW_MALLOC	stb_image_write.h	/^#define STBIW_MALLOC(/;"	d
+STBIW_MEMMOVE	stb_image_write.h	/^#define STBIW_MEMMOVE(/;"	d
+STBIW_REALLOC	stb_image_write.h	/^#define STBIW_REALLOC(/;"	d
+STBIW_REALLOC_SIZED	stb_image_write.h	/^#define STBIW_REALLOC_SIZED(/;"	d
+STBIW_UCHAR	stb_image_write.h	/^#define STBIW_UCHAR(/;"	d
+STB_IMAGE_WRITE_IMPLEMENTATION	main.cpp	/^#define STB_IMAGE_WRITE_IMPLEMENTATION$/;"	d	file:
+STEPPE	worldmap.h	/^	STEPPE,$/;"	e	enum:BIOME
+Sections	INIReader.h	/^inline const std::set<std::string>& INIReader::Sections() const$/;"	f	class:INIReader	typeref:typename:const std::set<std::string> &
+SetCellularDistance2Indices	FastNoise.cpp	/^void FastNoise::SetCellularDistance2Indices(int cellularDistanceIndex0, int cellularDistanceInde/;"	f	class:FastNoise	typeref:typename:void
+SetCellularDistanceFunction	FastNoise.h	/^	void SetCellularDistanceFunction(CellularDistanceFunction cellularDistanceFunction) { m_cellula/;"	f	class:FastNoise	typeref:typename:void
+SetCellularJitter	FastNoise.h	/^	void SetCellularJitter(FN_DECIMAL cellularJitter) { m_cellularJitter = cellularJitter; }$/;"	f	class:FastNoise	typeref:typename:void
+SetCellularNoiseLookup	FastNoise.h	/^	void SetCellularNoiseLookup(FastNoise* noise) { m_cellularNoiseLookup = noise; }$/;"	f	class:FastNoise	typeref:typename:void
+SetCellularReturnType	FastNoise.h	/^	void SetCellularReturnType(CellularReturnType cellularReturnType) { m_cellularReturnType = cell/;"	f	class:FastNoise	typeref:typename:void
+SetFractalGain	FastNoise.h	/^	void SetFractalGain(FN_DECIMAL gain) { m_gain = gain; CalculateFractalBounding(); }$/;"	f	class:FastNoise	typeref:typename:void
+SetFractalLacunarity	FastNoise.h	/^	void SetFractalLacunarity(FN_DECIMAL lacunarity) { m_lacunarity = lacunarity; }$/;"	f	class:FastNoise	typeref:typename:void
+SetFractalOctaves	FastNoise.h	/^	void SetFractalOctaves(int octaves) { m_octaves = octaves; CalculateFractalBounding(); }$/;"	f	class:FastNoise	typeref:typename:void
+SetFractalType	FastNoise.h	/^	void SetFractalType(FractalType fractalType) { m_fractalType = fractalType; }$/;"	f	class:FastNoise	typeref:typename:void
+SetFrequency	FastNoise.h	/^	void SetFrequency(FN_DECIMAL frequency) { m_frequency = frequency; }$/;"	f	class:FastNoise	typeref:typename:void
+SetGradientPerturbAmp	FastNoise.h	/^	void SetGradientPerturbAmp(FN_DECIMAL gradientPerturbAmp) { m_gradientPerturbAmp = gradientPert/;"	f	class:FastNoise	typeref:typename:void
+SetInterp	FastNoise.h	/^	void SetInterp(Interp interp) { m_interp = interp; }$/;"	f	class:FastNoise	typeref:typename:void
+SetNoiseType	FastNoise.h	/^	void SetNoiseType(NoiseType noiseType) { m_noiseType = noiseType; }$/;"	f	class:FastNoise	typeref:typename:void
+SetPerturbFrequency	FastNoise.h	/^	void SetPerturbFrequency(FN_DECIMAL frequency) { m_perturbFrequency = frequency; }$/;"	f	class:FastNoise	typeref:typename:void
+SetSeed	FastNoise.cpp	/^void FastNoise::SetSeed(int seed)$/;"	f	class:FastNoise	typeref:typename:void
+Simplex	FastNoise.h	/^	enum NoiseType { Value, ValueFractal, Perlin, PerlinFractal, Simplex, SimplexFractal, Cellular,/;"	e	enum:FastNoise::NoiseType
+SimplexFractal	FastNoise.h	/^	enum NoiseType { Value, ValueFractal, Perlin, PerlinFractal, Simplex, SimplexFractal, Cellular,/;"	e	enum:FastNoise::NoiseType
+SingleCellular	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleCellular(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleCellular	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleCellular(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleCellular2Edge	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleCellular2Edge(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleCellular2Edge	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleCellular2Edge(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleCubic	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleCubic(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleCubic	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleCubic(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleCubicFractalBillow	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleCubicFractalBillow(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleCubicFractalBillow	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleCubicFractalBillow(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleCubicFractalFBM	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleCubicFractalFBM(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleCubicFractalFBM	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleCubicFractalFBM(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleCubicFractalRigidMulti	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleCubicFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleCubicFractalRigidMulti	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleCubicFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) con/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleGradientPerturb	FastNoise.cpp	/^void FastNoise::SingleGradientPerturb(unsigned char offset, FN_DECIMAL warpAmp, FN_DECIMAL frequ/;"	f	class:FastNoise	typeref:typename:void
+SinglePerlin	FastNoise.cpp	/^FN_DECIMAL FastNoise::SinglePerlin(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SinglePerlin	FastNoise.cpp	/^FN_DECIMAL FastNoise::SinglePerlin(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL /;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SinglePerlinFractalBillow	FastNoise.cpp	/^FN_DECIMAL FastNoise::SinglePerlinFractalBillow(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SinglePerlinFractalBillow	FastNoise.cpp	/^FN_DECIMAL FastNoise::SinglePerlinFractalBillow(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SinglePerlinFractalFBM	FastNoise.cpp	/^FN_DECIMAL FastNoise::SinglePerlinFractalFBM(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SinglePerlinFractalFBM	FastNoise.cpp	/^FN_DECIMAL FastNoise::SinglePerlinFractalFBM(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SinglePerlinFractalRigidMulti	FastNoise.cpp	/^FN_DECIMAL FastNoise::SinglePerlinFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SinglePerlinFractalRigidMulti	FastNoise.cpp	/^FN_DECIMAL FastNoise::SinglePerlinFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) co/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleSimplex	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleSimplex(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleSimplex	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleSimplex(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleSimplexFractalBillow	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleSimplexFractalBillow(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleSimplexFractalBillow	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleSimplexFractalBillow(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleSimplexFractalBlend	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleSimplexFractalBlend(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleSimplexFractalFBM	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleSimplexFractalFBM(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleSimplexFractalFBM	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleSimplexFractalFBM(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleSimplexFractalRigidMulti	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleSimplexFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleSimplexFractalRigidMulti	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleSimplexFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) c/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleValue	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleValue(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleValue	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleValue(unsigned char offset, FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleValueFractalBillow	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleValueFractalBillow(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleValueFractalBillow	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleValueFractalBillow(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleValueFractalFBM	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleValueFractalFBM(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleValueFractalFBM	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleValueFractalFBM(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleValueFractalRigidMulti	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleValueFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+SingleValueFractalRigidMulti	FastNoise.cpp	/^FN_DECIMAL FastNoise::SingleValueFractalRigidMulti(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z) con/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+TEMP_RAIN_INFLUENCE	terra.cpp	/^#define TEMP_RAIN_INFLUENCE /;"	d	file:
+Terraform	terra.cpp	/^Terraform::Terraform(size_t imageres, long seed, struct worldparams params)$/;"	f	class:Terraform
+Terraform	terra.h	/^class Terraform {$/;"	c
+UPLAND	worldmap.h	/^	UPLAND,$/;"	e	enum:RELIEF
+UPLAND_ELEVATION	main.cpp	/^static const float UPLAND_ELEVATION = 0.58f;$/;"	v	typeref:typename:const float	file:
+VAL_LUT	FastNoise.cpp	/^const FN_DECIMAL VAL_LUT[] =$/;"	v	typeref:typename:const FN_DECIMAL[]
+ValCoord2D	FastNoise.cpp	/^static FN_DECIMAL ValCoord2D(int seed, int x, int y)$/;"	f	typeref:typename:FN_DECIMAL	file:
+ValCoord2DFast	FastNoise.cpp	/^FN_DECIMAL FastNoise::ValCoord2DFast(unsigned char offset, int x, int y) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+ValCoord3D	FastNoise.cpp	/^static FN_DECIMAL ValCoord3D(int seed, int x, int y, int z)$/;"	f	typeref:typename:FN_DECIMAL	file:
+ValCoord3DFast	FastNoise.cpp	/^FN_DECIMAL FastNoise::ValCoord3DFast(unsigned char offset, int x, int y, int z) const$/;"	f	class:FastNoise	typeref:typename:FN_DECIMAL
+ValCoord4D	FastNoise.cpp	/^static FN_DECIMAL ValCoord4D(int seed, int x, int y, int z, int w)$/;"	f	typeref:typename:FN_DECIMAL	file:
+Value	FastNoise.h	/^	enum NoiseType { Value, ValueFractal, Perlin, PerlinFractal, Simplex, SimplexFractal, Cellular,/;"	e	enum:FastNoise::NoiseType
+ValueFractal	FastNoise.h	/^	enum NoiseType { Value, ValueFractal, Perlin, PerlinFractal, Simplex, SimplexFractal, Cellular,/;"	e	enum:FastNoise::NoiseType
+ValueHandler	INIReader.h	/^inline int INIReader::ValueHandler(void* user, const char* section, const char* name,$/;"	f	class:INIReader	typeref:typename:int
+Voronoi	voronoi.h	/^class Voronoi {$/;"	c
+W_PRIME	FastNoise.cpp	/^#define W_PRIME /;"	d	file:
+WhiteNoise	FastNoise.h	/^	enum NoiseType { Value, ValueFractal, Perlin, PerlinFractal, Simplex, SimplexFractal, Cellular,/;"	e	enum:FastNoise::NoiseType
+X_PRIME	FastNoise.cpp	/^#define X_PRIME /;"	d	file:
+Y_PRIME	FastNoise.cpp	/^#define Y_PRIME /;"	d	file:
+Z_PRIME	FastNoise.cpp	/^#define Z_PRIME /;"	d	file:
+_CRT_NONSTDC_NO_DEPRECATE	stb_image_write.h	/^   #define _CRT_NONSTDC_NO_DEPRECATE$/;"	d
+_CRT_SECURE_NO_WARNINGS	INIReader.h	/^#define _CRT_SECURE_NO_WARNINGS$/;"	d
+_CRT_SECURE_NO_WARNINGS	stb_image_write.h	/^   #define _CRT_SECURE_NO_WARNINGS$/;"	d
+__INIREADER_H__	INIReader.h	/^#define __INIREADER_H__$/;"	d
+__INIREADER__	INIReader.h	/^#define __INIREADER__$/;"	d
+__INI_H__	INIReader.h	/^#define __INI_H__$/;"	d
+__anon7ecb77f00108	stb_image_write.h	/^{$/;"	s
+_error	INIReader.h	/^    int _error;$/;"	m	class:INIReader	typeref:typename:int
+_jcv_altered_edge	jc_voronoi.h	/^typedef struct _jcv_altered_edge$/;"	s
+_jcv_calc_bounds	jc_voronoi.h	/^static inline void _jcv_calc_bounds(int num_points, const jcv_point* points, jcv_point* min, jcv/;"	f	typeref:typename:void
+_jcv_cast_align_struct	jc_voronoi.h	/^typedef union _jcv_cast_align_struct$/;"	u
+_jcv_context_internal	jc_voronoi.h	/^typedef struct _jcv_context_internal$/;"	s
+_jcv_diagram	jc_voronoi.h	/^typedef struct _jcv_diagram$/;"	s
+_jcv_edge	jc_voronoi.h	/^typedef struct _jcv_edge$/;"	s
+_jcv_graphedge	jc_voronoi.h	/^typedef struct _jcv_graphedge$/;"	s
+_jcv_halfedge	jc_voronoi.h	/^typedef struct _jcv_halfedge$/;"	s
+_jcv_memoryblock	jc_voronoi.h	/^typedef struct _jcv_memoryblock$/;"	s
+_jcv_point	jc_voronoi.h	/^typedef struct _jcv_point$/;"	s
+_jcv_priorityqueue	jc_voronoi.h	/^typedef struct _jcv_priorityqueue$/;"	s
+_jcv_rect	jc_voronoi.h	/^typedef struct _jcv_rect$/;"	s
+_jcv_site	jc_voronoi.h	/^typedef struct _jcv_site$/;"	s
+_jcv_vertex	jc_voronoi.h	/^typedef struct _jcv_vertex$/;"	s
+_jcv_vertex_edge	jc_voronoi.h	/^typedef struct _jcv_vertex_edge {$/;"	s
+_padding	jc_voronoi.h	/^    int                 _padding;$/;"	m	struct:_jcv_context_internal	typeref:typename:int
+_sections	INIReader.h	/^    std::set<std::string> _sections;$/;"	m	class:INIReader	typeref:typename:std::set<std::string>
+_values	INIReader.h	/^    std::map<std::string, std::string> _values;$/;"	m	class:INIReader	typeref:typename:std::map<std::string,std::string>
+a	geom.h	/^	glm::vec3 a, b, c;$/;"	m	struct:triangle	typeref:typename:glm::vec3
+a	jc_voronoi.h	/^    jcv_real            a;$/;"	m	struct:_jcv_edge	typeref:typename:jcv_real
+adapt_cells	voronoi.cpp	/^static void adapt_cells(const jcv_diagram *diagram, std::vector<struct cell> &cells)$/;"	f	typeref:typename:void	file:
+adapt_edges	voronoi.cpp	/^static void adapt_edges(const jcv_diagram *diagram, std::vector<struct cell> &cells, std::vector/;"	f	typeref:typename:void	file:
+adapt_vertices	voronoi.cpp	/^static void adapt_vertices(const jcv_diagram *diagram, std::vector<struct vertex> &vertices)$/;"	f	typeref:typename:void	file:
+alloc	jc_voronoi.h	/^    FJCVAllocFn         alloc;$/;"	m	struct:_jcv_context_internal	typeref:typename:FJCVAllocFn
+angle	jc_voronoi.h	/^    jcv_real                angle;$/;"	m	struct:_jcv_graphedge	typeref:typename:jcv_real
+b	geom.h	/^	glm::vec3 a, b, c;$/;"	m	struct:triangle	typeref:typename:glm::vec3
+b	jc_voronoi.h	/^    jcv_real            b;$/;"	m	struct:_jcv_edge	typeref:typename:jcv_real
+barycentric	geom.cpp	/^glm::vec3 barycentric(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 p)$/;"	f	typeref:typename:glm::vec3
+beachline_end	jc_voronoi.h	/^    jcv_halfedge*       beachline_end;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_halfedge *
+beachline_start	jc_voronoi.h	/^    jcv_halfedge*       beachline_start;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_halfedge *
+biome	worldmap.h	/^	enum BIOME biome;$/;"	m	struct:tile	typeref:enum:BIOME
+border	worldmap.h	/^struct border {$/;"	s
+bottomsite	jc_voronoi.h	/^    jcv_site*           bottomsite;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_site *
+buf_used	stb_image_write.h	/^   int buf_used;$/;"	m	struct:__anon7ecb77f00108	typeref:typename:int
+buffer	stb_image_write.h	/^   unsigned char buffer[64];$/;"	m	struct:__anon7ecb77f00108	typeref:typename:unsigned char[64]
+byteimage	imp.h	/^struct byteimage {$/;"	s
+c	geom.h	/^	glm::vec3 a, b, c;$/;"	m	struct:triangle	typeref:typename:glm::vec3
+c	geom.h	/^	glm::vec3 c; \/\/ center point of AABB$/;"	m	struct:AABB	typeref:typename:glm::vec3
+c	jc_voronoi.h	/^    jcv_real            c;$/;"	m	struct:_jcv_edge	typeref:typename:jcv_real
+c0	voronoi.h	/^	const struct cell *c0 = nullptr;$/;"	m	struct:edge	typeref:typename:const struct cell *
+c0	worldmap.h	/^	const struct corner *c0 = nullptr;$/;"	m	struct:border	typeref:typename:const struct corner *
+c1	voronoi.h	/^	const struct cell *c1 = nullptr;$/;"	m	struct:edge	typeref:typename:const struct cell *
+c1	worldmap.h	/^	const struct corner *c1 = nullptr;$/;"	m	struct:border	typeref:typename:const struct corner *
+cell	voronoi.h	/^struct cell {$/;"	s
+center	geom.h	/^	glm::vec2 center;$/;"	m	struct:circle	typeref:typename:glm::vec2
+center	voronoi.h	/^	glm::vec2 center;$/;"	m	struct:cell	typeref:typename:glm::vec2
+center	worldmap.h	/^	glm::vec2 center;$/;"	m	struct:tile	typeref:typename:glm::vec2
+channel	imp.h	/^enum channel {$/;"	g
+charp	jc_voronoi.h	/^    char*   charp;$/;"	m	union:_jcv_cast_align_struct	typeref:typename:char *
+circle	geom.h	/^struct circle {$/;"	s
+clockwise	geom.cpp	/^bool clockwise(glm::vec2 a, glm::vec2 b, glm::vec2 c) $/;"	f	typeref:typename:bool
+compute_plane	geom.cpp	/^struct plane compute_plane(glm::vec3 a, glm::vec3 b, glm::vec3 c)$/;"	f	typeref:struct:plane
+context	stb_image_write.h	/^   void *context;$/;"	m	struct:__anon7ecb77f00108	typeref:typename:void *
+corner	worldmap.h	/^struct corner {$/;"	s
+currentsite	jc_voronoi.h	/^    int                 currentsite;$/;"	m	struct:_jcv_context_internal	typeref:typename:int
+d	geom.h	/^	float d;$/;"	m	struct:plane	typeref:typename:float
+data	imp.h	/^	float *data = nullptr;$/;"	m	struct:floatimage	typeref:typename:float *
+data	imp.h	/^	unsigned char *data = nullptr;$/;"	m	struct:byteimage	typeref:typename:unsigned char *
+delete_byteimage	imp.cpp	/^void delete_byteimage(const byteimage *image)$/;"	f	typeref:typename:void
+delete_floatimage	imp.cpp	/^void delete_floatimage(const floatimage *image)$/;"	f	typeref:typename:void
+direction	jc_voronoi.h	/^    int                     direction; \/\/ 0=left, 1=right$/;"	m	struct:_jcv_halfedge	typeref:typename:int
+distance	geom.h	/^	float distance;$/;"	m	struct:ray_triangle_intersection	typeref:typename:float
+draw_bezier	imp.cpp	/^void draw_bezier(int x0, int y0, int x1, int y1, int x2, int y2, struct byteimage *image, unsign/;"	f	typeref:typename:void
+draw_bezier_segment	imp.cpp	/^void draw_bezier_segment(int x0, int y0, int x1, int y1, int x2, int y2, struct byteimage *image/;"	f	typeref:typename:void
+draw_line	imp.cpp	/^void draw_line(int x0, int y0, int x1, int y1, unsigned char *image, int width, int height, int /;"	f	typeref:typename:void
+draw_triangle	imp.cpp	/^void draw_triangle(glm::vec2 a, glm::vec2 b, glm::vec2 c, unsigned char *image, int width, int h/;"	f	typeref:typename:void
+edge	jc_voronoi.h	/^    jcv_altered_edge*   edge;$/;"	m	struct:_jcv_vertex_edge	typeref:typename:jcv_altered_edge *
+edge	jc_voronoi.h	/^    jcv_edge*               edge;$/;"	m	struct:_jcv_halfedge	typeref:typename:jcv_edge *
+edge	jc_voronoi.h	/^    struct _jcv_edge*       edge;$/;"	m	struct:_jcv_graphedge	typeref:struct:_jcv_edge *
+edge	voronoi.h	/^struct edge {$/;"	s
+edgepool	jc_voronoi.h	/^    jcv_edge*           edgepool;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_edge *
+edges	jc_voronoi.h	/^    jcv_edge*           edges;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_edge *
+edges	jc_voronoi.h	/^    jcv_edge*   edges;$/;"	m	struct:_jcv_diagram	typeref:typename:jcv_edge *
+edges	jc_voronoi.h	/^    jcv_graphedge*  edges;  \/\/ The half edges owned by the cell$/;"	m	struct:_jcv_site	typeref:typename:jcv_graphedge *
+edges	jc_voronoi.h	/^    struct _jcv_vertex_edge* edges; \/\/ The half edges owned by the vertex$/;"	m	struct:_jcv_vertex	typeref:struct:_jcv_vertex_edge *
+eventmem	jc_voronoi.h	/^    void**              eventmem;$/;"	m	struct:_jcv_context_internal	typeref:typename:void **
+eventqueue	jc_voronoi.h	/^    jcv_priorityqueue*  eventqueue;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_priorityqueue *
+filter_normal	imp.cpp	/^static glm::vec3 filter_normal(int x, int y, float strength, const struct floatimage *image)$/;"	f	typeref:typename:glm::vec3	file:
+find_chars_or_comment	INIReader.h	/^inline static char* find_chars_or_comment(const char* s, const char* chars)$/;"	f	typeref:typename:char *
+floatimage	imp.h	/^struct floatimage {$/;"	s
+floodfill	imp.cpp	/^int floodfill(int *image, size_t w, size_t h, int x, int y, int newcolor, int oldcolor)$/;"	f	typeref:typename:int
+free	jc_voronoi.h	/^    FJCVFreeFn          free;$/;"	m	struct:_jcv_context_internal	typeref:typename:FJCVFreeFn
+frequency	terra.h	/^	float frequency;$/;"	m	struct:worldparams	typeref:typename:float
+frustum_to_planes	geom.cpp	/^void frustum_to_planes(glm::mat4 M, glm::vec4 planes[6])$/;"	f	typeref:typename:void
+func	stb_image_write.h	/^   stbi_write_func *func;$/;"	m	struct:__anon7ecb77f00108	typeref:typename:stbi_write_func *
+gauss_blur_image	imp.cpp	/^void gauss_blur_image(struct byteimage *image, float sigma)$/;"	f	typeref:typename:void
+gen_diagram	voronoi.cpp	/^void Voronoi::gen_diagram(std::vector<glm::vec2> &locations, glm::vec2 min, glm::vec2 max, bool /;"	f	class:Voronoi	typeref:typename:void
+gen_normalmap	imp.cpp	/^struct floatimage gen_normalmap(const struct floatimage *heightmap)$/;"	f	typeref:struct:floatimage
+get_altered_edge	jc_voronoi.h	/^static inline jcv_altered_edge* get_altered_edge( const jcv_graphedge* ge)$/;"	f	typeref:typename:jcv_altered_edge *
+halfedgepool	jc_voronoi.h	/^    jcv_halfedge*       halfedgepool;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_halfedge *
+height	imp.h	/^	size_t height;$/;"	m	struct:byteimage	typeref:typename:size_t
+height	imp.h	/^	size_t height;$/;"	m	struct:floatimage	typeref:typename:size_t
+heightimage	terra.cpp	/^static struct floatimage heightimage(size_t imageres, long seed, struct worldparams params)$/;"	f	typeref:struct:floatimage	file:
+heightmap	terra.h	/^	struct floatimage heightmap;$/;"	m	class:Terraform	typeref:struct:floatimage
+highland	terra.h	/^	float highland;$/;"	m	struct:worldparams	typeref:typename:float
+iir_gauss_blur	iir_gauss_blur.h	/^void iir_gauss_blur(unsigned int width, unsigned int height, unsigned char components, unsigned /;"	f	typeref:typename:void
+import_noiseparams	main.cpp	/^struct worldparams import_noiseparams(const char *fpath)$/;"	f	typeref:struct:worldparams
+in_segment	geom.cpp	/^bool in_segment(glm::vec2 P, struct segment S)$/;"	f	typeref:typename:bool
+index	jc_voronoi.h	/^    int             index;  \/\/ Index into the original list of points$/;"	m	struct:_jcv_site	typeref:typename:int
+index	jc_voronoi.h	/^    int index;$/;"	m	struct:_jcv_vertex	typeref:typename:int
+index	voronoi.h	/^	int index;$/;"	m	struct:cell	typeref:typename:int
+index	voronoi.h	/^	int index;$/;"	m	struct:vertex	typeref:typename:int
+index	worldmap.h	/^	int index;$/;"	m	struct:corner	typeref:typename:int
+index	worldmap.h	/^	int index;$/;"	m	struct:tile	typeref:typename:int
+ini_handler	INIReader.h	/^typedef int (*ini_handler)(void* user, const char* section,$/;"	t	typeref:typename:int (*)(void * user,const char * section,const char * name,const char * value)
+ini_parse	INIReader.h	/^inline int ini_parse(const char* filename, ini_handler handler, void* user)$/;"	f	typeref:typename:int
+ini_parse_file	INIReader.h	/^inline int ini_parse_file(FILE* file, ini_handler handler, void* user)$/;"	f	typeref:typename:int
+ini_parse_stream	INIReader.h	/^inline int ini_parse_stream(ini_reader reader, void* stream, ini_handler handler,$/;"	f	typeref:typename:int
+ini_reader	INIReader.h	/^typedef char* (*ini_reader)(char* str, int num, void* stream);$/;"	t	typeref:typename:char * (*)(char * str,int num,void * stream)
+inline	jc_voronoi.h	/^    #define inline /;"	d
+internal	jc_voronoi.h	/^    struct _jcv_context_internal* internal;$/;"	m	struct:_jcv_diagram	typeref:struct:_jcv_context_internal *
+intersect_ray_in_AABB	geom.cpp	/^struct ray_AABB_intersection intersect_ray_in_AABB(glm::vec3 p, glm::vec3 d, struct AABB box)$/;"	f	typeref:struct:ray_AABB_intersection
+intersect_ray_in_triangle	geom.cpp	/^struct ray_triangle_intersection intersect_ray_in_triangle(glm::vec3 origin, glm::vec3 dir, cons/;"	f	typeref:struct:ray_triangle_intersection
+intersects	geom.h	/^	bool intersects;$/;"	m	struct:ray_AABB_intersection	typeref:typename:bool
+intersects	geom.h	/^	bool intersects;$/;"	m	struct:ray_triangle_intersection	typeref:typename:bool
+items	jc_voronoi.h	/^    void**                      items;$/;"	m	struct:_jcv_priorityqueue	typeref:typename:void **
+jcv_alloc	jc_voronoi.h	/^static void* jcv_alloc(jcv_context_internal* internal, size_t size)$/;"	f	typeref:typename:void *
+jcv_alloc_edge	jc_voronoi.h	/^static jcv_edge* jcv_alloc_edge(jcv_context_internal* internal)$/;"	f	typeref:typename:jcv_edge *
+jcv_alloc_fn	jc_voronoi.h	/^static void* jcv_alloc_fn(void* memctx, size_t size)$/;"	f	typeref:typename:void *
+jcv_alloc_graphedge	jc_voronoi.h	/^static jcv_graphedge* jcv_alloc_graphedge(jcv_context_internal* internal)$/;"	f	typeref:typename:jcv_graphedge *
+jcv_alloc_halfedge	jc_voronoi.h	/^static jcv_halfedge* jcv_alloc_halfedge(jcv_context_internal* internal)$/;"	f	typeref:typename:jcv_halfedge *
+jcv_alloc_vertex	jc_voronoi.h	/^static jcv_vertex* jcv_alloc_vertex(jcv_context_internal* internal)$/;"	f	typeref:typename:jcv_vertex *
+jcv_alloc_vertex_edge	jc_voronoi.h	/^static jcv_vertex_edge* jcv_alloc_vertex_edge(jcv_context_internal* internal)$/;"	f	typeref:typename:jcv_vertex_edge *
+jcv_altered_edge	jc_voronoi.h	/^} jcv_altered_edge;$/;"	t	typeref:struct:_jcv_altered_edge
+jcv_calc_sort_metric	jc_voronoi.h	/^static inline jcv_real jcv_calc_sort_metric(const jcv_site* site, const jcv_graphedge* edge)$/;"	f	typeref:typename:jcv_real
+jcv_cast_align_struct	jc_voronoi.h	/^} jcv_cast_align_struct;$/;"	t	typeref:union:_jcv_cast_align_struct
+jcv_ceil	jc_voronoi.h	/^static inline jcv_real jcv_ceil(jcv_real v) {$/;"	f	typeref:typename:jcv_real
+jcv_check_circle_event	jc_voronoi.h	/^static int jcv_check_circle_event(const jcv_halfedge* he1, const jcv_halfedge* he2, jcv_point* v/;"	f	typeref:typename:int
+jcv_circle_event	jc_voronoi.h	/^static void jcv_circle_event(jcv_context_internal* internal)$/;"	f	typeref:typename:void
+jcv_context_internal	jc_voronoi.h	/^} jcv_context_internal;$/;"	t	typeref:struct:_jcv_context_internal
+jcv_create_corner_edge	jc_voronoi.h	/^static inline void jcv_create_corner_edge(jcv_context_internal* internal, const jcv_site* site, /;"	f	typeref:typename:void
+jcv_create_gap_edge	jc_voronoi.h	/^static jcv_edge* jcv_create_gap_edge(jcv_context_internal* internal, jcv_site* site, jcv_graphed/;"	f	typeref:typename:jcv_edge *
+jcv_create_vertex_edge	jc_voronoi.h	/^static inline void jcv_create_vertex_edge(jcv_context_internal* internal, jcv_altered_edge* edge/;"	f	typeref:typename:void
+jcv_create_vertex_edges	jc_voronoi.h	/^static inline void jcv_create_vertex_edges(jcv_context_internal* internal, const jcv_graphedge* /;"	f	typeref:typename:void
+jcv_determinant	jc_voronoi.h	/^static inline jcv_real jcv_determinant(const jcv_point* a, const jcv_point* b, const jcv_point* /;"	f	typeref:typename:jcv_real
+jcv_diagram	jc_voronoi.h	/^} jcv_diagram;$/;"	t	typeref:struct:_jcv_diagram
+jcv_diagram_free	jc_voronoi.h	/^void jcv_diagram_free( jcv_diagram* d )$/;"	f	typeref:typename:void
+jcv_diagram_generate	jc_voronoi.h	/^void jcv_diagram_generate( int num_points, const jcv_point* points, const jcv_rect* rect, jcv_di/;"	f	typeref:typename:void
+jcv_diagram_generate_useralloc	jc_voronoi.h	/^void jcv_diagram_generate_useralloc( int num_points, const jcv_point* points, const jcv_rect* re/;"	f	typeref:typename:void
+jcv_diagram_generate_vertices	jc_voronoi.h	/^void jcv_diagram_generate_vertices( jcv_diagram* d )$/;"	f	typeref:typename:void
+jcv_diagram_get_edges	jc_voronoi.h	/^const jcv_edge* jcv_diagram_get_edges( const jcv_diagram* diagram )$/;"	f	typeref:typename:const jcv_edge *
+jcv_diagram_get_next_edge	jc_voronoi.h	/^const jcv_edge* jcv_diagram_get_next_edge( const jcv_edge* edge )$/;"	f	typeref:typename:const jcv_edge *
+jcv_diagram_get_next_vertex	jc_voronoi.h	/^const jcv_vertex* jcv_diagram_get_next_vertex( const jcv_vertex* vertex )$/;"	f	typeref:typename:const jcv_vertex *
+jcv_diagram_get_sites	jc_voronoi.h	/^const jcv_site* jcv_diagram_get_sites( const jcv_diagram* diagram )$/;"	f	typeref:typename:const jcv_site *
+jcv_diagram_get_vertices	jc_voronoi.h	/^const jcv_vertex* jcv_diagram_get_vertices( const jcv_diagram* diagram )$/;"	f	typeref:typename:const jcv_vertex *
+jcv_edge	jc_voronoi.h	/^} jcv_edge;$/;"	t	typeref:struct:_jcv_edge
+jcv_edge_clipline	jc_voronoi.h	/^static int jcv_edge_clipline(jcv_edge* e, jcv_point* min, jcv_point* max)$/;"	f	typeref:typename:int
+jcv_edge_create	jc_voronoi.h	/^static void jcv_edge_create(jcv_edge* e, jcv_site* s1, jcv_site* s2)$/;"	f	typeref:typename:void
+jcv_edge_new	jc_voronoi.h	/^static jcv_edge* jcv_edge_new(jcv_context_internal* internal, jcv_site* s1, jcv_site* s2)$/;"	f	typeref:typename:jcv_edge *
+jcv_endpos	jc_voronoi.h	/^static void jcv_endpos(jcv_context_internal* internal, jcv_edge* e, const jcv_point* p, int dire/;"	f	typeref:typename:void
+jcv_fillgaps	jc_voronoi.h	/^static void jcv_fillgaps(jcv_diagram* diagram)$/;"	f	typeref:typename:void
+jcv_finishline	jc_voronoi.h	/^static void jcv_finishline(jcv_context_internal* internal, jcv_edge* e)$/;"	f	typeref:typename:void
+jcv_floor	jc_voronoi.h	/^static inline jcv_real jcv_floor(jcv_real v) {$/;"	f	typeref:typename:jcv_real
+jcv_free_fn	jc_voronoi.h	/^static void jcv_free_fn(void* memctx, void* p)$/;"	f	typeref:typename:void
+jcv_get_edge_above_x	jc_voronoi.h	/^static jcv_halfedge* jcv_get_edge_above_x(jcv_context_internal* internal, const jcv_point* p)$/;"	f	typeref:typename:jcv_halfedge *
+jcv_get_or_create_vertex	jc_voronoi.h	/^static inline jcv_vertex* jcv_get_or_create_vertex(jcv_context_internal* internal, jcv_vertex* l/;"	f	typeref:typename:jcv_vertex *
+jcv_graphedge	jc_voronoi.h	/^} jcv_graphedge;$/;"	t	typeref:struct:_jcv_graphedge
+jcv_halfedge	jc_voronoi.h	/^} jcv_halfedge;$/;"	t	typeref:struct:_jcv_halfedge
+jcv_halfedge_compare	jc_voronoi.h	/^static inline int jcv_halfedge_compare( const jcv_halfedge* he1, const jcv_halfedge* he2 )$/;"	f	typeref:typename:int
+jcv_halfedge_delete	jc_voronoi.h	/^static void jcv_halfedge_delete(jcv_context_internal* internal, jcv_halfedge* he)$/;"	f	typeref:typename:void
+jcv_halfedge_intersect	jc_voronoi.h	/^static int jcv_halfedge_intersect(const jcv_halfedge* he1, const jcv_halfedge* he2, jcv_point* o/;"	f	typeref:typename:int
+jcv_halfedge_leftsite	jc_voronoi.h	/^static inline jcv_site* jcv_halfedge_leftsite(const jcv_halfedge* he)$/;"	f	typeref:typename:jcv_site *
+jcv_halfedge_link	jc_voronoi.h	/^static void jcv_halfedge_link(jcv_halfedge* edge, jcv_halfedge* newedge)$/;"	f	typeref:typename:void
+jcv_halfedge_new	jc_voronoi.h	/^static inline jcv_halfedge* jcv_halfedge_new(jcv_context_internal* internal, jcv_edge* e, int di/;"	f	typeref:typename:jcv_halfedge *
+jcv_halfedge_rightof	jc_voronoi.h	/^static int jcv_halfedge_rightof(const jcv_halfedge* he, const jcv_point* p)$/;"	f	typeref:typename:int
+jcv_halfedge_rightsite	jc_voronoi.h	/^static inline jcv_site* jcv_halfedge_rightsite(const jcv_halfedge* he)$/;"	f	typeref:typename:jcv_site *
+jcv_halfedge_unlink	jc_voronoi.h	/^static inline void jcv_halfedge_unlink(jcv_halfedge* he)$/;"	f	typeref:typename:void
+jcv_is_valid	jc_voronoi.h	/^static inline int jcv_is_valid(const jcv_point* p)$/;"	f	typeref:typename:int
+jcv_memoryblock	jc_voronoi.h	/^} jcv_memoryblock;$/;"	t	typeref:struct:_jcv_memoryblock
+jcv_merge_vertices	jc_voronoi.h	/^static inline void jcv_merge_vertices(jcv_vertex* target, jcv_vertex* duplicate) {$/;"	f	typeref:typename:void
+jcv_nextsite	jc_voronoi.h	/^static inline jcv_site* jcv_nextsite(jcv_context_internal* internal)$/;"	f	typeref:typename:jcv_site *
+jcv_point	jc_voronoi.h	/^} jcv_point;$/;"	t	typeref:struct:_jcv_point
+jcv_point_cmp	jc_voronoi.h	/^static inline int jcv_point_cmp(const void* p1, const void* p2)$/;"	f	typeref:typename:int
+jcv_point_dist	jc_voronoi.h	/^static inline jcv_real jcv_point_dist( const jcv_point* pt1, const jcv_point* pt2 )$/;"	f	typeref:typename:jcv_real
+jcv_point_dist_sq	jc_voronoi.h	/^static inline jcv_real jcv_point_dist_sq( const jcv_point* pt1, const jcv_point* pt2)$/;"	f	typeref:typename:jcv_real
+jcv_point_eq	jc_voronoi.h	/^static inline int jcv_point_eq( const jcv_point* pt1, const jcv_point* pt2 )$/;"	f	typeref:typename:int
+jcv_point_less	jc_voronoi.h	/^static inline int jcv_point_less( const jcv_point* pt1, const jcv_point* pt2 )$/;"	f	typeref:typename:int
+jcv_point_on_edge	jc_voronoi.h	/^static inline int jcv_point_on_edge( const jcv_point* pt, const jcv_point* min, const jcv_point*/;"	f	typeref:typename:int
+jcv_pq_create	jc_voronoi.h	/^static void jcv_pq_create(jcv_priorityqueue* pq, int capacity, void** buffer)$/;"	f	typeref:typename:void
+jcv_pq_empty	jc_voronoi.h	/^static int jcv_pq_empty(jcv_priorityqueue* pq)$/;"	f	typeref:typename:int
+jcv_pq_maxchild	jc_voronoi.h	/^static int jcv_pq_maxchild(jcv_priorityqueue* pq, int pos)$/;"	f	typeref:typename:int
+jcv_pq_movedown	jc_voronoi.h	/^static int jcv_pq_movedown(jcv_priorityqueue* pq, int pos)$/;"	f	typeref:typename:int
+jcv_pq_moveup	jc_voronoi.h	/^static int jcv_pq_moveup(jcv_priorityqueue* pq, int pos)$/;"	f	typeref:typename:int
+jcv_pq_pop	jc_voronoi.h	/^static void* jcv_pq_pop(jcv_priorityqueue* pq)$/;"	f	typeref:typename:void *
+jcv_pq_push	jc_voronoi.h	/^static int jcv_pq_push(jcv_priorityqueue* pq, void* node)$/;"	f	typeref:typename:int
+jcv_pq_remove	jc_voronoi.h	/^static void jcv_pq_remove(jcv_priorityqueue* pq, jcv_halfedge* node)$/;"	f	typeref:typename:void
+jcv_pq_top	jc_voronoi.h	/^static void* jcv_pq_top(jcv_priorityqueue* pq)$/;"	f	typeref:typename:void *
+jcv_priorityqueue	jc_voronoi.h	/^} jcv_priorityqueue;$/;"	t	typeref:struct:_jcv_priorityqueue
+jcv_real	jc_voronoi.h	/^typedef JCV_REAL_TYPE jcv_real;$/;"	t	typeref:typename:JCV_REAL_TYPE
+jcv_rect	jc_voronoi.h	/^} jcv_rect;$/;"	t	typeref:struct:_jcv_rect
+jcv_site	jc_voronoi.h	/^} jcv_site;$/;"	t	typeref:struct:_jcv_site
+jcv_site_event	jc_voronoi.h	/^static void jcv_site_event(jcv_context_internal* internal, jcv_site* site)$/;"	f	typeref:typename:void
+jcv_sortedges_insert	jc_voronoi.h	/^static void jcv_sortedges_insert(jcv_site* site, jcv_graphedge* edge)$/;"	f	typeref:typename:void
+jcv_vertex	jc_voronoi.h	/^} jcv_vertex;$/;"	t	typeref:struct:_jcv_vertex
+jcv_vertex_edge	jc_voronoi.h	/^} jcv_vertex_edge;$/;"	t	typeref:struct:_jcv_vertex_edge
+jcv_vertex_new	jc_voronoi.h	/^static jcv_vertex* jcv_vertex_new(jcv_context_internal* internal, const jcv_point* pos)$/;"	f	typeref:typename:jcv_vertex *
+lacunarity	terra.h	/^	float lacunarity;$/;"	m	struct:worldparams	typeref:typename:float
+land	worldmap.h	/^	bool land;$/;"	m	struct:tile	typeref:typename:bool
+last_inserted	jc_voronoi.h	/^    jcv_halfedge*       last_inserted;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_halfedge *
+left	jc_voronoi.h	/^    struct _jcv_halfedge*   left;$/;"	m	struct:_jcv_halfedge	typeref:struct:_jcv_halfedge *
+lowland	terra.h	/^	float lowland;$/;"	m	struct:worldparams	typeref:typename:float
+lskip	INIReader.h	/^inline static char* lskip(const char* s)$/;"	f	typeref:typename:char *
+m_cellularDistanceFunction	FastNoise.h	/^	CellularDistanceFunction m_cellularDistanceFunction = Euclidean;$/;"	m	class:FastNoise	typeref:typename:CellularDistanceFunction
+m_cellularDistanceIndex0	FastNoise.h	/^	int m_cellularDistanceIndex0 = 0;$/;"	m	class:FastNoise	typeref:typename:int
+m_cellularDistanceIndex1	FastNoise.h	/^	int m_cellularDistanceIndex1 = 1;$/;"	m	class:FastNoise	typeref:typename:int
+m_cellularJitter	FastNoise.h	/^	FN_DECIMAL m_cellularJitter = FN_DECIMAL(0.45);$/;"	m	class:FastNoise	typeref:typename:FN_DECIMAL
+m_cellularNoiseLookup	FastNoise.h	/^	FastNoise* m_cellularNoiseLookup = nullptr;$/;"	m	class:FastNoise	typeref:typename:FastNoise *
+m_cellularReturnType	FastNoise.h	/^	CellularReturnType m_cellularReturnType = CellValue;$/;"	m	class:FastNoise	typeref:typename:CellularReturnType
+m_fractalBounding	FastNoise.h	/^	FN_DECIMAL m_fractalBounding;$/;"	m	class:FastNoise	typeref:typename:FN_DECIMAL
+m_fractalType	FastNoise.h	/^	FractalType m_fractalType = FBM;$/;"	m	class:FastNoise	typeref:typename:FractalType
+m_frequency	FastNoise.h	/^	FN_DECIMAL m_frequency = FN_DECIMAL(0.01);$/;"	m	class:FastNoise	typeref:typename:FN_DECIMAL
+m_gain	FastNoise.h	/^	FN_DECIMAL m_gain = FN_DECIMAL(0.5);$/;"	m	class:FastNoise	typeref:typename:FN_DECIMAL
+m_gradientPerturbAmp	FastNoise.h	/^	FN_DECIMAL m_gradientPerturbAmp = FN_DECIMAL(1);$/;"	m	class:FastNoise	typeref:typename:FN_DECIMAL
+m_interp	FastNoise.h	/^	Interp m_interp = Quintic;$/;"	m	class:FastNoise	typeref:typename:Interp
+m_lacunarity	FastNoise.h	/^	FN_DECIMAL m_lacunarity = FN_DECIMAL(2);$/;"	m	class:FastNoise	typeref:typename:FN_DECIMAL
+m_noiseType	FastNoise.h	/^	NoiseType m_noiseType = Simplex;$/;"	m	class:FastNoise	typeref:typename:NoiseType
+m_octaves	FastNoise.h	/^	int m_octaves = 3;$/;"	m	class:FastNoise	typeref:typename:int
+m_perm	FastNoise.h	/^	unsigned char m_perm[512];$/;"	m	class:FastNoise	typeref:typename:unsigned char[512]
+m_perm12	FastNoise.h	/^	unsigned char m_perm12[512];$/;"	m	class:FastNoise	typeref:typename:unsigned char[512]
+m_perturbFrequency	FastNoise.h	/^	FN_DECIMAL m_perturbFrequency = FN_DECIMAL(0.01);$/;"	m	class:FastNoise	typeref:typename:FN_DECIMAL
+m_seed	FastNoise.h	/^	int m_seed = 1337;$/;"	m	class:FastNoise	typeref:typename:int
+main	main.cpp	/^int main(int argc, char *argv[])$/;"	f	typeref:typename:int
+max	geom.h	/^	glm::vec2 max;$/;"	m	struct:rectangle	typeref:typename:glm::vec2
+max	jc_voronoi.h	/^    jcv_point           max;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_point
+max	jc_voronoi.h	/^    jcv_point   max;$/;"	m	struct:_jcv_diagram	typeref:typename:jcv_point
+max	jc_voronoi.h	/^    jcv_point   max;$/;"	m	struct:_jcv_rect	typeref:typename:jcv_point
+max3	imp.cpp	/^static inline int max3(int a, int b, int c)$/;"	f	typeref:typename:int	file:
+maxnumitems	jc_voronoi.h	/^    int                         maxnumitems;$/;"	m	struct:_jcv_priorityqueue	typeref:typename:int
+mem	jc_voronoi.h	/^    void*               mem;$/;"	m	struct:_jcv_context_internal	typeref:typename:void *
+memblocks	jc_voronoi.h	/^    jcv_memoryblock*    memblocks;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_memoryblock *
+memctx	jc_voronoi.h	/^    void*               memctx; \/\/ Given by the user$/;"	m	struct:_jcv_context_internal	typeref:typename:void *
+memory	jc_voronoi.h	/^    char*  memory;$/;"	m	struct:_jcv_memoryblock	typeref:typename:char *
+min	geom.h	/^	glm::vec2 min;$/;"	m	struct:rectangle	typeref:typename:glm::vec2
+min	jc_voronoi.h	/^    jcv_point           min;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_point
+min	jc_voronoi.h	/^    jcv_point   min;$/;"	m	struct:_jcv_diagram	typeref:typename:jcv_point
+min	jc_voronoi.h	/^    jcv_point   min;$/;"	m	struct:_jcv_rect	typeref:typename:jcv_point
+min3	imp.cpp	/^static inline int min3(int a, int b, int c)$/;"	f	typeref:typename:int	file:
+n	geom.h	/^	glm::vec3 n;$/;"	m	struct:plane	typeref:typename:glm::vec3
+nchannels	imp.h	/^	unsigned int nchannels;$/;"	m	struct:byteimage	typeref:typename:unsigned int
+nchannels	imp.h	/^	unsigned int nchannels;$/;"	m	struct:floatimage	typeref:typename:unsigned int
+ndc_to_view	geom.cpp	/^glm::vec2 ndc_to_view(float nx, float ny, float width, float height) $/;"	f	typeref:typename:glm::vec2
+neighbor	jc_voronoi.h	/^    jcv_vertex*         neighbor;$/;"	m	struct:_jcv_vertex_edge	typeref:typename:jcv_vertex *
+neighbor	jc_voronoi.h	/^    struct _jcv_site*       neighbor;$/;"	m	struct:_jcv_graphedge	typeref:struct:_jcv_site *
+next	jc_voronoi.h	/^    struct _jcv_altered_edge*   next;$/;"	m	struct:_jcv_altered_edge	typeref:struct:_jcv_altered_edge *
+next	jc_voronoi.h	/^    struct _jcv_edge*   next;$/;"	m	struct:_jcv_edge	typeref:struct:_jcv_edge *
+next	jc_voronoi.h	/^    struct _jcv_graphedge*  next;$/;"	m	struct:_jcv_graphedge	typeref:struct:_jcv_graphedge *
+next	jc_voronoi.h	/^    struct _jcv_memoryblock* next;$/;"	m	struct:_jcv_memoryblock	typeref:struct:_jcv_memoryblock *
+next	jc_voronoi.h	/^    struct _jcv_vertex* next;$/;"	m	struct:_jcv_vertex	typeref:struct:_jcv_vertex *
+next	jc_voronoi.h	/^    struct _jcv_vertex_edge* next;$/;"	m	struct:_jcv_vertex_edge	typeref:struct:_jcv_vertex_edge *
+numitems	jc_voronoi.h	/^    int                         numitems;$/;"	m	struct:_jcv_priorityqueue	typeref:typename:int
+numsites	jc_voronoi.h	/^    int                 numsites;$/;"	m	struct:_jcv_context_internal	typeref:typename:int
+numsites	jc_voronoi.h	/^    int         numsites;$/;"	m	struct:_jcv_diagram	typeref:typename:int
+numsites_sqrt	jc_voronoi.h	/^    int                 numsites_sqrt;$/;"	m	struct:_jcv_context_internal	typeref:typename:int
+numvertices	jc_voronoi.h	/^    int 		numvertices;$/;"	m	struct:_jcv_context_internal	typeref:typename:int
+octaves	terra.h	/^	unsigned int octaves;$/;"	m	struct:worldparams	typeref:typename:unsigned int
+orient	imp.cpp	/^static inline int orient(float x0, float y0, float x1, float y1, float x2, float y2)$/;"	f	typeref:typename:int	file:
+p	jc_voronoi.h	/^    jcv_point       p;$/;"	m	struct:_jcv_site	typeref:typename:jcv_point
+pair_duality	voronoi.cpp	/^static void pair_duality(const jcv_diagram *diagram, std::vector<struct cell> &cells, std::vecto/;"	f	typeref:typename:void	file:
+perp	geom.cpp	/^#define perp(/;"	d	file:
+perturbamp	terra.h	/^	float perturbamp;$/;"	m	struct:worldparams	typeref:typename:float
+perturbfreq	terra.h	/^	float perturbfreq;$/;"	m	struct:worldparams	typeref:typename:float
+plane	geom.h	/^struct plane {$/;"	s
+plot	imp.cpp	/^void plot(int x, int y, unsigned char *image, int width, int height, int nchannels, unsigned cha/;"	f	typeref:typename:void
+point	geom.h	/^	glm::vec3 point; \/\/ intersection point$/;"	m	struct:ray_triangle_intersection	typeref:typename:glm::vec3
+point_in_circle	geom.cpp	/^bool point_in_circle(glm::vec2 p, struct circle c)$/;"	f	typeref:typename:bool
+point_in_circle	geom.cpp	/^bool point_in_circle(glm::vec2 point, glm::vec2 origin, float radius)$/;"	f	typeref:typename:bool
+point_in_rectangle	geom.cpp	/^bool point_in_rectangle(glm::vec2 p, struct rectangle r)$/;"	f	typeref:typename:bool
+point_in_triangle	geom.cpp	/^bool point_in_triangle(glm::vec2 pt, struct triangle tri)$/;"	f	typeref:typename:bool
+point_in_triangle	geom.cpp	/^bool point_in_triangle(glm::vec3 p, glm::vec3 a, glm::vec3 b, glm::vec3 c)$/;"	f	typeref:typename:bool
+point_on_triangle	geom.cpp	/^glm::vec3 point_on_triangle(glm::vec2 point, struct triangle tri)$/;"	f	typeref:typename:glm::vec3
+pop	imp.cpp	/^static bool pop(std::vector<int>& stack, int& x, int& y)$/;"	f	typeref:typename:bool	file:
+pos	jc_voronoi.h	/^    jcv_point               pos[2];$/;"	m	struct:_jcv_graphedge	typeref:typename:jcv_point[2]
+pos	jc_voronoi.h	/^    jcv_point           pos;$/;"	m	struct:_jcv_vertex	typeref:typename:jcv_point
+pos	jc_voronoi.h	/^    jcv_point           pos[2];$/;"	m	struct:_jcv_altered_edge	typeref:typename:jcv_point[2]
+pos	jc_voronoi.h	/^    jcv_point           pos[2];$/;"	m	struct:_jcv_edge	typeref:typename:jcv_point[2]
+position	voronoi.h	/^	glm::vec2 position;$/;"	m	struct:vertex	typeref:typename:glm::vec2
+position	worldmap.h	/^	glm::vec2 position;$/;"	m	struct:corner	typeref:typename:glm::vec2
+pqpos	jc_voronoi.h	/^    int                     pqpos;$/;"	m	struct:_jcv_halfedge	typeref:typename:int
+prune_vertices	voronoi.cpp	/^static void prune_vertices(std::vector<const struct vertex*> &v)$/;"	f	typeref:typename:void	file:
+push	imp.cpp	/^static void push(std::vector<int> &stack, int x, int y)$/;"	f	typeref:typename:void	file:
+r	geom.h	/^	glm::vec3 r; \/\/ radius or halfwidth extents (rx, ry, rz)$/;"	m	struct:AABB	typeref:typename:glm::vec3
+radius	geom.h	/^	float radius;$/;"	m	struct:circle	typeref:typename:float
+rainimage	terra.cpp	/^static struct byteimage rainimage(const struct floatimage *elevation, const struct floatimage *t/;"	f	typeref:struct:byteimage	file:
+rainmap	terra.h	/^	struct byteimage rainmap;$/;"	m	class:Terraform	typeref:struct:byteimage
+rainperturb	terra.h	/^	float rainperturb;$/;"	m	struct:worldparams	typeref:typename:float
+ray_AABB_intersection	geom.h	/^struct ray_AABB_intersection {$/;"	s
+ray_in_AABB	geom.cpp	/^bool ray_in_AABB(glm::vec3 p, glm::vec3 d, struct AABB box)$/;"	f	typeref:typename:bool
+ray_in_triangle	geom.cpp	/^bool ray_in_triangle(glm::vec3 origin, glm::vec3 dir, const struct triangle *tri)$/;"	f	typeref:typename:bool
+ray_triangle_intersection	geom.h	/^struct ray_triangle_intersection {$/;"	s
+rectangle	geom.h	/^struct rectangle {$/;"	s
+rectangle_inside_triangle	geom.cpp	/^bool rectangle_inside_triangle(struct rectangle rect, struct triangle tri)$/;"	f	typeref:typename:bool
+relax_points	voronoi.cpp	/^static void relax_points(const jcv_diagram *diagram, std::vector<jcv_point> &points)$/;"	f	typeref:typename:void	file:
+remap	voronoi.cpp	/^static inline jcv_point remap(const jcv_point *pt, const jcv_point *min, const jcv_point *max, c/;"	f	typeref:typename:jcv_point	file:
+right	jc_voronoi.h	/^    struct _jcv_halfedge*   right;$/;"	m	struct:_jcv_halfedge	typeref:struct:_jcv_halfedge *
+rstrip	INIReader.h	/^inline static char* rstrip(char* s)$/;"	f	typeref:typename:char *
+sample_byteimage	imp.cpp	/^float sample_byteimage(int x, int y, enum channel chan, const struct byteimage *image)$/;"	f	typeref:typename:float
+sample_floatimage	imp.cpp	/^float sample_floatimage(int x, int y, enum channel chan, const struct floatimage *image)$/;"	f	typeref:typename:float
+sample_height	imp.cpp	/^static inline float sample_height(int x, int y, const struct floatimage *image)$/;"	f	typeref:typename:float	file:
+screen_to_ndc	geom.cpp	/^glm::vec2 screen_to_ndc(float x, float y, float width, float height) $/;"	f	typeref:typename:glm::vec2
+screen_to_ray	geom.cpp	/^glm::vec3 screen_to_ray(float x, float y, float width, float height, glm::mat4 view, glm::mat4 p/;"	f	typeref:typename:glm::vec3
+segment	geom.h	/^struct segment {$/;"	s
+segment_intersects_segment	geom.cpp	/^bool segment_intersects_segment(struct segment S1, struct segment S2)$/;"	f	typeref:typename:bool
+segment_midpoint	geom.cpp	/^glm::vec2 segment_midpoint(glm::vec2 a, glm::vec2 b)$/;"	f	typeref:typename:glm::vec2
+segment_overlaps_rectangle	geom.cpp	/^bool segment_overlaps_rectangle(struct segment s, struct rectangle rect)$/;"	f	typeref:typename:bool
+segment_overlaps_triangle	geom.cpp	/^bool segment_overlaps_triangle(struct segment s, struct triangle tri)$/;"	f	typeref:typename:bool
+sign	geom.cpp	/^static float sign(glm::vec2 p1, glm::vec2 p2, glm::vec2 p3)$/;"	f	typeref:typename:float	file:
+sites	jc_voronoi.h	/^    jcv_site*           sites;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_site *
+sites	jc_voronoi.h	/^    jcv_site*           sites[2];$/;"	m	struct:_jcv_altered_edge	typeref:typename:jcv_site * [2]
+sites	jc_voronoi.h	/^    jcv_site*           sites[2];$/;"	m	struct:_jcv_edge	typeref:typename:jcv_site * [2]
+sites	jc_voronoi.h	/^    jcv_site*   sites;$/;"	m	struct:_jcv_diagram	typeref:typename:jcv_site *
+size	stb_image_write.h	/^typedef void stbi_write_func(void *context, void *data, int size);$/;"	t	typeref:typename:void stbi_write_func (void * context,void * data,int)
+sizefree	jc_voronoi.h	/^    size_t sizefree;$/;"	m	struct:_jcv_memoryblock	typeref:typename:size_t
+stb_image_write_test	stb_image_write.h	/^typedef int stb_image_write_test[sizeof(stbiw_uint32)==4 ? 1 : -1];$/;"	t	typeref:typename:int[sizeof (stbiw_uint32)==4?1:-1]
+stbi__end_write_file	stb_image_write.h	/^static void stbi__end_write_file(stbi__write_context *s)$/;"	f	typeref:typename:void
+stbi__flip_vertically_on_write	stb_image_write.h	/^static int stbi__flip_vertically_on_write = 0;$/;"	v	typeref:typename:int
+stbi__start_write_callbacks	stb_image_write.h	/^static void stbi__start_write_callbacks(stbi__write_context *s, stbi_write_func *c, void *contex/;"	f	typeref:typename:void
+stbi__start_write_file	stb_image_write.h	/^static int stbi__start_write_file(stbi__write_context *s, const char *filename)$/;"	f	typeref:typename:int
+stbi__stdio_write	stb_image_write.h	/^static void stbi__stdio_write(void *context, void *data, int size)$/;"	f	typeref:typename:void
+stbi__write_context	stb_image_write.h	/^} stbi__write_context;$/;"	t	typeref:struct:__anon7ecb77f00108
+stbi_flip_vertically_on_write	stb_image_write.h	/^STBIWDEF void stbi_flip_vertically_on_write(int flag)$/;"	f	typeref:typename:STBIWDEF void
+stbi_write_bmp	stb_image_write.h	/^STBIWDEF int stbi_write_bmp(char const *filename, int x, int y, int comp, const void *data)$/;"	f	typeref:typename:STBIWDEF int
+stbi_write_bmp_core	stb_image_write.h	/^static int stbi_write_bmp_core(stbi__write_context *s, int x, int y, int comp, const void *data)$/;"	f	typeref:typename:int
+stbi_write_bmp_to_func	stb_image_write.h	/^STBIWDEF int stbi_write_bmp_to_func(stbi_write_func *func, void *context, int x, int y, int comp/;"	f	typeref:typename:STBIWDEF int
+stbi_write_force_png_filter	stb_image_write.h	/^int stbi_write_force_png_filter = -1;$/;"	v	typeref:typename:int
+stbi_write_force_png_filter	stb_image_write.h	/^static int stbi_write_force_png_filter = -1;$/;"	v	typeref:typename:int
+stbi_write_hdr	stb_image_write.h	/^STBIWDEF int stbi_write_hdr(char const *filename, int x, int y, int comp, const float *data)$/;"	f	typeref:typename:STBIWDEF int
+stbi_write_hdr_core	stb_image_write.h	/^static int stbi_write_hdr_core(stbi__write_context *s, int x, int y, int comp, float *data)$/;"	f	typeref:typename:int
+stbi_write_hdr_to_func	stb_image_write.h	/^STBIWDEF int stbi_write_hdr_to_func(stbi_write_func *func, void *context, int x, int y, int comp/;"	f	typeref:typename:STBIWDEF int
+stbi_write_jpg	stb_image_write.h	/^STBIWDEF int stbi_write_jpg(char const *filename, int x, int y, int comp, const void *data, int /;"	f	typeref:typename:STBIWDEF int
+stbi_write_jpg_core	stb_image_write.h	/^static int stbi_write_jpg_core(stbi__write_context *s, int width, int height, int comp, const vo/;"	f	typeref:typename:int
+stbi_write_jpg_to_func	stb_image_write.h	/^STBIWDEF int stbi_write_jpg_to_func(stbi_write_func *func, void *context, int x, int y, int comp/;"	f	typeref:typename:STBIWDEF int
+stbi_write_png	stb_image_write.h	/^STBIWDEF int stbi_write_png(char const *filename, int x, int y, int comp, const void *data, int /;"	f	typeref:typename:STBIWDEF int
+stbi_write_png_compression_level	stb_image_write.h	/^int stbi_write_png_compression_level = 8;$/;"	v	typeref:typename:int
+stbi_write_png_compression_level	stb_image_write.h	/^static int stbi_write_png_compression_level = 8;$/;"	v	typeref:typename:int
+stbi_write_png_to_func	stb_image_write.h	/^STBIWDEF int stbi_write_png_to_func(stbi_write_func *func, void *context, int x, int y, int comp/;"	f	typeref:typename:STBIWDEF int
+stbi_write_png_to_mem	stb_image_write.h	/^STBIWDEF unsigned char *stbi_write_png_to_mem(const unsigned char *pixels, int stride_bytes, int/;"	f	typeref:typename:STBIWDEF unsigned char *
+stbi_write_tga	stb_image_write.h	/^STBIWDEF int stbi_write_tga(char const *filename, int x, int y, int comp, const void *data)$/;"	f	typeref:typename:STBIWDEF int
+stbi_write_tga_core	stb_image_write.h	/^static int stbi_write_tga_core(stbi__write_context *s, int x, int y, int comp, void *data)$/;"	f	typeref:typename:int
+stbi_write_tga_to_func	stb_image_write.h	/^STBIWDEF int stbi_write_tga_to_func(stbi_write_func *func, void *context, int x, int y, int comp/;"	f	typeref:typename:STBIWDEF int
+stbi_write_tga_with_rle	stb_image_write.h	/^int stbi_write_tga_with_rle = 1;$/;"	v	typeref:typename:int
+stbi_write_tga_with_rle	stb_image_write.h	/^static int stbi_write_tga_with_rle = 1;$/;"	v	typeref:typename:int
+stbi_zlib_compress	stb_image_write.h	/^STBIWDEF unsigned char * stbi_zlib_compress(unsigned char *data, int data_len, int *out_len, int/;"	f	typeref:typename:STBIWDEF unsigned char *
+stbiw__ZHASH	stb_image_write.h	/^#define stbiw__ZHASH /;"	d
+stbiw__crc32	stb_image_write.h	/^static unsigned int stbiw__crc32(unsigned char *buffer, int len)$/;"	f	typeref:typename:unsigned int
+stbiw__encode_png_line	stb_image_write.h	/^static void stbiw__encode_png_line(unsigned char *pixels, int stride_bytes, int width, int heigh/;"	f	typeref:typename:void
+stbiw__fopen	stb_image_write.h	/^static FILE *stbiw__fopen(char const *filename, char const *mode)$/;"	f	typeref:typename:FILE *
+stbiw__jpg_DCT	stb_image_write.h	/^static void stbiw__jpg_DCT(float *d0p, float *d1p, float *d2p, float *d3p, float *d4p, float *d5/;"	f	typeref:typename:void
+stbiw__jpg_ZigZag	stb_image_write.h	/^static const unsigned char stbiw__jpg_ZigZag[] = { 0,1,5,6,14,15,27,28,2,4,7,13,16,26,29,42,3,8,/;"	v	typeref:typename:const unsigned char[]
+stbiw__jpg_calcBits	stb_image_write.h	/^static void stbiw__jpg_calcBits(int val, unsigned short bits[2]) {$/;"	f	typeref:typename:void
+stbiw__jpg_processDU	stb_image_write.h	/^static int stbiw__jpg_processDU(stbi__write_context *s, int *bitBuf, int *bitCnt, float *CDU, in/;"	f	typeref:typename:int
+stbiw__jpg_writeBits	stb_image_write.h	/^static void stbiw__jpg_writeBits(stbi__write_context *s, int *bitBufP, int *bitCntP, const unsig/;"	f	typeref:typename:void
+stbiw__linear_to_rgbe	stb_image_write.h	/^static void stbiw__linear_to_rgbe(unsigned char *rgbe, float *linear)$/;"	f	typeref:typename:void
+stbiw__max	stb_image_write.h	/^#define stbiw__max(/;"	d
+stbiw__outfile	stb_image_write.h	/^static int stbiw__outfile(stbi__write_context *s, int rgb_dir, int vdir, int x, int y, int comp,/;"	f	typeref:typename:int
+stbiw__paeth	stb_image_write.h	/^static unsigned char stbiw__paeth(int a, int b, int c)$/;"	f	typeref:typename:unsigned char
+stbiw__putc	stb_image_write.h	/^static void stbiw__putc(stbi__write_context *s, unsigned char c)$/;"	f	typeref:typename:void
+stbiw__sbcount	stb_image_write.h	/^#define stbiw__sbcount(/;"	d
+stbiw__sbfree	stb_image_write.h	/^#define stbiw__sbfree(/;"	d
+stbiw__sbgrow	stb_image_write.h	/^#define stbiw__sbgrow(/;"	d
+stbiw__sbgrowf	stb_image_write.h	/^static void *stbiw__sbgrowf(void **arr, int increment, int itemsize)$/;"	f	typeref:typename:void *
+stbiw__sbm	stb_image_write.h	/^#define stbiw__sbm(/;"	d
+stbiw__sbmaybegrow	stb_image_write.h	/^#define stbiw__sbmaybegrow(/;"	d
+stbiw__sbn	stb_image_write.h	/^#define stbiw__sbn(/;"	d
+stbiw__sbneedgrow	stb_image_write.h	/^#define stbiw__sbneedgrow(/;"	d
+stbiw__sbpush	stb_image_write.h	/^#define stbiw__sbpush(/;"	d
+stbiw__sbraw	stb_image_write.h	/^#define stbiw__sbraw(/;"	d
+stbiw__wp32	stb_image_write.h	/^#define stbiw__wp32(/;"	d
+stbiw__wpcrc	stb_image_write.h	/^static void stbiw__wpcrc(unsigned char **data, int len)$/;"	f	typeref:typename:void
+stbiw__wpng4	stb_image_write.h	/^#define stbiw__wpng4(/;"	d
+stbiw__wptag	stb_image_write.h	/^#define stbiw__wptag(/;"	d
+stbiw__write1	stb_image_write.h	/^static void stbiw__write1(stbi__write_context *s, unsigned char a)$/;"	f	typeref:typename:void
+stbiw__write3	stb_image_write.h	/^static void stbiw__write3(stbi__write_context *s, unsigned char a, unsigned char b, unsigned cha/;"	f	typeref:typename:void
+stbiw__write_dump_data	stb_image_write.h	/^static void stbiw__write_dump_data(stbi__write_context *s, int length, unsigned char *data)$/;"	f	typeref:typename:void
+stbiw__write_flush	stb_image_write.h	/^static void stbiw__write_flush(stbi__write_context *s)$/;"	f	typeref:typename:void
+stbiw__write_hdr_scanline	stb_image_write.h	/^static void stbiw__write_hdr_scanline(stbi__write_context *s, int width, int ncomp, unsigned cha/;"	f	typeref:typename:void
+stbiw__write_pixel	stb_image_write.h	/^static void stbiw__write_pixel(stbi__write_context *s, int rgb_dir, int comp, int write_alpha, i/;"	f	typeref:typename:void
+stbiw__write_pixels	stb_image_write.h	/^static void stbiw__write_pixels(stbi__write_context *s, int rgb_dir, int vdir, int x, int y, int/;"	f	typeref:typename:void
+stbiw__write_run_data	stb_image_write.h	/^static void stbiw__write_run_data(stbi__write_context *s, int length, unsigned char databyte)$/;"	f	typeref:typename:void
+stbiw__writef	stb_image_write.h	/^static void stbiw__writef(stbi__write_context *s, const char *fmt, ...)$/;"	f	typeref:typename:void
+stbiw__writefv	stb_image_write.h	/^static void stbiw__writefv(stbi__write_context *s, const char *fmt, va_list v)$/;"	f	typeref:typename:void
+stbiw__zhash	stb_image_write.h	/^static unsigned int stbiw__zhash(unsigned char *data)$/;"	f	typeref:typename:unsigned int
+stbiw__zlib_add	stb_image_write.h	/^#define stbiw__zlib_add(/;"	d
+stbiw__zlib_bitrev	stb_image_write.h	/^static int stbiw__zlib_bitrev(int code, int codebits)$/;"	f	typeref:typename:int
+stbiw__zlib_countm	stb_image_write.h	/^static unsigned int stbiw__zlib_countm(unsigned char *a, unsigned char *b, int limit)$/;"	f	typeref:typename:unsigned int
+stbiw__zlib_flush	stb_image_write.h	/^#define stbiw__zlib_flush(/;"	d
+stbiw__zlib_flushf	stb_image_write.h	/^static unsigned char *stbiw__zlib_flushf(unsigned char *data, unsigned int *bitbuffer, int *bitc/;"	f	typeref:typename:unsigned char *
+stbiw__zlib_huff	stb_image_write.h	/^#define stbiw__zlib_huff(/;"	d
+stbiw__zlib_huff1	stb_image_write.h	/^#define stbiw__zlib_huff1(/;"	d
+stbiw__zlib_huff2	stb_image_write.h	/^#define stbiw__zlib_huff2(/;"	d
+stbiw__zlib_huff3	stb_image_write.h	/^#define stbiw__zlib_huff3(/;"	d
+stbiw__zlib_huff4	stb_image_write.h	/^#define stbiw__zlib_huff4(/;"	d
+stbiw__zlib_huffa	stb_image_write.h	/^#define stbiw__zlib_huffa(/;"	d
+stbiw__zlib_huffb	stb_image_write.h	/^#define stbiw__zlib_huffb(/;"	d
+stbiw_convert_wchar_to_utf8	stb_image_write.h	/^STBIWDEF int stbiw_convert_wchar_to_utf8(char *buffer, size_t bufferlen, const wchar_t* input)$/;"	f	typeref:typename:STBIWDEF int
+stbiw_uint32	stb_image_write.h	/^typedef unsigned int stbiw_uint32;$/;"	t	typeref:typename:unsigned int
+strncpy0	INIReader.h	/^inline static char* strncpy0(char* dest, const char* src, size_t size)$/;"	f	typeref:typename:char *
+surface	worldmap.h	/^	enum SURFACE surface;$/;"	m	struct:tile	typeref:enum:SURFACE
+swap	geom.cpp	/^static void swap(float *a, float *b)$/;"	f	typeref:typename:void	file:
+t0	worldmap.h	/^	const struct tile *t0 = nullptr;$/;"	m	struct:border	typeref:typename:const struct tile *
+t1	worldmap.h	/^	const struct tile *t1 = nullptr;$/;"	m	struct:border	typeref:typename:const struct tile *
+tempfreq	terra.h	/^	float tempfreq;$/;"	m	struct:worldparams	typeref:typename:float
+tempimage	terra.cpp	/^static struct floatimage tempimage(size_t imageres, long seed, float freq, float perturb)$/;"	f	typeref:struct:floatimage	file:
+tempmap	terra.h	/^	struct floatimage tempmap;$/;"	m	class:Terraform	typeref:struct:floatimage
+tempperturb	terra.h	/^	float tempperturb;$/;"	m	struct:worldparams	typeref:typename:float
+tile	worldmap.h	/^struct tile {$/;"	s
+tmax	geom.h	/^	float tmax;$/;"	m	struct:ray_AABB_intersection	typeref:typename:float
+tmin	geom.h	/^	float tmin;$/;"	m	struct:ray_AABB_intersection	typeref:typename:float
+triangle	geom.h	/^struct triangle {$/;"	s
+triangle_overlaps_rectangle	geom.cpp	/^bool triangle_overlaps_rectangle(struct triangle tri, struct rectangle rect)$/;"	f	typeref:typename:bool
+upland	terra.h	/^	float upland;$/;"	m	struct:worldparams	typeref:typename:float
+v0	voronoi.h	/^	const struct vertex *v0 = nullptr;$/;"	m	struct:edge	typeref:typename:const struct vertex *
+v1	voronoi.h	/^	const struct vertex *v1 = nullptr;$/;"	m	struct:edge	typeref:typename:const struct vertex *
+vertex	jc_voronoi.h	/^    jcv_point               vertex;$/;"	m	struct:_jcv_halfedge	typeref:typename:jcv_point
+vertex	voronoi.h	/^struct vertex {$/;"	s
+vertices	jc_voronoi.h	/^    jcv_vertex*         vertices;$/;"	m	struct:_jcv_context_internal	typeref:typename:jcv_vertex *
+vertices	jc_voronoi.h	/^    jcv_vertex*         vertices[2];$/;"	m	struct:_jcv_altered_edge	typeref:typename:jcv_vertex * [2]
+voidpp	jc_voronoi.h	/^    void**  voidpp;$/;"	m	union:_jcv_cast_align_struct	typeref:typename:void **
+width	imp.h	/^	size_t width;$/;"	m	struct:byteimage	typeref:typename:size_t
+width	imp.h	/^	size_t width;$/;"	m	struct:floatimage	typeref:typename:size_t
+worldparams	terra.h	/^struct worldparams {$/;"	s
+x	jc_voronoi.h	/^    jcv_real x;$/;"	m	struct:_jcv_point	typeref:typename:jcv_real
+y	jc_voronoi.h	/^    jcv_real                y;$/;"	m	struct:_jcv_halfedge	typeref:typename:jcv_real
+y	jc_voronoi.h	/^    jcv_real y;$/;"	m	struct:_jcv_point	typeref:typename:jcv_real
+y_in_plane	geom.cpp	/^static float y_in_plane(glm::vec2 p, glm::vec3 p1, glm::vec3 p2, glm::vec3 p3) $/;"	f	typeref:typename:float	file:
+~Terraform	terra.cpp	/^Terraform::~Terraform(void) $/;"	f	class:Terraform

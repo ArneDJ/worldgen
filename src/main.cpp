@@ -5,11 +5,9 @@
 #include <glm/vec3.hpp>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
-
-#include "FastNoise.h"
-
-#include "INIReader.h"
+#include "extern/stb_image_write.h"
+#include "extern/FastNoise.h"
+#include "extern/INIReader.h"
 
 #include "geom.h"
 #include "imp.h"
@@ -96,26 +94,14 @@ int main(int argc, char *argv[])
 	Voronoi voronoi;
 	voronoi.gen_diagram(locations, (glm::vec2) {0.f, 0.f}, (glm::vec2) {SIDELEN, SIDELEN}, true);
 
-	struct byteimage image = {
-		.data = new unsigned char[SIDELEN*SIDELEN],
-		.nchannels = 1,
-		.width = SIDELEN,
-		.height = SIDELEN
-	};
-	memset(image.data, 0, image.nchannels*image.width*image.height);
-
 	std::uniform_int_distribution<long> seedgen;
 	long seed = seedgen(gen);
 
 	Terraform terra = {SIDELEN, seed, params};
-	for (int i = 0; i < SIDELEN*SIDELEN; i++) {
-		image.data[i] = terra.heightmap.data[i] * 255;
-	}
 
+	stbi_write_png("elevation.png", terra.heightmap.width, terra.heightmap.height, terra.heightmap.nchannels, terra.heightmap.data, terra.heightmap.width);
+	stbi_write_png("temperature.png", terra.tempmap.width, terra.tempmap.height, terra.tempmap.nchannels, terra.tempmap.data, terra.tempmap.width);
 	stbi_write_png("rain.png", terra.rainmap.width, terra.rainmap.height, terra.rainmap.nchannels, terra.rainmap.data, terra.rainmap.width);
-	stbi_write_png("elevation.png", image.width, image.height, image.nchannels, image.data, image.width);
-
-	delete_byteimage(&image);
 
 	return 0;
 }
