@@ -22,6 +22,8 @@ struct byteimage {
 	size_t height;
 };
 
+struct byteimage blank_byteimage(unsigned int nchannels, size_t width, size_t height);
+
 void delete_byteimage(const byteimage *image);
 
 void delete_floatimage(const floatimage *image);

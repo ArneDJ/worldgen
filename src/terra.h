@@ -9,6 +9,8 @@ struct worldparams {
 	float tempperturb;
 	// rain
 	float rainperturb;
+	float tempinfluence;
+	float rainblur;
 	// elevation
 	float lowland;
 	float upland;

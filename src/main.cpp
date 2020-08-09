@@ -14,63 +14,75 @@
 #include "voronoi.h"
 #include "terra.h"
 
-// default values in case values from the ini file are invalid
 static const size_t DIM = 256;
-static const float LOWLAND_ELEVATION = 0.48f;
-static const float UPLAND_ELEVATION = 0.58f;
-static const float HIGHLAND_ELEVATION = 0.66f;
-static const float HEIGHT_FREQUENCY = 0.001f;
-static const float PERTURB_FREQUENCY = 0.001f;
-static const float PERTURB_AMP = 200.f;
-static const unsigned int FRACTAL_OCTAVES = 6;
-static const float FRACTAL_LACUNARITY = 2.5f;
+
+// default values in case values from the ini file are invalid
+static const struct worldparams DEFAULT_WORLD_PARAMETERS = {
+	.frequency = 0.001f,
+	.perturbfreq = 0.001f,
+	.perturbamp = 200.f,
+	.octaves = 6,
+	.lacunarity = 2.5f,
+	.tempfreq = 0.005f,
+	.tempperturb = 100.f,
+	.rainperturb = 1.f,
+	.tempinfluence = 0.6f,
+	.rainblur = 50.f,
+	.lowland = 0.48f,
+	.upland = 0.58f,
+	.highland = 0.66f,
+};
 
 struct worldparams import_noiseparams(const char *fpath)
 {
 	INIReader reader = {fpath};
 
-	struct worldparams params = {
-		.frequency = HEIGHT_FREQUENCY,
-		.perturbfreq = PERTURB_FREQUENCY,
-		.perturbamp = PERTURB_AMP,
-		.octaves = FRACTAL_OCTAVES,
-		.lacunarity = FRACTAL_LACUNARITY,
-		.tempfreq = 0.005f,
-		.tempperturb = 100.f,
-		.rainperturb = 1.f,
-		.lowland = LOWLAND_ELEVATION,
-		.upland = UPLAND_ELEVATION,
-		.highland = HIGHLAND_ELEVATION,
-	};
+	// init with default values
+	struct worldparams params = DEFAULT_WORLD_PARAMETERS;
 
 	if (reader.ParseError() != 0) {
 		perror(fpath);
 		return params;
 	}
 
-	params.frequency = reader.GetReal("", "HEIGHT_FREQUENCY", -1.f);
-	if (params.frequency <= 0.f) { params.frequency = HEIGHT_FREQUENCY; }
+	float frequency = reader.GetReal("", "HEIGHT_FREQUENCY", -1.f);
+	if (params.frequency > 0.f) { params.frequency = frequency; }
 
-	params.perturbfreq = reader.GetReal("", "PERTURB_FREQUENCY", -1.f);
-	if (params.perturbfreq <= 0.f) { params.perturbfreq = PERTURB_FREQUENCY; }
+	float perturbfreq = reader.GetReal("", "PERTURB_FREQUENCY", -1.f);
+	if (perturbfreq > 0.f) { params.perturbfreq = perturbfreq; }
 
-	params.perturbamp = reader.GetReal("", "PERTURB_AMP", -1.f);
-	if (params.perturbamp <= 0.f) { params.perturbamp = PERTURB_AMP; }
+	float perturbamp = reader.GetReal("", "PERTURB_AMP", -1.f);
+	if (perturbamp > 0.f) { params.perturbamp = perturbamp; }
 
-	params.octaves = reader.GetInteger("", "FRACTAL_OCTAVES", -1);
-	if (params.octaves <= 0) { params.octaves = FRACTAL_OCTAVES; }
+	unsigned int octaves = reader.GetInteger("", "FRACTAL_OCTAVES", -1);
+	if (octaves > 0) { params.octaves = octaves; }
 
-	params.lacunarity = reader.GetReal("", "FRACTAL_LACUNARITY", -1.f);
-	if (params.lacunarity <= 0.f) { params.lacunarity = FRACTAL_LACUNARITY; }
+	float lacunarity = reader.GetReal("", "FRACTAL_LACUNARITY", -1.f);
+	if (lacunarity > 0.f) { params.lacunarity = lacunarity; }
 
-	params.lowland = reader.GetReal("", "LOWLAND_ELEVATION", -1.f);
-	if (params.lowland <= 0.f) { params.lowland = LOWLAND_ELEVATION; }
+	float tempfreq = reader.GetReal("", "TEMPERATURE_FREQUENCY", -1.f);
+	if (tempfreq > 0.f) { params.tempfreq = tempfreq; }
 
-	params.upland = reader.GetReal("", "UPLAND_ELEVATION", -1.f);
-	if (params.upland <= 0.f) { params.upland = UPLAND_ELEVATION; }
+	float tempperturb = reader.GetReal("", "TEMPERATURE_PERTURB", -1.f);
+	if (tempperturb > 0.f) { params.tempperturb = tempperturb; }
 
-	params.highland = reader.GetReal("", "HIGHLAND_ELEVATION", -1.f);
-	if (params.highland <= 0.f) { params.highland = HIGHLAND_ELEVATION; }
+	float rainperturb = reader.GetReal("", "RAIN_PERTURB", -1.f);
+	if (rainperturb > 0.f) { params.rainperturb = rainperturb; }
+
+	float tempinfluence = reader.GetReal("", "TEMPERATURE_INFLUENCE", -1.f);
+	if (tempinfluence > 0.f) { params.tempinfluence = tempinfluence; }
+
+	float rainblur = reader.GetReal("", "RAIN_AMP", -1.f);
+	if (rainblur > 0.f) { params.rainblur = rainblur; }
+
+	float lowland = reader.GetReal("", "LOWLAND_ELEVATION", -1.f);
+	if (lowland > 0.f) { params.lowland = lowland; }
+
+	float upland = reader.GetReal("", "UPLAND_ELEVATION", -1.f);
+	if (upland > 0.f) { params.upland = upland; }
+
+	float highland = reader.GetReal("", "HIGHLAND_ELEVATION", -1.f);
+	if (highland > 0.f) { params.highland = highland; }
 
 	return params;
 }

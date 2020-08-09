@@ -43,6 +43,19 @@ static inline int max3(int a, int b, int c)
 	return std::max(a, std::max(b, c));
 }
 
+struct byteimage blank_byteimage(unsigned int nchannels, size_t width, size_t height)
+{
+	struct byteimage image = {
+		.data = new unsigned char[width*height*nchannels],
+		.nchannels = nchannels,
+		.width = width,
+		.height = height,
+	};
+	memset(image.data, 0, image.nchannels*image.width*image.height);
+
+	return image;
+}
+
 void delete_byteimage(const byteimage *image)
 {
 	if (image->data != nullptr) {
