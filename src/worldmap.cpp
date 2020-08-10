@@ -14,7 +14,7 @@
 #include "terra.h"
 #include "worldmap.h"
 
-static const unsigned int TERRA_IMAGE_RES = 512;
+static const size_t TERRA_IMAGE_RES = 512;
 static const size_t MIN_WATER_BODY = 1024;
 static const size_t MIN_MOUNTAIN_BODY = 128;
 static const char *WORLDGEN_INI_FPATH = "worldgen.ini";
@@ -126,6 +126,8 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	floodfill_relief(MIN_WATER_BODY, SEABED, LOWLAND);
 	floodfill_relief(MIN_MOUNTAIN_BODY, HIGHLAND, UPLAND);
+
+	remove_echoriads();
 };
 
 void Worldmap::gen_diagram(unsigned int maxcandidates)
@@ -247,6 +249,53 @@ void Worldmap::floodfill_relief(unsigned int minsize, enum RELIEF target, enum R
 		if (marked.size() > 0 && marked.size() < minsize) {
 			for (struct tile *t : marked) {
 				t->relief = replacement;
+			}
+		}
+	}
+}
+
+// removes encircling mountains from the worldmap
+// uses a slightly different version of the floodfill algorithm
+void Worldmap::remove_echoriads(void)
+{
+	std::unordered_map<const struct tile*, bool> umap;
+	for (struct tile &t : tiles) {
+		umap[&t] = false;
+	}
+
+	for (struct tile &root : tiles) {
+		bool foundwater = false;
+		std::vector<struct tile*> marked;
+		bool target = (root.relief == LOWLAND) || (root.relief == UPLAND);
+		if (umap[&root] == false && target == true) {
+			std::list<const struct tile*> queue;
+			umap[&root] = true;
+			queue.push_back(&root);
+			marked.push_back(&root);
+
+			while (queue.empty() == false) {
+				const struct tile *v = queue.front();
+				queue.pop_front();
+
+				for (const auto &neighbor : v->neighbors) {
+					if (neighbor->relief == SEABED) {
+						foundwater = true;
+						break;
+					}
+					if (umap[neighbor] == false) {
+						umap[neighbor] = true;
+						if (neighbor->relief == LOWLAND || neighbor->relief == UPLAND) {
+							queue.push_back(neighbor);
+							marked.push_back(&tiles[neighbor->index]);
+						}
+					}
+				}
+			}
+		}
+
+		if (marked.size() > 0 && foundwater == false) {
+			for (struct tile *t : marked) {
+				t->relief = HIGHLAND;
 			}
 		}
 	}
