@@ -150,7 +150,8 @@ static void adapt_edges(const jcv_diagram *diagram, std::vector<struct cell> &ce
 	}
 
 	for (int i = 0; i < edges.size(); i++) {
-		const struct edge *e = &edges[i];
+		struct edge *e = &edges[i];
+		e->index = i;
 		if (e->c0 != nullptr) {
 			cells[e->c0->index].edges.push_back(&edges[i]);
 		}

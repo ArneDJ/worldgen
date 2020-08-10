@@ -3,6 +3,7 @@ struct vertex;
 struct edge;
 
 struct edge {
+	int index;
 	const struct vertex *v0 = nullptr;
 	const struct vertex *v1 = nullptr;
 	const struct cell *c0 = nullptr;

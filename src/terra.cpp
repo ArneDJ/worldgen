@@ -27,7 +27,7 @@ static struct byteimage heightimage(size_t imageres, long seed, struct worldpara
 	unsigned int index = 0;
 	for (int i = 0; i < image.width; i++) {
 		for (int j = 0; j < image.height; j++) {
-			float x = j; float y = i;
+			float x = 4.f*j; float y = 4.f*i;
 			noise.GradientPerturbFractal(x, y);
 			float height = (noise.GetNoise(x, y) + 1.f) / 2.f;
 			image.data[index++] = 255 * glm::clamp(height, 0.f, 1.f);

@@ -24,6 +24,7 @@ enum BIOME {
 };
 
 struct border {
+	int index;
 	const struct corner *c0 = nullptr;
 	const struct corner *c1 = nullptr;
 	const struct tile *t0 = nullptr;
@@ -31,10 +32,13 @@ struct border {
 };
 
 struct corner {
+	// graph data
 	int index;
 	glm::vec2 position;
 	std::vector<const struct corner*> adjacent;
 	std::vector<const struct tile*> touches;
+	// world data
+	bool border;
 };
 
 struct tile {
@@ -46,6 +50,21 @@ struct tile {
 	std::vector<const struct border*> borders;
 	// world data
 	bool land;
-	enum SURFACE surface;
+	enum RELIEF relief;
 	enum BIOME biome;
+};
+
+class Worldmap {
+public:
+	std::vector<struct tile> tiles;
+	std::vector<struct corner> corners;
+	std::vector<struct border> borders;
+	struct rectangle area;
+	long seed;
+public:
+	Worldmap(long seed, struct rectangle area);
+private:
+	struct worldparams params;
+private:
+	void gen_diagram(unsigned int maxcandidates);
 };
