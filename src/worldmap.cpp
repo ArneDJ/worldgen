@@ -110,6 +110,15 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 	for (struct tile &t : tiles) {
 		float height = sample_byteimage(scale_x*t.center.x, scale_y*t.center.y, RED, &terra.heightmap);
 		t.land = (height < params.lowland) ? false : true;
+		if (height < params.lowland) { 
+			t.relief = SEABED;
+		} else if (height < params.upland) {
+			t.relief = LOWLAND;
+		} else if (height < params.highland) {
+			t.relief = UPLAND;
+		} else {
+			t.relief = HIGHLAND;
+		}
 	}
 };
 

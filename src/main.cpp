@@ -21,6 +21,35 @@ static const struct rectangle MAP_AREA = {
 	.max = {2048.f, 2048.f}
 };
 
+void print_image(const Worldmap *worldmap)
+{
+	struct byteimage image = blank_byteimage(3, 2048, 2048);
+	unsigned char red[] = {255, 0, 0};
+	unsigned char blu[] = {0, 0, 255};
+	for (const auto &t : worldmap->tiles) {
+		unsigned char color[3];
+		float base = 0.25f;
+		switch (t.relief) {
+		case SEABED : base = 0.25f; break;
+		case LOWLAND : base = 0.5f; break;
+		case UPLAND : base = 0.6f; break;
+		case HIGHLAND : base = 1.f; break;
+		};
+
+		color[0] = 255 * base;
+		color[1] = 255 * base;
+		color[2] = 255 * base;
+		for (const auto &b : t.borders) {
+			draw_triangle(t.center, b->c1->position, b->c0->position, image.data, image.width, image.height, image.nchannels, color);
+		}
+		plot(t.center.x, t.center.y, image.data, image.width, image.height, image.nchannels, red);
+	}
+
+	stbi_write_png("output.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
+
+	delete_byteimage(&image);
+}
+
 int main(int argc, char *argv[])
 {
 	std::random_device rd;
@@ -31,26 +60,7 @@ int main(int argc, char *argv[])
 
 	Worldmap worldmap = {seed, MAP_AREA};
 
-	struct byteimage image = blank_byteimage(1, 2048, 2048);
-	unsigned char red[] = {255, 0, 0};
-	unsigned char blu[] = {0, 0, 255};
-	for (const auto &t : worldmap.tiles) {
-		unsigned char color[3];
-		float base = 0.25f;
-		if (t.land) {
-			base = 1.f;
-		}
-
-		color[0] = 255 * base;
-		color[1] = 255 * base;
-		color[2] = 255 * base;
-		for (const auto &b : t.borders) {
-			draw_triangle(t.center, b->c1->position, b->c0->position, image.data, image.width, image.height, image.nchannels, color);
-		}
-		//plot(c.center.x, c.center.y, image.data, image.width, image.height, image.nchannels, red);
-	}
-
-	stbi_write_png("second.png", image.width, image.height, image.nchannels, image.data, image.width);
+	print_image(&worldmap);
 
 	return 0;
 }
