@@ -67,4 +67,5 @@ private:
 	struct worldparams params;
 private:
 	void gen_diagram(unsigned int maxcandidates);
+	void floodfill_relief(unsigned int minsize, enum RELIEF target, enum RELIEF replacement);
 };

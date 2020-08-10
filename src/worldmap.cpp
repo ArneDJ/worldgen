@@ -1,6 +1,8 @@
 #include <vector>
 #include <algorithm>
 #include <random>
+#include <unordered_map>
+#include <list>
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
 
@@ -13,6 +15,8 @@
 #include "worldmap.h"
 
 static const unsigned int TERRA_IMAGE_RES = 512;
+static const size_t MIN_WATER_BODY = 1024;
+static const size_t MIN_MOUNTAIN_BODY = 128;
 static const char *WORLDGEN_INI_FPATH = "worldgen.ini";
 
 // default values in case values from the ini file are invalid
@@ -104,7 +108,6 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	gen_diagram(255*255);
 
-	// DEBUG
 	const float scale_x = float(TERRA_IMAGE_RES) / this->area.max.x;
 	const float scale_y = float(TERRA_IMAGE_RES) / this->area.max.y;
 	for (struct tile &t : tiles) {
@@ -120,6 +123,9 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 			t.relief = HIGHLAND;
 		}
 	}
+
+	floodfill_relief(MIN_WATER_BODY, SEABED, LOWLAND);
+	floodfill_relief(MIN_MOUNTAIN_BODY, HIGHLAND, UPLAND);
 };
 
 void Worldmap::gen_diagram(unsigned int maxcandidates)
@@ -207,3 +213,41 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 	}
 }
 
+void Worldmap::floodfill_relief(unsigned int minsize, enum RELIEF target, enum RELIEF replacement)
+{
+	std::unordered_map<const struct tile*, bool> umap;
+	for (struct tile &t : tiles) {
+		umap[&t] = false;
+	}
+
+	for (struct tile &root : tiles) {
+		std::vector<struct tile*> marked;
+		if (umap[&root] == false && root.relief == target) {
+			std::list<const struct tile*> queue;
+			umap[&root] = true;
+			queue.push_back(&root);
+			marked.push_back(&root);
+
+			while (queue.empty() == false) {
+				const struct tile *v = queue.front();
+				queue.pop_front();
+
+				for (const auto &neighbor : v->neighbors) {
+					if (umap[neighbor] == false) {
+						umap[neighbor] = true;
+						if (neighbor->relief == target) {
+							queue.push_back(neighbor);
+							marked.push_back(&tiles[neighbor->index]);
+						}
+					}
+				}
+			}
+		}
+
+		if (marked.size() > 0 && marked.size() < minsize) {
+			for (struct tile *t : marked) {
+				t->relief = replacement;
+			}
+		}
+	}
+}

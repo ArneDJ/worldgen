@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <vector>
 #include <random>
 #include <algorithm>
@@ -52,11 +53,12 @@ void print_image(const Worldmap *worldmap)
 
 int main(int argc, char *argv[])
 {
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_int_distribution<long> seedgen;
-	//long seed = seedgen(gen);
-	long seed = 1337;
+	printf("Name thy world: ");
+	std::string name;
+	std::cin >> name;
+
+	//long seed = 1337;
+	long seed = std::hash<std::string>()(name); // I copy pasted this from the internet so I have no idea how it works
 
 	Worldmap worldmap = {seed, MAP_AREA};
 
