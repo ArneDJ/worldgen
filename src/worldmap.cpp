@@ -3,6 +3,7 @@
 #include <random>
 #include <unordered_map>
 #include <list>
+#include <queue>
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
 
@@ -106,7 +107,7 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	Terraform terra = {TERRA_IMAGE_RES, this->seed, this->params};
 
-	gen_diagram(255*255);
+	gen_diagram(64*128);
 
 	const float scale_x = float(TERRA_IMAGE_RES) / this->area.max.x;
 	const float scale_y = float(TERRA_IMAGE_RES) / this->area.max.y;
@@ -126,8 +127,21 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	floodfill_relief(MIN_WATER_BODY, SEABED, LOWLAND);
 	floodfill_relief(MIN_MOUNTAIN_BODY, HIGHLAND, UPLAND);
-
 	remove_echoriads();
+
+	// find coastal tiles
+	for (auto &b : borders) {
+		// use XOR to determine if land is different
+		b.coast = b.t0->land ^ b.t1->land;
+		if (b.coast == true) {
+			b.t0->coast = true;
+			b.t1->coast = true;
+			b.c0->coast = true;
+			b.c1->coast = true;
+		}
+	}
+
+	gen_rivers();
 };
 
 void Worldmap::gen_diagram(unsigned int maxcandidates)
@@ -188,14 +202,13 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 			touches.push_back(&tiles[cell->index]);
 		}
 
-		bool border = (touches.size() < 3) ? true : false;
-
 		struct corner c = {
 			.index = vertex.index,
 			.position = vertex.position,
 			.adjacent = adjacent,
 			.touches = touches,
-			.border = border,
+			.coast = false,
+			.river = false
 		};
 
 		corners[vertex.index] = c;
@@ -208,9 +221,15 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 		borders[index].c1 = &corners[edge.v1->index];
 		if (edge.c0 != nullptr) {
 			borders[index].t0 = &tiles[edge.c0->index];
+		} else {
+			borders[index].t0 = &tiles[edge.c1->index];
+			borders[index].frontier = true;
 		}
 		if (edge.c1 != nullptr) {
 			borders[index].t1 = &tiles[edge.c1->index];
+		} else {
+			borders[index].t1 = &tiles[edge.c0->index];
+			borders[index].frontier = true;
 		}
 	}
 }
@@ -249,6 +268,9 @@ void Worldmap::floodfill_relief(unsigned int minsize, enum RELIEF target, enum R
 		if (marked.size() > 0 && marked.size() < minsize) {
 			for (struct tile *t : marked) {
 				t->relief = replacement;
+				if (target == SEABED) {
+					t->land = true;
+				}
 			}
 		}
 	}
@@ -297,6 +319,95 @@ void Worldmap::remove_echoriads(void)
 			for (struct tile *t : marked) {
 				t->relief = HIGHLAND;
 			}
+		}
+	}
+}
+
+void Worldmap::gen_rivers(void)
+{
+	// construct the drainage candidate graph
+	std::vector<const struct corner*> graph;
+	for (auto &c : corners) {
+		if (c.coast) {
+			graph.push_back(&c);
+			c.river = true;
+		} else {
+			bool land = true;
+			for (const auto &t : c.touches) {
+				if (t->relief == SEABED) {
+					land = false;
+					break;
+				}
+			}
+			if (land) {
+				graph.push_back(&c);
+				c.river = true;
+			}
+		}
+	}
+
+	// breadth first search
+	std::unordered_map<const struct corner*, bool> visited;
+	std::unordered_map<const struct corner*, int> distance;
+	for (auto node : graph) {
+		visited[node] = false;
+		distance[node] = 0;
+	}
+
+	for (auto node : graph) {
+		if (node->coast) {
+			std::queue<const struct corner*> frontier;
+			visited[node] = true;
+			frontier.push(node);
+			while (!frontier.empty()) {
+				const struct corner *v = frontier.front();
+				frontier.pop();
+				int layer = distance[v] + 1;
+				for (auto neighbor : v->adjacent) {
+					if (neighbor->river == true && neighbor->coast == false) {
+						if (visited[neighbor] == false) {
+							visited[neighbor] = true;
+							frontier.push(neighbor);
+							distance[neighbor] = layer;
+						} else if (distance[neighbor] > layer) {
+							distance[neighbor] = layer;
+							frontier.push(neighbor);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	for (auto node : graph) {
+		visited[node] = false;
+	}
+	for (auto node : graph) {
+		if (node->coast) {
+			visited[node] = true;
+			struct basin basn;
+			basn.mouth = node;
+			std::queue<const struct corner*> frontier;
+			frontier.push(node);
+			while (!frontier.empty()) {
+				const struct corner *v = frontier.front();
+				frontier.pop();
+				struct drainage drain;
+				drain.confluence = v;
+				for (auto neighbor : v->adjacent) {
+					if (distance[neighbor] > distance[v] && visited[neighbor] == false) {
+						visited[neighbor] = true;
+						frontier.push(neighbor);
+						if (drain.left == nullptr) {
+							drain.left = neighbor;
+						} else if (drain.right == nullptr) {
+							drain.right = neighbor;
+						}
+					}
+				}
+				basn.channels.push_back(drain);
+			}
+			basins.push_back(basn);
 		}
 	}
 }

@@ -25,10 +25,14 @@ enum BIOME {
 
 struct border {
 	int index;
-	const struct corner *c0 = nullptr;
-	const struct corner *c1 = nullptr;
-	const struct tile *t0 = nullptr;
-	const struct tile *t1 = nullptr;
+	struct corner *c0 = nullptr;
+	struct corner *c1 = nullptr;
+	struct tile *t0 = nullptr;
+	struct tile *t1 = nullptr;
+	// world data
+	bool frontier;
+	bool coast;
+	bool river;
 };
 
 struct corner {
@@ -38,7 +42,8 @@ struct corner {
 	std::vector<const struct corner*> adjacent;
 	std::vector<const struct tile*> touches;
 	// world data
-	bool border;
+	bool coast;
+	bool river;
 };
 
 struct tile {
@@ -50,8 +55,20 @@ struct tile {
 	std::vector<const struct border*> borders;
 	// world data
 	bool land;
+	bool coast;
 	enum RELIEF relief;
 	enum BIOME biome;
+};
+
+struct drainage {
+	const struct corner *confluence = nullptr;
+	const struct corner *left = nullptr;
+	const struct corner *right = nullptr;
+};
+
+struct basin {
+	std::vector<struct drainage> channels;
+	const struct corner *mouth;
 };
 
 class Worldmap {
@@ -59,6 +76,7 @@ public:
 	std::vector<struct tile> tiles;
 	std::vector<struct corner> corners;
 	std::vector<struct border> borders;
+	std::vector<struct basin> basins;
 	struct rectangle area;
 	long seed;
 public:
@@ -69,4 +87,5 @@ private:
 	void gen_diagram(unsigned int maxcandidates);
 	void floodfill_relief(unsigned int minsize, enum RELIEF target, enum RELIEF replacement);
 	void remove_echoriads(void);
+	void gen_rivers(void);
 };
