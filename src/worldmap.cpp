@@ -17,6 +17,8 @@
 #include "terra.h"
 #include "worldmap.h"
 
+static struct branch *insert(const struct corner *confluence);
+
 static const size_t DIM = 256;
 static const size_t TERRA_IMAGE_RES = 512;
 static const size_t MIN_WATER_BODY = 1024;
@@ -410,6 +412,7 @@ auto end = std::chrono::steady_clock::now();
 std::chrono::duration<double> elapsed_seconds = end-start;
 std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
+	// create the drainage basin binary tree
 	for (auto node : graph) {
 		umap[node].visited = false;
 	}
@@ -417,31 +420,31 @@ std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 		if (root->coast) {
 			umap[root].visited = true;
 			struct basin basn;
-			basn.mouth = root;
-			std::queue<const struct corner*> frontier;
-			frontier.push(root);
+			struct branch *mouth = insert(root);
+			basn.mouth = mouth;
+			std::queue<struct branch*> frontier;
+			frontier.push(mouth);
 			while (!frontier.empty()) {
-				const struct corner *v = frontier.front();
+				struct branch *fork = frontier.front();
+				const struct corner *v = fork->confluence;
 				frontier.pop();
 				struct meta &vdata = umap[v];
-				struct drainage drain;
-				drain.confluence = v;
 				for (auto neighbor : v->adjacent) {
 					struct meta &ndata = umap[neighbor];
 					bool valid = ndata.visited == false && neighbor->coast == false;
 					if (valid) {
 						if (ndata.score > vdata.score && ndata.elevation >= vdata.elevation) {
 							ndata.visited = true;
-							frontier.push(neighbor);
-							if (drain.left == nullptr) {
-								drain.left = neighbor;
-							} else if (drain.right == nullptr) {
-								drain.right = neighbor;
+							struct branch *child = insert(neighbor);
+							frontier.push(child);
+							if (fork->left == nullptr) {
+								fork->left = child;
+							} else if (fork->right == nullptr) {
+								fork->right = child;
 							}
 						}
 					}
 				}
-				basn.channels.push_back(drain);
 			}
 			basins.push_back(basn);
 		}
@@ -449,5 +452,16 @@ std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 	// if a river node doesn't drain into a sea it becomes part of an endorheic basin
 	//
 	//
-	// Horton-Strahler numbers
+	// assign Horton-Strahler numbers and prune binary tree
 }
+
+static struct branch *insert(const struct corner *confluence)
+{
+	struct branch *node = new branch;
+	node->confluence = confluence;
+	node->left = nullptr;
+	node->right = nullptr;
+
+	return node;
+}
+

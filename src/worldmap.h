@@ -67,15 +67,9 @@ struct branch {
 	struct branch *right = nullptr;
 };
 
-struct drainage {
-	const struct corner *confluence = nullptr;
-	const struct corner *left = nullptr;
-	const struct corner *right = nullptr;
-};
-
 struct basin {
-	std::vector<struct drainage> channels;
-	const struct corner *mouth;
+	//std::vector<struct branch> branches;
+	struct branch *mouth; // binary tree root
 };
 
 class Worldmap {

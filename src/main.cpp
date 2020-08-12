@@ -3,6 +3,7 @@
 #include <vector>
 #include <random>
 #include <algorithm>
+#include <queue>
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
 
@@ -52,20 +53,25 @@ void print_image(const Worldmap *worldmap)
 		}
 	}
 	*/
-	std::random_device rd;
-	std::mt19937 gen(rd());
+	std::mt19937 gen(worldmap->seed);
 	std::uniform_real_distribution<float> dist(0.5f, 1.f);
 	unsigned char basincolor[] = {255, 255, 255};
 	for (const auto &b : worldmap->basins) {
 		basincolor[0] = 255 * dist(gen);
 		basincolor[1] = 255 * dist(gen);
 		basincolor[2] = 255 * dist(gen);
-		for (const auto &chan : b.channels) {
-			if (chan.right != nullptr) {
-				draw_line(chan.confluence->position.x, chan.confluence->position.y, chan.right->position.x, chan.right->position.y, image.data, image.width, image.height, image.nchannels, basincolor);
+		std::queue<struct branch*> queue;
+		queue.push(b.mouth);
+		while (!queue.empty()) {
+			struct branch *cur = queue.front();
+			queue.pop();
+			if (cur->right != nullptr) {
+				draw_line(cur->confluence->position.x, cur->confluence->position.y, cur->right->confluence->position.x, cur->right->confluence->position.y, image.data, image.width, image.height, image.nchannels, basincolor);
+				queue.push(cur->right);
 			}
-			if (chan.left != nullptr) {
-				draw_line(chan.confluence->position.x, chan.confluence->position.y, chan.left->position.x, chan.left->position.y, image.data, image.width, image.height, image.nchannels, basincolor);
+			if (cur->left != nullptr) {
+				draw_line(cur->confluence->position.x, cur->confluence->position.y, cur->left->confluence->position.x, cur->left->confluence->position.y, image.data, image.width, image.height, image.nchannels, basincolor);
+				queue.push(cur->left);
 			}
 		}
 	}
@@ -78,7 +84,7 @@ void print_image(const Worldmap *worldmap)
 		}
 	}
 
-	stbi_write_png("output.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
+	stbi_write_png("bintree.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
 
 	delete_byteimage(&image);
 }
@@ -90,7 +96,7 @@ int main(int argc, char *argv[])
 	std::cin >> name;
 	long seed = std::hash<std::string>()(name);
 
-	//seed = 1337;
+	seed = 1337;
 
 	Worldmap worldmap = {seed, MAP_AREA};
 
