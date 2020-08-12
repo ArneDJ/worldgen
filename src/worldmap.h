@@ -65,6 +65,7 @@ struct branch {
 	const struct corner *confluence = nullptr;
 	struct branch *left = nullptr;
 	struct branch *right = nullptr;
+	int strahler;
 };
 
 struct basin {
@@ -82,6 +83,7 @@ public:
 	long seed;
 public:
 	Worldmap(long seed, struct rectangle area);
+	~Worldmap(void);
 private:
 	struct worldparams params;
 private:

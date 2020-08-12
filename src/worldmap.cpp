@@ -18,8 +18,12 @@
 #include "worldmap.h"
 
 static struct branch *insert(const struct corner *confluence);
+void delete_basin(struct basin *tree);
+void prune_branches(struct branch *root);
+static int strahler_postorder(struct branch *node);
 
 static const size_t DIM = 256;
+static const int MIN_STRAHLER_SIZE = 4;
 static const size_t TERRA_IMAGE_RES = 512;
 static const size_t MIN_WATER_BODY = 1024;
 static const size_t MIN_MOUNTAIN_BODY = 128;
@@ -148,6 +152,14 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	gen_rivers();
 };
+
+Worldmap::~Worldmap(void)
+{
+	for (int i = 0; i < basins.size(); i++) {
+		delete_basin(&basins[i]);
+	}
+
+}
 
 void Worldmap::gen_diagram(unsigned int maxcandidates)
 {
@@ -452,7 +464,37 @@ std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 	// if a river node doesn't drain into a sea it becomes part of an endorheic basin
 	//
 	//
-	// assign Horton-Strahler numbers and prune binary tree
+	// assign Horton-Strahler numbers
+	for (auto bas : basins) {
+		bas.mouth->strahler = strahler_postorder(bas.mouth);
+	}
+
+	// prune binary tree
+	for (const auto &b : basins) {
+		std::queue<struct branch*> queue;
+		queue.push(b.mouth);
+		while (!queue.empty()) {
+			struct branch *cur = queue.front();
+			queue.pop();
+
+			if (cur->right != nullptr) {
+				if (cur->right->strahler < MIN_STRAHLER_SIZE) {
+					prune_branches(cur->right);
+					cur->right = nullptr;
+				} else {
+					queue.push(cur->right);
+				}
+			}
+			if (cur->left != nullptr) {
+				if (cur->left->strahler < MIN_STRAHLER_SIZE) {
+					prune_branches(cur->left);
+					cur->left = nullptr;
+				} else {
+					queue.push(cur->left);
+				}
+			}
+		}
+	}
 }
 
 static struct branch *insert(const struct corner *confluence)
@@ -461,7 +503,103 @@ static struct branch *insert(const struct corner *confluence)
 	node->confluence = confluence;
 	node->left = nullptr;
 	node->right = nullptr;
+	node->strahler = 1;
 
 	return node;
+}
+
+/*
+// post order traversal
+void assign_strahler(struct basin *tree)
+{
+	std::list<struct branch*> stack;
+	struct branch *prev = nullptr;
+	stack.push_back(tree->mouth);
+
+	while (!stack.empty()) {
+		struct branch *current = stack.back();
+
+		if (prev == nullptr || prev->left == current || prev->right == current) {
+			if (current->left != nullptr) {
+				stack.push_back(current->left);
+			} else if (current->right != nullptr) {
+				stack.push_back(current->right);
+			} else {
+				//printf("%d\n", current->count);
+				// leaf node
+				current->strahler = 1;
+				stack.pop_back();
+			}
+		} else if (current->left == prev) {
+			if (current->right != nullptr) {
+				stack.push_back(current->right);
+			} else {
+				//printf("%d\n", current->count);
+				stack.pop_back();
+			}
+		} else if (current->right == prev) {
+			//printf("%d\n", current->count);
+			stack.pop_back();
+		}
+
+		prev = current;
+	}
+}
+*/
+
+// recursive post order traversal
+static int strahler_postorder(struct branch *node)
+{
+	if (node == nullptr) {
+		return 0;
+	}
+
+	// if node has no children it is a leaf with strahler number 1
+	if (node->left == nullptr && node->right == nullptr) {
+		node->strahler = 1;
+		return 1;
+	}
+
+	int left = strahler_postorder(node->left);
+	int right = strahler_postorder(node->right);
+
+	int strahler = 0;
+	if (left == right) {
+		strahler = std::max(left, right) + 1;
+	} else {
+		strahler = std::max(left, right);
+	}
+
+	node->strahler = strahler;
+
+	return strahler;
+}
+
+void prune_branches(struct branch *root)
+{
+	if (root == nullptr) { return; }
+
+	std::queue<struct branch*> queue;
+	queue.push(root);
+
+	struct branch *front = nullptr;
+
+	while (!queue.empty()) {
+		front = queue.front();
+		queue.pop();
+		if (front->left) { queue.push(front->left); }
+		if (front->right) { queue.push(front->right); }
+
+		delete front;
+	}
+}
+
+void delete_basin(struct basin *tree)
+{
+	if (tree->mouth == nullptr) { return; }
+
+	prune_branches(tree->mouth);
+
+	tree->mouth = nullptr;
 }
 

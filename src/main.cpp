@@ -84,7 +84,7 @@ void print_image(const Worldmap *worldmap)
 		}
 	}
 
-	stbi_write_png("bintree.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
+	stbi_write_png("output.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
 
 	delete_byteimage(&image);
 }
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
 	std::cin >> name;
 	long seed = std::hash<std::string>()(name);
 
-	seed = 1337;
+	//seed = 1337;
 
 	Worldmap worldmap = {seed, MAP_AREA};
 
