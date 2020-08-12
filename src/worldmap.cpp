@@ -15,6 +15,7 @@
 #include "terra.h"
 #include "worldmap.h"
 
+static const size_t DIM = 256;
 static const size_t TERRA_IMAGE_RES = 512;
 static const size_t MIN_WATER_BODY = 1024;
 static const size_t MIN_MOUNTAIN_BODY = 128;
@@ -107,7 +108,7 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	Terraform terra = {TERRA_IMAGE_RES, this->seed, this->params};
 
-	gen_diagram(64*128);
+	gen_diagram(DIM*DIM);
 
 	const float scale_x = float(TERRA_IMAGE_RES) / this->area.max.x;
 	const float scale_y = float(TERRA_IMAGE_RES) / this->area.max.y;
@@ -207,6 +208,7 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 			.position = vertex.position,
 			.adjacent = adjacent,
 			.touches = touches,
+			.frontier = false,
 			.coast = false,
 			.river = false
 		};
@@ -224,12 +226,16 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 		} else {
 			borders[index].t0 = &tiles[edge.c1->index];
 			borders[index].frontier = true;
+			borders[index].c0->frontier = true;
+			borders[index].c1->frontier = true;
 		}
 		if (edge.c1 != nullptr) {
 			borders[index].t1 = &tiles[edge.c1->index];
 		} else {
 			borders[index].t1 = &tiles[edge.c0->index];
 			borders[index].frontier = true;
+			borders[index].c0->frontier = true;
+			borders[index].c1->frontier = true;
 		}
 	}
 }
@@ -328,7 +334,7 @@ void Worldmap::gen_rivers(void)
 	// construct the drainage candidate graph
 	std::vector<const struct corner*> graph;
 	for (auto &c : corners) {
-		if (c.coast) {
+		if (c.coast && c.frontier == false) {
 			graph.push_back(&c);
 			c.river = true;
 		} else {
@@ -339,7 +345,7 @@ void Worldmap::gen_rivers(void)
 					break;
 				}
 			}
-			if (land) {
+			if (land && c.frontier == false) {
 				graph.push_back(&c);
 				c.river = true;
 			}
@@ -349,9 +355,22 @@ void Worldmap::gen_rivers(void)
 	// breadth first search
 	std::unordered_map<const struct corner*, bool> visited;
 	std::unordered_map<const struct corner*, int> distance;
+	std::unordered_map<const struct corner*, int> elevation;
+	std::unordered_map<const struct corner*, int> score;
 	for (auto node : graph) {
 		visited[node] = false;
 		distance[node] = 0;
+		score[node] = 0;
+		int weight = 0;
+		for (const auto &t : node->touches) {
+			switch(t->relief) {
+			//case SEABED: weight += 1; break;
+			//case LOWLAND: weight += 2; break;
+			case UPLAND: weight += 3; break;
+			case HIGHLAND: weight += 4; break;
+			};
+		}
+		elevation[node] = weight;
 	}
 
 	for (auto node : graph) {
@@ -362,7 +381,7 @@ void Worldmap::gen_rivers(void)
 			while (!frontier.empty()) {
 				const struct corner *v = frontier.front();
 				frontier.pop();
-				int layer = distance[v] + 1;
+				int layer = distance[v] + 1 + elevation[v];
 				for (auto neighbor : v->adjacent) {
 					if (neighbor->river == true && neighbor->coast == false) {
 						if (visited[neighbor] == false) {
@@ -395,13 +414,16 @@ void Worldmap::gen_rivers(void)
 				struct drainage drain;
 				drain.confluence = v;
 				for (auto neighbor : v->adjacent) {
-					if (distance[neighbor] > distance[v] && visited[neighbor] == false) {
-						visited[neighbor] = true;
-						frontier.push(neighbor);
-						if (drain.left == nullptr) {
-							drain.left = neighbor;
-						} else if (drain.right == nullptr) {
-							drain.right = neighbor;
+					bool valid = visited[neighbor] == false && neighbor->coast == false;
+					if (valid) {
+						if (distance[neighbor] > distance[v]) {
+							visited[neighbor] = true;
+							frontier.push(neighbor);
+							if (drain.left == nullptr) {
+								drain.left = neighbor;
+							} else if (drain.right == nullptr) {
+								drain.right = neighbor;
+							}
 						}
 					}
 				}

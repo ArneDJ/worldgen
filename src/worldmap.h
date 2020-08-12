@@ -42,6 +42,7 @@ struct corner {
 	std::vector<const struct corner*> adjacent;
 	std::vector<const struct tile*> touches;
 	// world data
+	bool frontier;
 	bool coast;
 	bool river;
 };

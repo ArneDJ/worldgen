@@ -67,7 +67,7 @@ void print_image(const Worldmap *worldmap)
 			plot(c.position.x, c.position.y, image.data, image.width, image.height, image.nchannels, red);
 		}
 		if (c.river) {
-			plot(c.position.x, c.position.y, image.data, image.width, image.height, image.nchannels, wit);
+			plot(c.position.x, c.position.y, image.data, image.width, image.height, image.nchannels, red);
 		}
 	}
 
