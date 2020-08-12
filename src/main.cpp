@@ -52,13 +52,20 @@ void print_image(const Worldmap *worldmap)
 		}
 	}
 	*/
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<float> dist(0.5f, 1.f);
+	unsigned char basincolor[] = {255, 255, 255};
 	for (const auto &b : worldmap->basins) {
+		basincolor[0] = 255 * dist(gen);
+		basincolor[1] = 255 * dist(gen);
+		basincolor[2] = 255 * dist(gen);
 		for (const auto &chan : b.channels) {
 			if (chan.right != nullptr) {
-				draw_line(chan.confluence->position.x, chan.confluence->position.y, chan.right->position.x, chan.right->position.y, image.data, image.width, image.height, image.nchannels, blu);
+				draw_line(chan.confluence->position.x, chan.confluence->position.y, chan.right->position.x, chan.right->position.y, image.data, image.width, image.height, image.nchannels, basincolor);
 			}
 			if (chan.left != nullptr) {
-				draw_line(chan.confluence->position.x, chan.confluence->position.y, chan.left->position.x, chan.left->position.y, image.data, image.width, image.height, image.nchannels, blu);
+				draw_line(chan.confluence->position.x, chan.confluence->position.y, chan.left->position.x, chan.left->position.y, image.data, image.width, image.height, image.nchannels, basincolor);
 			}
 		}
 	}
@@ -78,12 +85,12 @@ void print_image(const Worldmap *worldmap)
 
 int main(int argc, char *argv[])
 {
-	//printf("Name thy world: ");
-	//std::string name;
-	//std::cin >> name;
+	printf("Name thy world: ");
+	std::string name;
+	std::cin >> name;
+	long seed = std::hash<std::string>()(name);
 
-	long seed = 1337;
-	//long seed = std::hash<std::string>()(name); // I copy pasted this from the internet so I have no idea how it works
+	//seed = 1337;
 
 	Worldmap worldmap = {seed, MAP_AREA};
 

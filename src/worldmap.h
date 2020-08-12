@@ -61,6 +61,12 @@ struct tile {
 	enum BIOME biome;
 };
 
+struct branch {
+	const struct corner *confluence = nullptr;
+	struct branch *left = nullptr;
+	struct branch *right = nullptr;
+};
+
 struct drainage {
 	const struct corner *confluence = nullptr;
 	const struct corner *left = nullptr;

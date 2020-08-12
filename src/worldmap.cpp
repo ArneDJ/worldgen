@@ -1,9 +1,11 @@
+#include <iostream>
 #include <vector>
 #include <algorithm>
 #include <random>
 #include <unordered_map>
 #include <list>
 #include <queue>
+	#include <chrono>
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
 
@@ -148,7 +150,6 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 void Worldmap::gen_diagram(unsigned int maxcandidates)
 {
 	// generate random points
-	std::random_device rd;
 	std::mt19937 gen(seed);
 	std::uniform_real_distribution<float> dist_x(area.min.x, area.max.x);
 	std::uniform_real_distribution<float> dist_y(area.min.y, area.max.y);
@@ -331,7 +332,14 @@ void Worldmap::remove_echoriads(void)
 
 void Worldmap::gen_rivers(void)
 {
+	struct meta {
+		bool visited;
+		int elevation;
+		int score;
+	};
+
 	// construct the drainage candidate graph
+	// only land and coast corners not on the edge of the map can be candidates for the graph
 	std::vector<const struct corner*> graph;
 	for (auto &c : corners) {
 		if (c.coast && c.frontier == false) {
@@ -352,44 +360,45 @@ void Worldmap::gen_rivers(void)
 		}
 	}
 
-	// breadth first search
-	std::unordered_map<const struct corner*, bool> visited;
-	std::unordered_map<const struct corner*, int> distance;
-	std::unordered_map<const struct corner*, int> elevation;
-	std::unordered_map<const struct corner*, int> score;
+auto start = std::chrono::steady_clock::now();
+	std::unordered_map<const struct corner*, struct meta> umap;
 	for (auto node : graph) {
-		visited[node] = false;
-		distance[node] = 0;
-		score[node] = 0;
 		int weight = 0;
 		for (const auto &t : node->touches) {
-			switch(t->relief) {
-			//case SEABED: weight += 1; break;
-			//case LOWLAND: weight += 2; break;
-			case UPLAND: weight += 3; break;
-			case HIGHLAND: weight += 4; break;
-			};
+			if (t->relief == UPLAND) {
+				weight += 3;
+			} else if (t->relief == HIGHLAND) {
+				weight += 4;
+			}
 		}
-		elevation[node] = weight;
+		struct meta data = {
+			.visited = false,
+			.elevation = weight,
+			.score = 0
+		};
+		umap[node] = data;
 	}
 
-	for (auto node : graph) {
-		if (node->coast) {
+	// breadth first search
+	for (auto root : graph) {
+		if (root->coast) {
 			std::queue<const struct corner*> frontier;
-			visited[node] = true;
-			frontier.push(node);
+			umap[root].visited = true;
+			frontier.push(root);
 			while (!frontier.empty()) {
 				const struct corner *v = frontier.front();
 				frontier.pop();
-				int layer = distance[v] + 1 + elevation[v];
+				struct meta &vdata = umap[v];
+				int depth = vdata.score + vdata.elevation + 1;
 				for (auto neighbor : v->adjacent) {
 					if (neighbor->river == true && neighbor->coast == false) {
-						if (visited[neighbor] == false) {
-							visited[neighbor] = true;
+						struct meta &ndata = umap[neighbor];
+						if (ndata.visited == false) {
+							ndata.visited = true;
+							ndata.score = depth;
 							frontier.push(neighbor);
-							distance[neighbor] = layer;
-						} else if (distance[neighbor] > layer) {
-							distance[neighbor] = layer;
+						} else if (ndata.score > depth && ndata.elevation >= vdata.elevation) {
+							ndata.score = depth;
 							frontier.push(neighbor);
 						}
 					}
@@ -397,27 +406,32 @@ void Worldmap::gen_rivers(void)
 			}
 		}
 	}
+auto end = std::chrono::steady_clock::now();
+std::chrono::duration<double> elapsed_seconds = end-start;
+std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
 	for (auto node : graph) {
-		visited[node] = false;
+		umap[node].visited = false;
 	}
-	for (auto node : graph) {
-		if (node->coast) {
-			visited[node] = true;
+	for (auto root : graph) {
+		if (root->coast) {
+			umap[root].visited = true;
 			struct basin basn;
-			basn.mouth = node;
+			basn.mouth = root;
 			std::queue<const struct corner*> frontier;
-			frontier.push(node);
+			frontier.push(root);
 			while (!frontier.empty()) {
 				const struct corner *v = frontier.front();
 				frontier.pop();
+				struct meta &vdata = umap[v];
 				struct drainage drain;
 				drain.confluence = v;
 				for (auto neighbor : v->adjacent) {
-					bool valid = visited[neighbor] == false && neighbor->coast == false;
+					struct meta &ndata = umap[neighbor];
+					bool valid = ndata.visited == false && neighbor->coast == false;
 					if (valid) {
-						if (distance[neighbor] > distance[v]) {
-							visited[neighbor] = true;
+						if (ndata.score > vdata.score && ndata.elevation >= vdata.elevation) {
+							ndata.visited = true;
 							frontier.push(neighbor);
 							if (drain.left == nullptr) {
 								drain.left = neighbor;
@@ -432,4 +446,8 @@ void Worldmap::gen_rivers(void)
 			basins.push_back(basn);
 		}
 	}
+	// if a river node doesn't drain into a sea it becomes part of an endorheic basin
+	//
+	//
+	// Horton-Strahler numbers
 }
