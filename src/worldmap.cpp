@@ -17,10 +17,16 @@
 #include "terra.h"
 #include "worldmap.h"
 
+enum TEMPERATURE { COLD, TEMPERATE, WARM };
+enum VEGETATION { ARID, DRY, HUMID };
+
 static struct branch *insert(const struct corner *confluence);
 static void delete_basin(struct basin *tree);
 static void prune_branches(struct branch *root);
 static void strahler_postorder(struct basin *tree);
+static enum TEMPERATURE pick_temperature(float warmth);
+static enum VEGETATION pick_vegetation(float rainfall);
+static enum BIOME pick_biome(enum RELIEF relief, enum TEMPERATURE temper, enum VEGETATION veg);
 
 static const size_t DIM = 256;
 static const int MIN_STRAHLER_SIZE = 4;
@@ -38,9 +44,9 @@ static const struct worldparams DEFAULT_WORLD_PARAMETERS = {
 	.lacunarity = 2.5f,
 	.tempfreq = 0.005f,
 	.tempperturb = 100.f,
-	.rainperturb = 1.f,
-	.tempinfluence = 0.6f,
-	.rainblur = 50.f,
+	.rainperturb = 50.f,
+	.tempinfluence = 0.7f,
+	.rainblur = 30.f,
 	.lowland = 0.48f,
 	.upland = 0.58f,
 	.highland = 0.66f,
@@ -116,6 +122,9 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	Terraform terra = {TERRA_IMAGE_RES, this->seed, this->params};
 
+	DEBUG = blank_byteimage(1, 512, 512);
+	memcpy(DEBUG.data, terra.rainmap.data, sizeof(unsigned char)*512*512);
+
 	gen_diagram(DIM*DIM);
 
 	gen_relief(&terra.heightmap);
@@ -128,6 +137,16 @@ printf("done!\n");
 auto end = std::chrono::steady_clock::now();
 std::chrono::duration<double> elapsed_seconds = end-start;
 std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
+
+	const float scale_x = float(TERRA_IMAGE_RES) / area.max.x;
+	const float scale_y = float(TERRA_IMAGE_RES) / area.max.y;
+	for (struct tile &t : tiles) {
+		float warmth = sample_byteimage(scale_x*t.center.x, scale_y*t.center.y, RED, &terra.tempmap);
+		float rain = sample_byteimage(scale_x*t.center.x, scale_y*t.center.y, RED, &terra.rainmap);
+		enum TEMPERATURE temper = pick_temperature(warmth);
+		enum VEGETATION veg = pick_vegetation(rain);
+		t.biome = pick_biome(t.relief, temper, veg);
+	}
 };
 
 Worldmap::~Worldmap(void)
@@ -357,6 +376,7 @@ void Worldmap::gen_rivers(void)
 {
 	// construct the drainage basin candidate graph
 	// only land and coast corners not on the edge of the map can be candidates for the graph
+	// TODO only add nodes that are above a minimum rainfall in the graph
 	std::vector<const struct corner*> graph;
 	for (auto &c : corners) {
 		if (c.coast && c.frontier == false) {
@@ -607,4 +627,76 @@ static void delete_basin(struct basin *tree)
 	prune_branches(tree->mouth);
 
 	tree->mouth = nullptr;
+}
+
+static enum TEMPERATURE pick_temperature(float warmth)
+{
+	enum TEMPERATURE temperature = COLD;
+
+	if (warmth > 0.75f) {
+		temperature = WARM;
+	} else if (warmth < 0.25f) {
+		temperature = COLD;
+	} else {
+		temperature = TEMPERATE;
+	}
+
+	return temperature;
+}
+
+static enum VEGETATION pick_vegetation(float rainfall)
+{
+	enum VEGETATION vegetation = ARID;
+
+	if (rainfall < 0.25f) {
+		vegetation = ARID;
+	} else {
+		std::random_device rd;
+		std::mt19937 gen(rd());
+		float p = glm::smoothstep(0.2f, 0.7f, rainfall);
+		std::bernoulli_distribution d(p);
+		if (d(gen) == false) {
+			vegetation = DRY;
+		} else {
+			vegetation = HUMID;
+		}
+	}
+
+	return vegetation;
+};
+
+static enum BIOME pick_biome(enum RELIEF relief, enum TEMPERATURE temper, enum VEGETATION veg)
+{
+	if (relief == SEABED) { return SEA; } // pretty obvious
+
+	// mountain biomes
+	if (relief == HIGHLAND) {
+		if (temper == WARM && veg == ARID) {
+			return BADLANDS;
+		} else {
+			return GLACIER;
+		}
+	}
+
+	if (temper == COLD) {
+		switch (veg) {
+		case ARID: return STEPPE;
+		case DRY: return PINE_GRASSLAND;
+		case HUMID: return PINE_FOREST;
+		};
+	} else if (temper == TEMPERATE) {
+		switch (veg) {
+		case ARID: return STEPPE;
+		case DRY: return BROADLEAF_GRASSLAND;
+		case HUMID: return BROADLEAF_FOREST;
+		};
+	} else if (temper == WARM) {
+		switch (veg) {
+		case ARID: return DESERT;
+		case DRY: return SAVANNA;
+		case HUMID: return SHRUBLAND;
+		};
+	}
+
+	return GLACIER; // the impossible happened
 }

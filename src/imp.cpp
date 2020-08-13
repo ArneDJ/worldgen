@@ -223,7 +223,7 @@ float sample_byteimage(int x, int y, enum channel chan, const struct byteimage *
 		return 0.f;
 	}
 	if (x < 0 || y < 0 || x > (image->width-1) || y > (image->height-1)) {
-	return 0.f;
+		return 0.f;
 	}
 
 	int index = y * image->width * image->nchannels + x * image->nchannels;

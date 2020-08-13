@@ -62,7 +62,14 @@ static struct byteimage tempimage(size_t imageres, long seed, float freq, float 
 	return image;
 }
 
-static struct byteimage rainimage(const struct byteimage *elevation, const struct byteimage *temperature, float tempinfluence, float sealevel, float blur)
+static float gauss(float a, float b, float c, float x)
+{
+	float exponent = ((x-b)*(x-b)) / (2.f * (c*c));
+
+	return a * std::exp(-exponent);
+}
+
+static struct byteimage rainimage(const struct byteimage *elevation, const struct byteimage *temperature, long seed, float tempinfluence, float sealevel, float blur)
 {
 	struct byteimage image = blank_byteimage(1, elevation->width, elevation->height);
 
@@ -78,12 +85,29 @@ static struct byteimage rainimage(const struct byteimage *elevation, const struc
 
 	gauss_blur_image(&image, blur);
 
-	for (auto i = 0; i < elevation->width*elevation->height; i++) {
-		float temp = 1.f - (temperature->data[i] / 255.f);
-		float rain = image.data[i] / 255.f;
-		rain = 1.f - rain;
-		rain = glm::mix(rain, temp, tempinfluence*(1.f - temp));
-		image.data[i] = rain * 255;
+	FastNoise noise;
+	noise.SetSeed(seed);
+	noise.SetNoiseType(FastNoise::Perlin);
+	noise.SetFrequency(0.01f);
+	noise.SetFractalOctaves(6);
+	noise.SetFractalLacunarity(3.f);
+	noise.SetPerturbFrequency(0.01f);
+	noise.SetGradientPerturbAmp(50.f);
+
+	for (int i = 0; i < image.width; i++) {
+		for (int j = 0; j < image.height; j++) {
+			int index = i * image.width + j;
+			float temp = 1.f - (temperature->data[index] / 255.f);
+			float rain = image.data[index] / 255.f;
+			rain = 1.f - rain;
+			float y = i; float x = j;
+			noise.GradientPerturbFractal(x, y);
+			float detail = (noise.GetNoise(x, y) + 1.f) / 2.f;
+			float dev = gauss(1.f, 0.25f, 0.25f, rain);
+			rain = glm::mix(rain, detail, 0.5f*dev);
+			rain = glm::mix(rain, temp, detail*(1.f - temp));
+			image.data[index] = glm::clamp(rain, 0.f, 1.f) * 255;
+		}
 	}
 
 	return image;
@@ -93,7 +117,7 @@ Terraform::Terraform(size_t imageres, long seed, struct worldparams params)
 {
 	heightmap = heightimage(imageres, seed, params);
 	tempmap = tempimage(imageres, seed, params.tempfreq, params.tempperturb);
-	rainmap = rainimage(&heightmap, &tempmap, params.tempinfluence, params.lowland, params.rainblur);
+	rainmap = rainimage(&heightmap, &tempmap, seed, params.tempinfluence, params.lowland, params.rainblur);
 }
 
 Terraform::~Terraform(void) 

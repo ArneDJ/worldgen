@@ -20,7 +20,8 @@ enum BIOME {
 	BROADLEAF_FOREST,
 	PINE_GRASSLAND,
 	PINE_FOREST,
-	FLOODPLAIN
+	FLOODPLAIN,
+	BADLANDS
 };
 
 struct border {
@@ -80,6 +81,7 @@ public:
 	std::vector<struct border> borders;
 	std::list<struct basin> basins;
 	struct rectangle area;
+	struct byteimage DEBUG;
 	long seed;
 public:
 	Worldmap(long seed, struct rectangle area);

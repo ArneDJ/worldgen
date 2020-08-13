@@ -27,40 +27,66 @@ static const struct rectangle MAP_AREA = {
 void print_image(const Worldmap *worldmap)
 {
 	struct byteimage image = blank_byteimage(3, 2048, 2048);
-	unsigned char red[] = {255, 0, 0};
 	unsigned char blu[] = {0, 0, 255};
 	unsigned char wit[] = {255, 255, 255};
+	glm::vec3 red = {1.f, 0.f, 0.f};
+	glm::vec3 sea = {0.2f, 0.5f, 0.95f};
+	glm::vec3 grassland = {0.2f, 1.f, 0.2f};
+	glm::vec3 desert = {1.f, 1.f, 0.2f};
+	glm::vec3 forest = 0.8f * grassland;
+	glm::vec3 taiga = {0.2f, 0.95f, 0.6f};
+	glm::vec3 steppe = glm::mix(grassland, desert, 0.5f);
+	glm::vec3 glacier = {0.8f, 0.8f, 1.f};
+	glm::vec3 floodplain = {0.1f, 0.5f, 0.f};
+	glm::vec3 taiga_forest = 0.8f * taiga;
+	glm::vec3 shrubland = glm::mix(forest, desert, 0.75f);
+	glm::vec3 savanna = glm::mix(grassland, desert, 0.75f);
+	glm::vec3 badlands = glm::mix(red, desert, 0.75f);
+
 	for (const auto &t : worldmap->tiles) {
 		unsigned char color[3];
+		glm::vec3 rgb = {1.f, 1.f, 1.f};
 		float base = 0.25f;
 		switch (t.relief) {
-		case SEABED : base = 0.25f; break;
-		case LOWLAND : base = 0.5f; break;
-		case UPLAND : base = 0.6f; break;
+		case SEABED : base = 0.75f; break;
+		case LOWLAND : base = 0.85f; break;
+		case UPLAND : base = 0.9f; break;
 		case HIGHLAND : base = 1.f; break;
 		};
+		switch (t.biome) {
+		case SEA: rgb = sea; break;
+		case BROADLEAF_FOREST: rgb = forest; break;
+		case PINE_FOREST: rgb = taiga_forest; break;
+		case PINE_GRASSLAND: rgb = taiga; break;
+		case SAVANNA: rgb = savanna; break;
+		case STEPPE: rgb = steppe; break;
+		case DESERT: rgb = desert; break;
+		case GLACIER: rgb = glacier; break;
+		case SHRUBLAND: rgb = shrubland; break;
+		case BROADLEAF_GRASSLAND: rgb = grassland; break;
+		case FLOODPLAIN: rgb = floodplain; break;
+		case BADLANDS: rgb = badlands; break;
+		};
 
-		color[0] = 255 * base;
-		color[1] = 255 * base;
-		color[2] = 255 * base;
-		for (const auto &b : t.borders) {
-			draw_triangle(t.center, b->c1->position, b->c0->position, image.data, image.width, image.height, image.nchannels, color);
+		color[0] = 255 * base * rgb.x;
+		color[1] = 255 * base * rgb.y;
+		color[2] = 255 * base * rgb.z;
+		for (const auto &bord : t.borders) {
+			// round points to rasterize properly
+			glm::vec2 a = {round(t.center.x), round(t.center.y)};
+			glm::vec2 b = {round(bord->c0->position.x), round(bord->c0->position.y)};
+			glm::vec2 c = {round(bord->c1->position.x), round(bord->c1->position.y)};
+			draw_triangle(a, b, c, image.data, image.width, image.height, image.nchannels, color);
 		}
 	}
-	/*
-	for (const auto &b : worldmap->borders) {
-		if (b.river) {
-			draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, blu);
-		}
-	}
-	*/
+
 	std::mt19937 gen(worldmap->seed);
 	std::uniform_real_distribution<float> dist(0.5f, 1.f);
 	unsigned char basincolor[] = {255, 255, 255};
 	for (const auto &b : worldmap->basins) {
 		if (b.mouth != nullptr) {
-			basincolor[0] = 255 * dist(gen);
-			basincolor[1] = 255 * dist(gen);
+			basincolor[0] = 55 * dist(gen);
+			basincolor[1] = 55 * dist(gen);
 			basincolor[2] = 255 * dist(gen);
 			std::queue<struct branch*> queue;
 			queue.push(b.mouth);
@@ -78,6 +104,7 @@ void print_image(const Worldmap *worldmap)
 			}
 		}
 	}
+	/*
 	for (const auto &c : worldmap->corners) {
 		if (c.coast) {
 			plot(c.position.x, c.position.y, image.data, image.width, image.height, image.nchannels, red);
@@ -86,8 +113,11 @@ void print_image(const Worldmap *worldmap)
 			plot(c.position.x, c.position.y, image.data, image.width, image.height, image.nchannels, red);
 		}
 	}
+	*/
 
+	stbi_flip_vertically_on_write(true);
 	stbi_write_png("output.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
+	stbi_write_png("rain.png", worldmap->DEBUG.width, worldmap->DEBUG.height, worldmap->DEBUG.nchannels, worldmap->DEBUG.data, worldmap->DEBUG.width*worldmap->DEBUG.nchannels);
 
 	delete_byteimage(&image);
 }
@@ -99,7 +129,9 @@ int main(int argc, char *argv[])
 	std::cin >> name;
 	long seed = std::hash<std::string>()(name);
 
-	//seed = 1337;
+	if (name == "1337") {
+		seed = 1337;
+	}
 
 	Worldmap worldmap = {seed, MAP_AREA};
 
