@@ -88,7 +88,10 @@ private:
 	struct worldparams params;
 private:
 	void gen_diagram(unsigned int maxcandidates);
+	void gen_relief(const struct byteimage *heightmap);
+	void gen_rivers(void);
 	void floodfill_relief(unsigned int minsize, enum RELIEF target, enum RELIEF replacement);
 	void remove_echoriads(void);
-	void gen_rivers(void);
+	void gen_drainage_basins(std::vector<const struct corner*> &graph);
+	void trim_river_basins(void);
 };

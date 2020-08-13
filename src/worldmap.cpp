@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <list>
 #include <queue>
-	#include <chrono>
+#include <chrono>
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
 
@@ -18,9 +18,8 @@
 #include "worldmap.h"
 
 static struct branch *insert(const struct corner *confluence);
-void delete_basin(struct basin *tree);
-void prune_branches(struct branch *root);
-//static int strahler_postorder(struct branch *node);
+static void delete_basin(struct basin *tree);
+static void prune_branches(struct branch *root);
 static void strahler_postorder(struct basin *tree);
 
 static const size_t DIM = 256;
@@ -119,43 +118,13 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	gen_diagram(DIM*DIM);
 
-	const float scale_x = float(TERRA_IMAGE_RES) / this->area.max.x;
-	const float scale_y = float(TERRA_IMAGE_RES) / this->area.max.y;
-	for (struct tile &t : tiles) {
-		float height = sample_byteimage(scale_x*t.center.x, scale_y*t.center.y, RED, &terra.heightmap);
-		t.land = (height < params.lowland) ? false : true;
-		if (height < params.lowland) { 
-			t.relief = SEABED;
-		} else if (height < params.upland) {
-			t.relief = LOWLAND;
-		} else if (height < params.highland) {
-			t.relief = UPLAND;
-		} else {
-			t.relief = HIGHLAND;
-		}
-	}
+	gen_relief(&terra.heightmap);
 
-	floodfill_relief(MIN_WATER_BODY, SEABED, LOWLAND);
-	floodfill_relief(MIN_MOUNTAIN_BODY, HIGHLAND, UPLAND);
-	remove_echoriads();
-
-	printf("generating rivers ... ");
-	fflush(stdout);
-	// find coastal tiles
-	for (auto &b : borders) {
-		// use XOR to determine if land is different
-		b.coast = b.t0->land ^ b.t1->land;
-		if (b.coast == true) {
-			b.t0->coast = true;
-			b.t1->coast = true;
-			b.c0->coast = true;
-			b.c1->coast = true;
-		}
-	}
-
+printf("generating rivers ... ");
+fflush(stdout);
 auto start = std::chrono::steady_clock::now();
 	gen_rivers();
-	printf("done!\n");
+printf("done!\n");
 auto end = std::chrono::steady_clock::now();
 std::chrono::duration<double> elapsed_seconds = end-start;
 std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
@@ -262,6 +231,39 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 	}
 }
 
+void Worldmap::gen_relief(const struct byteimage *heightmap)
+{
+	const float scale_x = float(TERRA_IMAGE_RES) / area.max.x;
+	const float scale_y = float(TERRA_IMAGE_RES) / area.max.y;
+	for (struct tile &t : tiles) {
+		float height = sample_byteimage(scale_x*t.center.x, scale_y*t.center.y, RED, heightmap);
+		t.land = (height < params.lowland) ? false : true;
+		if (height < params.lowland) { 
+			t.relief = SEABED;
+		} else if (height < params.upland) {
+			t.relief = LOWLAND;
+		} else if (height < params.highland) {
+			t.relief = UPLAND;
+		} else {
+			t.relief = HIGHLAND;
+		}
+	}
+
+	floodfill_relief(MIN_WATER_BODY, SEABED, LOWLAND);
+	floodfill_relief(MIN_MOUNTAIN_BODY, HIGHLAND, UPLAND);
+	remove_echoriads();
+
+	// find coastal tiles
+	for (auto &b : borders) {
+		// use XOR to determine if land is different
+		b.coast = b.t0->land ^ b.t1->land;
+		b.t0->coast = b.coast;
+		b.t1->coast = b.coast;
+		b.c0->coast = b.coast;
+		b.c1->coast = b.coast;
+	}
+}
+
 void Worldmap::floodfill_relief(unsigned int minsize, enum RELIEF target, enum RELIEF replacement)
 {
 	std::unordered_map<const struct tile*, bool> umap;
@@ -272,20 +274,20 @@ void Worldmap::floodfill_relief(unsigned int minsize, enum RELIEF target, enum R
 	for (struct tile &root : tiles) {
 		std::vector<struct tile*> marked;
 		if (umap[&root] == false && root.relief == target) {
-			std::list<const struct tile*> queue;
+			std::queue<const struct tile*> queue;
 			umap[&root] = true;
-			queue.push_back(&root);
+			queue.push(&root);
 			marked.push_back(&root);
 
 			while (queue.empty() == false) {
 				const struct tile *v = queue.front();
-				queue.pop_front();
+				queue.pop();
 
 				for (const auto &neighbor : v->neighbors) {
 					if (umap[neighbor] == false) {
 						umap[neighbor] = true;
 						if (neighbor->relief == target) {
-							queue.push_back(neighbor);
+							queue.push(neighbor);
 							marked.push_back(&tiles[neighbor->index]);
 						}
 					}
@@ -318,14 +320,14 @@ void Worldmap::remove_echoriads(void)
 		std::vector<struct tile*> marked;
 		bool target = (root.relief == LOWLAND) || (root.relief == UPLAND);
 		if (umap[&root] == false && target == true) {
-			std::list<const struct tile*> queue;
+			std::queue<const struct tile*> queue;
 			umap[&root] = true;
-			queue.push_back(&root);
+			queue.push(&root);
 			marked.push_back(&root);
 
 			while (queue.empty() == false) {
 				const struct tile *v = queue.front();
-				queue.pop_front();
+				queue.pop();
 
 				for (const auto &neighbor : v->neighbors) {
 					if (neighbor->relief == SEABED) {
@@ -335,7 +337,7 @@ void Worldmap::remove_echoriads(void)
 					if (umap[neighbor] == false) {
 						umap[neighbor] = true;
 						if (neighbor->relief == LOWLAND || neighbor->relief == UPLAND) {
-							queue.push_back(neighbor);
+							queue.push(neighbor);
 							marked.push_back(&tiles[neighbor->index]);
 						}
 					}
@@ -353,13 +355,7 @@ void Worldmap::remove_echoriads(void)
 
 void Worldmap::gen_rivers(void)
 {
-	struct meta {
-		bool visited;
-		int elevation;
-		int score;
-	};
-
-	// construct the drainage candidate graph
+	// construct the drainage basin candidate graph
 	// only land and coast corners not on the edge of the map can be candidates for the graph
 	std::vector<const struct corner*> graph;
 	for (auto &c : corners) {
@@ -380,6 +376,19 @@ void Worldmap::gen_rivers(void)
 			}
 		}
 	}
+
+	gen_drainage_basins(graph);
+
+	trim_river_basins();
+}
+
+void Worldmap::gen_drainage_basins(std::vector<const struct corner*> &graph)
+{
+	struct meta {
+		bool visited;
+		int elevation;
+		int score;
+	};
 
 	std::unordered_map<const struct corner*, struct meta> umap;
 	for (auto node : graph) {
@@ -464,13 +473,14 @@ void Worldmap::gen_rivers(void)
 			basins.push_back(basn);
 		}
 	}
+}
 
+void Worldmap::trim_river_basins(void)
+{
 	// assign Horton-Strahler numbers
 	for (auto &bas : basins) {
-		//bas.mouth->strahler = strahler_postorder(bas.mouth);
 		strahler_postorder(&bas);
 	}
-
 	// prune binary tree branch if the strahler number is too low
 	for (auto it = basins.begin(); it != basins.end(); ) {
 		struct basin &bas = *it;
@@ -518,8 +528,14 @@ static struct branch *insert(const struct corner *confluence)
 	return node;
 }
 
+// https://en.wikipedia.org/wiki/Strahler_number
 static inline int strahler(const struct branch *node) 
 {
+	// if node has no children it is a leaf with strahler number 1
+	if (node->left == nullptr && node->right == nullptr) {
+		return 1;
+	}
+
 	int left = (node->left != nullptr) ? node->left->strahler : 0;
 	int right = (node->right != nullptr) ? node->right->strahler : 0;
 
@@ -530,7 +546,7 @@ static inline int strahler(const struct branch *node)
 	}
 }
 
-// post order traversal
+// post order tree traversal
 static void strahler_postorder(struct basin *tree)
 {
 	std::list<struct branch*> stack;
@@ -546,8 +562,7 @@ static void strahler_postorder(struct basin *tree)
 			} else if (current->right != nullptr) {
 				stack.push_back(current->right);
 			} else {
-				// leaf node
-				current->strahler = 1;
+				current->strahler = strahler(current);
 				stack.pop_back();
 			}
 		} else if (current->left == prev) {
@@ -566,37 +581,7 @@ static void strahler_postorder(struct basin *tree)
 	}
 }
 
-/*
-// recursive post order traversal
-static int strahler_postorder(struct branch *node)
-{
-	if (node == nullptr) {
-		return 0;
-	}
-
-	// if node has no children it is a leaf with strahler number 1
-	if (node->left == nullptr && node->right == nullptr) {
-		node->strahler = 1;
-		return 1;
-	}
-
-	int left = strahler_postorder(node->left);
-	int right = strahler_postorder(node->right);
-
-	int strahler = 0;
-	if (left == right) {
-		strahler = std::max(left, right) + 1;
-	} else {
-		strahler = std::max(left, right);
-	}
-
-	node->strahler = strahler;
-
-	return strahler;
-}
-*/
-
-void prune_branches(struct branch *root)
+static void prune_branches(struct branch *root)
 {
 	if (root == nullptr) { return; }
 
@@ -615,7 +600,7 @@ void prune_branches(struct branch *root)
 	}
 }
 
-void delete_basin(struct basin *tree)
+static void delete_basin(struct basin *tree)
 {
 	if (tree->mouth == nullptr) { return; }
 
@@ -623,4 +608,3 @@ void delete_basin(struct basin *tree)
 
 	tree->mouth = nullptr;
 }
-

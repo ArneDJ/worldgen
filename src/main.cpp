@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 	std::cin >> name;
 	long seed = std::hash<std::string>()(name);
 
-	seed = 1337;
+	//seed = 1337;
 
 	Worldmap worldmap = {seed, MAP_AREA};
 
