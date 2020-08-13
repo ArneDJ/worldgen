@@ -20,7 +20,8 @@
 static struct branch *insert(const struct corner *confluence);
 void delete_basin(struct basin *tree);
 void prune_branches(struct branch *root);
-static int strahler_postorder(struct branch *node);
+//static int strahler_postorder(struct branch *node);
+static void strahler_postorder(struct basin *tree);
 
 static const size_t DIM = 256;
 static const int MIN_STRAHLER_SIZE = 4;
@@ -138,6 +139,8 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 	floodfill_relief(MIN_MOUNTAIN_BODY, HIGHLAND, UPLAND);
 	remove_echoriads();
 
+	printf("generating rivers ... ");
+	fflush(stdout);
 	// find coastal tiles
 	for (auto &b : borders) {
 		// use XOR to determine if land is different
@@ -150,15 +153,19 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 		}
 	}
 
+auto start = std::chrono::steady_clock::now();
 	gen_rivers();
+	printf("done!\n");
+auto end = std::chrono::steady_clock::now();
+std::chrono::duration<double> elapsed_seconds = end-start;
+std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 };
 
 Worldmap::~Worldmap(void)
 {
-	for (int i = 0; i < basins.size(); i++) {
-		delete_basin(&basins[i]);
+	for (auto &bas : basins) {
+		delete_basin(&bas);
 	}
-
 }
 
 void Worldmap::gen_diagram(unsigned int maxcandidates)
@@ -374,7 +381,6 @@ void Worldmap::gen_rivers(void)
 		}
 	}
 
-auto start = std::chrono::steady_clock::now();
 	std::unordered_map<const struct corner*, struct meta> umap;
 	for (auto node : graph) {
 		int weight = 0;
@@ -420,9 +426,6 @@ auto start = std::chrono::steady_clock::now();
 			}
 		}
 	}
-auto end = std::chrono::steady_clock::now();
-std::chrono::duration<double> elapsed_seconds = end-start;
-std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
 	// create the drainage basin binary tree
 	for (auto node : graph) {
@@ -461,18 +464,18 @@ std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 			basins.push_back(basn);
 		}
 	}
-	// if a river node doesn't drain into a sea it becomes part of an endorheic basin
-	//
-	//
+
 	// assign Horton-Strahler numbers
-	for (auto bas : basins) {
-		bas.mouth->strahler = strahler_postorder(bas.mouth);
+	for (auto &bas : basins) {
+		//bas.mouth->strahler = strahler_postorder(bas.mouth);
+		strahler_postorder(&bas);
 	}
 
-	// prune binary tree
-	for (const auto &b : basins) {
+	// prune binary tree branch if the strahler number is too low
+	for (auto it = basins.begin(); it != basins.end(); ) {
+		struct basin &bas = *it;
 		std::queue<struct branch*> queue;
-		queue.push(b.mouth);
+		queue.push(bas.mouth);
 		while (!queue.empty()) {
 			struct branch *cur = queue.front();
 			queue.pop();
@@ -494,6 +497,13 @@ std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 				}
 			}
 		}
+		if (bas.mouth->right == nullptr && bas.mouth->left == nullptr) {
+			delete bas.mouth;
+			bas.mouth = nullptr;
+			it = basins.erase(it);
+		} else {
+			++it;
+		}
 	}
 }
 
@@ -508,9 +518,20 @@ static struct branch *insert(const struct corner *confluence)
 	return node;
 }
 
-/*
+static inline int strahler(const struct branch *node) 
+{
+	int left = (node->left != nullptr) ? node->left->strahler : 0;
+	int right = (node->right != nullptr) ? node->right->strahler : 0;
+
+	if (left == right) {
+		return std::max(left, right) + 1;
+	} else {
+		return std::max(left, right);
+	}
+}
+
 // post order traversal
-void assign_strahler(struct basin *tree)
+static void strahler_postorder(struct basin *tree)
 {
 	std::list<struct branch*> stack;
 	struct branch *prev = nullptr;
@@ -525,7 +546,6 @@ void assign_strahler(struct basin *tree)
 			} else if (current->right != nullptr) {
 				stack.push_back(current->right);
 			} else {
-				//printf("%d\n", current->count);
 				// leaf node
 				current->strahler = 1;
 				stack.pop_back();
@@ -534,19 +554,19 @@ void assign_strahler(struct basin *tree)
 			if (current->right != nullptr) {
 				stack.push_back(current->right);
 			} else {
-				//printf("%d\n", current->count);
+				current->strahler = strahler(current);
 				stack.pop_back();
 			}
 		} else if (current->right == prev) {
-			//printf("%d\n", current->count);
+			current->strahler = strahler(current);
 			stack.pop_back();
 		}
 
 		prev = current;
 	}
 }
-*/
 
+/*
 // recursive post order traversal
 static int strahler_postorder(struct branch *node)
 {
@@ -574,6 +594,7 @@ static int strahler_postorder(struct branch *node)
 
 	return strahler;
 }
+*/
 
 void prune_branches(struct branch *root)
 {

@@ -4,6 +4,7 @@
 #include <random>
 #include <algorithm>
 #include <queue>
+#include <list>
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
 
@@ -57,21 +58,23 @@ void print_image(const Worldmap *worldmap)
 	std::uniform_real_distribution<float> dist(0.5f, 1.f);
 	unsigned char basincolor[] = {255, 255, 255};
 	for (const auto &b : worldmap->basins) {
-		basincolor[0] = 255 * dist(gen);
-		basincolor[1] = 255 * dist(gen);
-		basincolor[2] = 255 * dist(gen);
-		std::queue<struct branch*> queue;
-		queue.push(b.mouth);
-		while (!queue.empty()) {
-			struct branch *cur = queue.front();
-			queue.pop();
-			if (cur->right != nullptr) {
-				draw_line(cur->confluence->position.x, cur->confluence->position.y, cur->right->confluence->position.x, cur->right->confluence->position.y, image.data, image.width, image.height, image.nchannels, basincolor);
-				queue.push(cur->right);
-			}
-			if (cur->left != nullptr) {
-				draw_line(cur->confluence->position.x, cur->confluence->position.y, cur->left->confluence->position.x, cur->left->confluence->position.y, image.data, image.width, image.height, image.nchannels, basincolor);
-				queue.push(cur->left);
+		if (b.mouth != nullptr) {
+			basincolor[0] = 255 * dist(gen);
+			basincolor[1] = 255 * dist(gen);
+			basincolor[2] = 255 * dist(gen);
+			std::queue<struct branch*> queue;
+			queue.push(b.mouth);
+			while (!queue.empty()) {
+				struct branch *cur = queue.front();
+				queue.pop();
+				if (cur->right != nullptr) {
+					draw_line(cur->confluence->position.x, cur->confluence->position.y, cur->right->confluence->position.x, cur->right->confluence->position.y, image.data, image.width, image.height, image.nchannels, basincolor);
+					queue.push(cur->right);
+				}
+				if (cur->left != nullptr) {
+					draw_line(cur->confluence->position.x, cur->confluence->position.y, cur->left->confluence->position.x, cur->left->confluence->position.y, image.data, image.width, image.height, image.nchannels, basincolor);
+					queue.push(cur->left);
+				}
 			}
 		}
 	}
@@ -96,7 +99,7 @@ int main(int argc, char *argv[])
 	std::cin >> name;
 	long seed = std::hash<std::string>()(name);
 
-	//seed = 1337;
+	seed = 1337;
 
 	Worldmap worldmap = {seed, MAP_AREA};
 

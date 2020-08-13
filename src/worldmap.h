@@ -69,8 +69,8 @@ struct branch {
 };
 
 struct basin {
-	//std::vector<struct branch> branches;
 	struct branch *mouth; // binary tree root
+	size_t height; // binary tree height
 };
 
 class Worldmap {
@@ -78,7 +78,7 @@ public:
 	std::vector<struct tile> tiles;
 	std::vector<struct corner> corners;
 	std::vector<struct border> borders;
-	std::vector<struct basin> basins;
+	std::list<struct basin> basins;
 	struct rectangle area;
 	long seed;
 public:
