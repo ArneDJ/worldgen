@@ -33,15 +33,15 @@ void print_image(const Worldmap *worldmap)
 	glm::vec3 sea = {0.2f, 0.5f, 0.95f};
 	glm::vec3 grassland = {0.2f, 1.f, 0.2f};
 	glm::vec3 desert = {1.f, 1.f, 0.2f};
-	glm::vec3 forest = 0.8f * grassland;
 	glm::vec3 taiga = {0.2f, 0.95f, 0.6f};
-	glm::vec3 steppe = glm::mix(grassland, desert, 0.5f);
 	glm::vec3 glacier = {0.8f, 0.8f, 1.f};
-	glm::vec3 floodplain = {0.1f, 0.5f, 0.f};
+	glm::vec3 forest = 0.8f * grassland;
 	glm::vec3 taiga_forest = 0.8f * taiga;
+	glm::vec3 steppe = glm::mix(grassland, desert, 0.5f);
 	glm::vec3 shrubland = glm::mix(forest, desert, 0.75f);
 	glm::vec3 savanna = glm::mix(grassland, desert, 0.75f);
 	glm::vec3 badlands = glm::mix(red, desert, 0.75f);
+	glm::vec3 floodplain = glm::mix(forest, desert, 0.5f);
 
 	for (const auto &t : worldmap->tiles) {
 		unsigned char color[3];
@@ -104,20 +104,10 @@ void print_image(const Worldmap *worldmap)
 			}
 		}
 	}
-	/*
-	for (const auto &c : worldmap->corners) {
-		if (c.coast) {
-			plot(c.position.x, c.position.y, image.data, image.width, image.height, image.nchannels, red);
-		}
-		if (c.river) {
-			plot(c.position.x, c.position.y, image.data, image.width, image.height, image.nchannels, red);
-		}
-	}
-	*/
 
 	stbi_flip_vertically_on_write(true);
 	stbi_write_png("output.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
-	stbi_write_png("rain.png", worldmap->terra.rainmap.width, worldmap->terra.rainmap.height, worldmap->terra.rainmap.nchannels, worldmap->terra.rainmap.data, worldmap->terra.rainmap.width*worldmap->terra.rainmap.nchannels);
+	//stbi_write_png("rain.png", worldmap->terra.rainmap.width, worldmap->terra.rainmap.height, worldmap->terra.rainmap.nchannels, worldmap->terra.rainmap.data, worldmap->terra.rainmap.width*worldmap->terra.rainmap.nchannels);
 
 	delete_byteimage(&image);
 }

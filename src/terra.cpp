@@ -10,6 +10,15 @@
 #include "imp.h"
 #include "terra.h"
 
+#define RAIN_FREQUENCY 0.01F
+#define RAIN_OCTAVES 6
+#define RAIN_LACUNARITY 3.F
+#define RAIN_PERTURB_FREQUENCY 0.01F
+#define RAIN_PERTURB_AMP 50.F
+#define RAIN_GAUSS_CENTER 0.25F
+#define RAIN_GAUSS_SIGMA 0.25F
+#define RAIN_DETAIL_MIX 0.5F
+
 static struct byteimage heightimage(size_t imageres, long seed, struct worldparams params)
 {
 	struct byteimage image = blank_byteimage(1, imageres, imageres);
@@ -62,14 +71,15 @@ static struct byteimage tempimage(size_t imageres, long seed, float freq, float 
 	return image;
 }
 
-static float gauss(float a, float b, float c, float x)
+// The parameter a is the height of the curve's peak, b is the position of the center of the peak and c (the standard deviation, sometimes called the Gaussian RMS width) controls the width of the "bell".
+static inline float gauss(float a, float b, float c, float x)
 {
 	float exponent = ((x-b)*(x-b)) / (2.f * (c*c));
 
 	return a * std::exp(-exponent);
 }
 
-static struct byteimage rainimage(const struct byteimage *elevation, const struct byteimage *temperature, long seed, float tempinfluence, float sealevel, float blur)
+static struct byteimage rainimage(const struct byteimage *elevation, const struct byteimage *temperature, long seed, float sealevel, float blur)
 {
 	struct byteimage image = blank_byteimage(1, elevation->width, elevation->height);
 
@@ -88,23 +98,22 @@ static struct byteimage rainimage(const struct byteimage *elevation, const struc
 	FastNoise noise;
 	noise.SetSeed(seed);
 	noise.SetNoiseType(FastNoise::Perlin);
-	noise.SetFrequency(0.01f);
-	noise.SetFractalOctaves(6);
-	noise.SetFractalLacunarity(3.f);
-	noise.SetPerturbFrequency(0.01f);
-	noise.SetGradientPerturbAmp(50.f);
+	noise.SetFrequency(RAIN_FREQUENCY);
+	noise.SetFractalOctaves(RAIN_OCTAVES);
+	noise.SetFractalLacunarity(RAIN_LACUNARITY);
+	noise.SetPerturbFrequency(RAIN_PERTURB_FREQUENCY);
+	noise.SetGradientPerturbAmp(RAIN_PERTURB_AMP);
 
 	for (int i = 0; i < image.width; i++) {
 		for (int j = 0; j < image.height; j++) {
 			int index = i * image.width + j;
 			float temp = 1.f - (temperature->data[index] / 255.f);
-			float rain = image.data[index] / 255.f;
-			rain = 1.f - rain;
+			float rain = 1.f - (image.data[index] / 255.f);
 			float y = i; float x = j;
 			noise.GradientPerturbFractal(x, y);
 			float detail = (noise.GetNoise(x, y) + 1.f) / 2.f;
-			float dev = gauss(1.f, 0.25f, 0.25f, rain);
-			rain = glm::mix(rain, detail, 0.5f*dev);
+			float dev = gauss(1.f, RAIN_GAUSS_CENTER, RAIN_GAUSS_SIGMA, rain);
+			rain = glm::mix(rain, detail, RAIN_DETAIL_MIX*dev);
 			rain = glm::mix(rain, temp, detail*(1.f - temp));
 			image.data[index] = glm::clamp(rain, 0.f, 1.f) * 255;
 		}
@@ -118,7 +127,7 @@ struct terraform form_terra(size_t imageres, long seed, struct worldparams param
 	struct terraform terra;
 	terra.heightmap = heightimage(imageres, seed, params);
 	terra.tempmap = tempimage(imageres, seed, params.tempfreq, params.tempperturb);
-	terra.rainmap = rainimage(&terra.heightmap, &terra.tempmap, seed, params.tempinfluence, params.lowland, params.rainblur);
+	terra.rainmap = rainimage(&terra.heightmap, &terra.tempmap, seed, params.lowland, params.rainblur);
 
 	return terra;
 }

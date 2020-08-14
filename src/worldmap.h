@@ -40,8 +40,8 @@ struct corner {
 	// graph data
 	int index;
 	glm::vec2 position;
-	std::vector<const struct corner*> adjacent;
-	std::vector<const struct tile*> touches;
+	std::vector<struct corner*> adjacent;
+	std::vector<struct tile*> touches;
 	// world data
 	bool frontier;
 	bool coast;
@@ -58,6 +58,7 @@ struct tile {
 	// world data
 	bool land;
 	bool coast;
+	bool river;
 	enum RELIEF relief;
 	enum BIOME biome;
 };
@@ -92,6 +93,7 @@ private:
 	void gen_diagram(unsigned int maxcandidates);
 	void gen_relief(const struct byteimage *heightmap);
 	void gen_rivers(void);
+	void gen_biomes(void);
 	void floodfill_relief(unsigned int minsize, enum RELIEF target, enum RELIEF replacement);
 	void remove_echoriads(void);
 	void gen_drainage_basins(std::vector<const struct corner*> &graph);

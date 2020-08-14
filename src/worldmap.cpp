@@ -21,17 +21,18 @@
 enum TEMPERATURE { COLD, TEMPERATE, WARM };
 enum VEGETATION { ARID, DRY, HUMID };
 
+static struct worldparams import_noiseparams(const char *fpath);
 static struct branch *insert(const struct corner *confluence);
 static void delete_basin(struct basin *tree);
 static void prune_branches(struct branch *root);
-static void shreve_postorder(struct basin *tree);
+static void stream_postorder(struct basin *tree);
 static enum TEMPERATURE pick_temperature(float warmth);
 static enum VEGETATION pick_vegetation(float rainfall);
 static enum BIOME pick_biome(enum RELIEF relief, enum TEMPERATURE temper, enum VEGETATION veg);
 
 static const size_t DIM = 256;
-static const float  POISSON_DISK_RADIUS = 8.F;
-static const int MIN_STREAM_ORDER = 16;
+static const float POISSON_DISK_RADIUS = 8.F;
+static const int MIN_STREAM_ORDER = 4;
 static const size_t TERRA_IMAGE_RES = 512;
 static const size_t MIN_WATER_BODY = 1024;
 static const size_t MIN_MOUNTAIN_BODY = 128;
@@ -39,82 +40,22 @@ static const char *WORLDGEN_INI_FPATH = "worldgen.ini";
 
 // default values in case values from the ini file are invalid
 static const struct worldparams DEFAULT_WORLD_PARAMETERS = {
+	// heightmap
 	.frequency = 0.001f,
 	.perturbfreq = 0.001f,
 	.perturbamp = 200.f,
 	.octaves = 6,
 	.lacunarity = 2.5f,
+	// temperature
 	.tempfreq = 0.005f,
 	.tempperturb = 100.f,
-	.rainperturb = 50.f,
-	.tempinfluence = 0.7f,
-	.rainblur = 30.f,
+	// rain
+	.rainblur = 25.f,
+	// relief
 	.lowland = 0.48f,
 	.upland = 0.58f,
 	.highland = 0.66f,
 };
-
-static struct worldparams import_noiseparams(const char *fpath)
-{
-	INIReader reader = {fpath};
-
-	// init with default values
-	struct worldparams params = DEFAULT_WORLD_PARAMETERS;
-
-	if (reader.ParseError() != 0) {
-		perror(fpath);
-		return params;
-	}
-
-	float frequency = reader.GetReal("", "HEIGHT_FREQUENCY", -1.f);
-	if (params.frequency > 0.f) { params.frequency = frequency; }
-
-	float perturbfreq = reader.GetReal("", "PERTURB_FREQUENCY", -1.f);
-	if (perturbfreq > 0.f) { params.perturbfreq = perturbfreq; }
-
-	float perturbamp = reader.GetReal("", "PERTURB_AMP", -1.f);
-	if (perturbamp > 0.f) { params.perturbamp = perturbamp; }
-
-	unsigned int octaves = reader.GetInteger("", "FRACTAL_OCTAVES", 0);
-	if (octaves > 0) { params.octaves = octaves; }
-
-	float lacunarity = reader.GetReal("", "FRACTAL_LACUNARITY", -1.f);
-	if (lacunarity > 0.f) { params.lacunarity = lacunarity; }
-
-	float tempfreq = reader.GetReal("", "TEMPERATURE_FREQUENCY", -1.f);
-	if (tempfreq > 0.f) { params.tempfreq = tempfreq; }
-
-	float tempperturb = reader.GetReal("", "TEMPERATURE_PERTURB", -1.f);
-	if (tempperturb > 0.f) { params.tempperturb = tempperturb; }
-
-	float rainperturb = reader.GetReal("", "RAIN_PERTURB", -1.f);
-	if (rainperturb > 0.f) { params.rainperturb = rainperturb; }
-
-	float tempinfluence = reader.GetReal("", "TEMPERATURE_INFLUENCE", -1.f);
-	if (tempinfluence > 0.f) { params.tempinfluence = tempinfluence; }
-
-	float rainblur = reader.GetReal("", "RAIN_AMP", -1.f);
-	if (rainblur > 0.f) { params.rainblur = rainblur; }
-
-	float lowland = reader.GetReal("", "LOWLAND_ELEVATION", -1.f);
-	if (lowland > 0.f && lowland < 1.f) { params.lowland = lowland; }
-
-	float upland = reader.GetReal("", "UPLAND_ELEVATION", -1.f);
-	if (upland > 0.f && upland < 1.f) { params.upland = upland; }
-
-	float highland = reader.GetReal("", "HIGHLAND_ELEVATION", -1.f);
-	if (highland > 0.f && highland < 1.f) { params.highland = highland; }
-
-	// lowland can't be higher than upland
-	// upland can't be higher than highland
-	std::array<float, 3> s = {params.lowland, params.upland, params.highland};
-	std::sort(s.begin(), s.end());
-	params.lowland = s[0];
-	params.upland = s[1];
-	params.highland = s[2];
-
-	return params;
-}
 
 Worldmap::Worldmap(long seed, struct rectangle area) 
 {
@@ -130,15 +71,7 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	gen_rivers();
 
-	const float scale_x = float(TERRA_IMAGE_RES) / area.max.x;
-	const float scale_y = float(TERRA_IMAGE_RES) / area.max.y;
-	for (struct tile &t : tiles) {
-		float warmth = sample_byteimage(scale_x*t.center.x, scale_y*t.center.y, RED, &terra.tempmap);
-		float rain = sample_byteimage(scale_x*t.center.x, scale_y*t.center.y, RED, &terra.rainmap);
-		enum TEMPERATURE temper = pick_temperature(warmth);
-		enum VEGETATION veg = pick_vegetation(rain);
-		t.biome = pick_biome(t.relief, temper, veg);
-	}
+	gen_biomes();
 };
 
 Worldmap::~Worldmap(void)
@@ -200,11 +133,11 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 
 	// adapt vertex structures
 	for (const auto &vertex : voronoi.vertices) {
-		std::vector<const struct corner*> adjacent;
+		std::vector<struct corner*> adjacent;
 		for (const auto &neighbor : vertex.adjacent) {
 			adjacent.push_back(&corners[neighbor->index]);
 		}
-		std::vector<const struct tile*> touches;
+		std::vector<struct tile*> touches;
 		for (const auto &cell : vertex.cells) {
 			touches.push_back(&tiles[cell->index]);
 		}
@@ -242,6 +175,22 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 			borders[index].frontier = true;
 			borders[index].c0->frontier = true;
 			borders[index].c1->frontier = true;
+		}
+	}
+}
+
+void Worldmap::gen_biomes(void)
+{
+	const float scale_x = float(TERRA_IMAGE_RES) / area.max.x;
+	const float scale_y = float(TERRA_IMAGE_RES) / area.max.y;
+	for (struct tile &t : tiles) {
+		float warmth = sample_byteimage(scale_x*t.center.x, scale_y*t.center.y, RED, &terra.tempmap);
+		float rain = sample_byteimage(scale_x*t.center.x, scale_y*t.center.y, RED, &terra.rainmap);
+		enum TEMPERATURE temper = pick_temperature(warmth);
+		enum VEGETATION veg = pick_vegetation(rain);
+		t.biome = pick_biome(t.relief, temper, veg);
+		if (t.biome == DESERT && t.relief == LOWLAND && t.river == true) {
+			t.biome = FLOODPLAIN;
 		}
 	}
 }
@@ -396,6 +345,33 @@ void Worldmap::gen_rivers(void)
 	gen_drainage_basins(graph);
 
 	trim_river_basins();
+
+	// after trimming make sure river properties of corners are correct
+	for (auto &c : corners) {
+		c.river = false;
+	}
+	for (const auto &bas : basins) {
+		if (bas.mouth != nullptr) {
+			std::queue<struct branch*> queue;
+			queue.push(bas.mouth);
+			while (!queue.empty()) {
+				struct branch *cur = queue.front();
+				queue.pop();
+				corners[cur->confluence->index].river = true;
+				if (cur->right != nullptr) {
+					queue.push(cur->right);
+				}
+				if (cur->left != nullptr) {
+					queue.push(cur->left);
+				}
+			}
+		}
+	}
+	for (auto &c : corners) {
+		for (auto &t : c.touches) {
+			t->river = c.river;
+		}
+	}
 }
 
 void Worldmap::gen_drainage_basins(std::vector<const struct corner*> &graph)
@@ -495,7 +471,7 @@ void Worldmap::trim_river_basins(void)
 {
 	// assign stream order numbers
 	for (auto &bas : basins) {
-		shreve_postorder(&bas);
+		stream_postorder(&bas);
 	}
 	// prune binary tree branch if the stream order is too low
 	for (auto it = basins.begin(); it != basins.end(); ) {
@@ -548,7 +524,7 @@ static struct branch *insert(const struct corner *confluence)
 // https://en.wikipedia.org/wiki/Strahler_number
 static inline int strahler(const struct branch *node) 
 {
-	// if node has no children it is a leaf with strahler number 1
+	// if node has no children it is a leaf with stream order 1
 	if (node->left == nullptr && node->right == nullptr) {
 		return 1;
 	}
@@ -579,7 +555,7 @@ static inline int shreve(const struct branch *node)
 }
 
 // post order tree traversal
-static void shreve_postorder(struct basin *tree)
+static void stream_postorder(struct basin *tree)
 {
 	std::list<struct branch*> stack;
 	struct branch *prev = nullptr;
@@ -594,18 +570,18 @@ static void shreve_postorder(struct basin *tree)
 			} else if (current->right != nullptr) {
 				stack.push_back(current->right);
 			} else {
-				current->streamorder = shreve(current);
+				current->streamorder = strahler(current);
 				stack.pop_back();
 			}
 		} else if (current->left == prev) {
 			if (current->right != nullptr) {
 				stack.push_back(current->right);
 			} else {
-				current->streamorder = shreve(current);
+				current->streamorder = strahler(current);
 				stack.pop_back();
 			}
 		} else if (current->right == prev) {
-			current->streamorder = shreve(current);
+			current->streamorder = strahler(current);
 			stack.pop_back();
 		}
 
@@ -712,3 +688,60 @@ static enum BIOME pick_biome(enum RELIEF relief, enum TEMPERATURE temper, enum V
 
 	return GLACIER; // the impossible happened
 }
+
+static struct worldparams import_noiseparams(const char *fpath)
+{
+	INIReader reader = {fpath};
+
+	// init with default values
+	struct worldparams params = DEFAULT_WORLD_PARAMETERS;
+
+	if (reader.ParseError() != 0) {
+		perror(fpath);
+		return params;
+	}
+
+	float frequency = reader.GetReal("", "HEIGHT_FREQUENCY", -1.f);
+	if (params.frequency > 0.f) { params.frequency = frequency; }
+
+	float perturbfreq = reader.GetReal("", "HEIGHT_PERTURB_FREQUENCY", -1.f);
+	if (perturbfreq > 0.f) { params.perturbfreq = perturbfreq; }
+
+	float perturbamp = reader.GetReal("", "HEIGHT_PERTURB_AMP", -1.f);
+	if (perturbamp > 0.f) { params.perturbamp = perturbamp; }
+
+	unsigned int octaves = reader.GetInteger("", "HEIGHT_FRACTAL_OCTAVES", 0);
+	if (octaves > 0) { params.octaves = octaves; }
+
+	float lacunarity = reader.GetReal("", "HEIGHT_FRACTAL_LACUNARITY", -1.f);
+	if (lacunarity > 0.f) { params.lacunarity = lacunarity; }
+
+	float tempfreq = reader.GetReal("", "TEMPERATURE_FREQUENCY", -1.f);
+	if (tempfreq > 0.f) { params.tempfreq = tempfreq; }
+
+	float tempperturb = reader.GetReal("", "TEMPERATURE_PERTURB", -1.f);
+	if (tempperturb > 0.f) { params.tempperturb = tempperturb; }
+
+	float rainblur = reader.GetReal("", "RAIN_AMP", -1.f);
+	if (rainblur > 0.f) { params.rainblur = rainblur; }
+
+	float lowland = reader.GetReal("", "ELEVATION_LOWLAND", -1.f);
+	if (lowland > 0.f && lowland < 1.f) { params.lowland = lowland; }
+
+	float upland = reader.GetReal("", "ELEVATION_UPLAND", -1.f);
+	if (upland > 0.f && upland < 1.f) { params.upland = upland; }
+
+	float highland = reader.GetReal("", "ELEVATION_HIGHLAND", -1.f);
+	if (highland > 0.f && highland < 1.f) { params.highland = highland; }
+
+	// lowland can't be higher than upland
+	// upland can't be higher than highland
+	std::array<float, 3> s = {params.lowland, params.upland, params.highland};
+	std::sort(s.begin(), s.end());
+	params.lowland = s[0];
+	params.upland = s[1];
+	params.highland = s[2];
+
+	return params;
+}
+

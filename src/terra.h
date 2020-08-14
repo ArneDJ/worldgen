@@ -1,4 +1,5 @@
 struct worldparams {
+	// heightmap
 	float frequency;
 	float perturbfreq;
 	float perturbamp;
@@ -8,10 +9,8 @@ struct worldparams {
 	float tempfreq;
 	float tempperturb;
 	// rain
-	float rainperturb;
-	float tempinfluence;
 	float rainblur;
-	// elevation
+	// relief
 	float lowland;
 	float upland;
 	float highland;
