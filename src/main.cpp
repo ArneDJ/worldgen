@@ -117,7 +117,7 @@ void print_image(const Worldmap *worldmap)
 
 	stbi_flip_vertically_on_write(true);
 	stbi_write_png("output.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
-	stbi_write_png("rain.png", worldmap->DEBUG.width, worldmap->DEBUG.height, worldmap->DEBUG.nchannels, worldmap->DEBUG.data, worldmap->DEBUG.width*worldmap->DEBUG.nchannels);
+	stbi_write_png("rain.png", worldmap->terra.rainmap.width, worldmap->terra.rainmap.height, worldmap->terra.rainmap.nchannels, worldmap->terra.rainmap.data, worldmap->terra.rainmap.width*worldmap->terra.rainmap.nchannels);
 
 	delete_byteimage(&image);
 }

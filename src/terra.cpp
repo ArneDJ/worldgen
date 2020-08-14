@@ -113,16 +113,12 @@ static struct byteimage rainimage(const struct byteimage *elevation, const struc
 	return image;
 }
 
-Terraform::Terraform(size_t imageres, long seed, struct worldparams params)
+struct terraform form_terra(size_t imageres, long seed, struct worldparams params)
 {
-	heightmap = heightimage(imageres, seed, params);
-	tempmap = tempimage(imageres, seed, params.tempfreq, params.tempperturb);
-	rainmap = rainimage(&heightmap, &tempmap, seed, params.tempinfluence, params.lowland, params.rainblur);
-}
+	struct terraform terra;
+	terra.heightmap = heightimage(imageres, seed, params);
+	terra.tempmap = tempimage(imageres, seed, params.tempfreq, params.tempperturb);
+	terra.rainmap = rainimage(&terra.heightmap, &terra.tempmap, seed, params.tempinfluence, params.lowland, params.rainblur);
 
-Terraform::~Terraform(void) 
-{
-	delete_byteimage(&heightmap);
-	delete_byteimage(&tempmap);
-	delete_byteimage(&rainmap);
+	return terra;
 }

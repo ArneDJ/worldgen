@@ -17,12 +17,10 @@ struct worldparams {
 	float highland;
 };
 
-class Terraform {
-public:
+struct terraform {
 	struct byteimage heightmap;
 	struct byteimage tempmap;
 	struct byteimage rainmap;
-public:
-	Terraform(size_t imageres, long seed, struct worldparams params);
-	~Terraform(void);
 };
+
+struct terraform form_terra(size_t imageres, long seed, struct worldparams params);

@@ -10,6 +10,7 @@
 #include <glm/vec3.hpp>
 
 #include "extern/INIReader.h"
+#include "extern/poisson_disk_sampling.h"
 
 #include "geom.h"
 #include "imp.h"
@@ -23,13 +24,14 @@ enum VEGETATION { ARID, DRY, HUMID };
 static struct branch *insert(const struct corner *confluence);
 static void delete_basin(struct basin *tree);
 static void prune_branches(struct branch *root);
-static void strahler_postorder(struct basin *tree);
+static void shreve_postorder(struct basin *tree);
 static enum TEMPERATURE pick_temperature(float warmth);
 static enum VEGETATION pick_vegetation(float rainfall);
 static enum BIOME pick_biome(enum RELIEF relief, enum TEMPERATURE temper, enum VEGETATION veg);
 
 static const size_t DIM = 256;
-static const int MIN_STRAHLER_SIZE = 4;
+static const float  POISSON_DISK_RADIUS = 8.F;
+static const int MIN_STREAM_ORDER = 16;
 static const size_t TERRA_IMAGE_RES = 512;
 static const size_t MIN_WATER_BODY = 1024;
 static const size_t MIN_MOUNTAIN_BODY = 128;
@@ -120,23 +122,13 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 	this->area = area;
 	this->params = import_noiseparams(WORLDGEN_INI_FPATH);
 
-	Terraform terra = {TERRA_IMAGE_RES, this->seed, this->params};
-
-	DEBUG = blank_byteimage(1, 512, 512);
-	memcpy(DEBUG.data, terra.rainmap.data, sizeof(unsigned char)*512*512);
+	terra = form_terra(TERRA_IMAGE_RES, this->seed, this->params);
 
 	gen_diagram(DIM*DIM);
 
 	gen_relief(&terra.heightmap);
 
-printf("generating rivers ... ");
-fflush(stdout);
-auto start = std::chrono::steady_clock::now();
 	gen_rivers();
-printf("done!\n");
-auto end = std::chrono::steady_clock::now();
-std::chrono::duration<double> elapsed_seconds = end-start;
-std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
 	const float scale_x = float(TERRA_IMAGE_RES) / area.max.x;
 	const float scale_y = float(TERRA_IMAGE_RES) / area.max.y;
@@ -151,6 +143,10 @@ std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
 Worldmap::~Worldmap(void)
 {
+	delete_byteimage(&terra.heightmap);
+	delete_byteimage(&terra.tempmap);
+	delete_byteimage(&terra.rainmap);
+
 	for (auto &bas : basins) {
 		delete_basin(&bas);
 	}
@@ -158,14 +154,14 @@ Worldmap::~Worldmap(void)
 
 void Worldmap::gen_diagram(unsigned int maxcandidates)
 {
-	// generate random points
-	std::mt19937 gen(seed);
-	std::uniform_real_distribution<float> dist_x(area.min.x, area.max.x);
-	std::uniform_real_distribution<float> dist_y(area.min.y, area.max.y);
+	float radius = POISSON_DISK_RADIUS;
+	auto mmin = std::array<float, 2>{{area.min.x, area.min.y}};
+	auto mmax = std::array<float, 2>{{area.max.x, area.max.y}};
 
+	std::vector<std::array<float, 2>> candidates = thinks::PoissonDiskSampling(radius, mmin, mmax, 30, seed);
 	std::vector<glm::vec2> locations;
-	for (unsigned int i = 0; i < maxcandidates; i++) {
-		locations.push_back((glm::vec2) {dist_x(gen), dist_y(gen)});
+	for (const auto &point : candidates) {
+		locations.push_back(glm::vec2(point[0], point[1]));
 	}
 
 	// copy voronoi graph
@@ -497,11 +493,11 @@ void Worldmap::gen_drainage_basins(std::vector<const struct corner*> &graph)
 
 void Worldmap::trim_river_basins(void)
 {
-	// assign Horton-Strahler numbers
+	// assign stream order numbers
 	for (auto &bas : basins) {
-		strahler_postorder(&bas);
+		shreve_postorder(&bas);
 	}
-	// prune binary tree branch if the strahler number is too low
+	// prune binary tree branch if the stream order is too low
 	for (auto it = basins.begin(); it != basins.end(); ) {
 		struct basin &bas = *it;
 		std::queue<struct branch*> queue;
@@ -511,7 +507,7 @@ void Worldmap::trim_river_basins(void)
 			queue.pop();
 
 			if (cur->right != nullptr) {
-				if (cur->right->strahler < MIN_STRAHLER_SIZE) {
+				if (cur->right->streamorder < MIN_STREAM_ORDER) {
 					prune_branches(cur->right);
 					cur->right = nullptr;
 				} else {
@@ -519,7 +515,7 @@ void Worldmap::trim_river_basins(void)
 				}
 			}
 			if (cur->left != nullptr) {
-				if (cur->left->strahler < MIN_STRAHLER_SIZE) {
+				if (cur->left->streamorder < MIN_STREAM_ORDER) {
 					prune_branches(cur->left);
 					cur->left = nullptr;
 				} else {
@@ -543,11 +539,12 @@ static struct branch *insert(const struct corner *confluence)
 	node->confluence = confluence;
 	node->left = nullptr;
 	node->right = nullptr;
-	node->strahler = 1;
+	node->streamorder = 1;
 
 	return node;
 }
 
+// Strahler stream order
 // https://en.wikipedia.org/wiki/Strahler_number
 static inline int strahler(const struct branch *node) 
 {
@@ -556,8 +553,8 @@ static inline int strahler(const struct branch *node)
 		return 1;
 	}
 
-	int left = (node->left != nullptr) ? node->left->strahler : 0;
-	int right = (node->right != nullptr) ? node->right->strahler : 0;
+	int left = (node->left != nullptr) ? node->left->streamorder : 0;
+	int right = (node->right != nullptr) ? node->right->streamorder : 0;
 
 	if (left == right) {
 		return std::max(left, right) + 1;
@@ -566,8 +563,23 @@ static inline int strahler(const struct branch *node)
 	}
 }
 
+// Shreve stream order
+// https://en.wikipedia.org/wiki/Stream_order#Shreve_stream_order
+static inline int shreve(const struct branch *node) 
+{
+	// if node has no children it is a leaf with stream order 1
+	if (node->left == nullptr && node->right == nullptr) {
+		return 1;
+	}
+
+	int left = (node->left != nullptr) ? node->left->streamorder : 0;
+	int right = (node->right != nullptr) ? node->right->streamorder : 0;
+
+	return left + right;
+}
+
 // post order tree traversal
-static void strahler_postorder(struct basin *tree)
+static void shreve_postorder(struct basin *tree)
 {
 	std::list<struct branch*> stack;
 	struct branch *prev = nullptr;
@@ -582,18 +594,18 @@ static void strahler_postorder(struct basin *tree)
 			} else if (current->right != nullptr) {
 				stack.push_back(current->right);
 			} else {
-				current->strahler = strahler(current);
+				current->streamorder = shreve(current);
 				stack.pop_back();
 			}
 		} else if (current->left == prev) {
 			if (current->right != nullptr) {
 				stack.push_back(current->right);
 			} else {
-				current->strahler = strahler(current);
+				current->streamorder = shreve(current);
 				stack.pop_back();
 			}
 		} else if (current->right == prev) {
-			current->strahler = strahler(current);
+			current->streamorder = shreve(current);
 			stack.pop_back();
 		}
 

@@ -66,7 +66,7 @@ struct branch {
 	const struct corner *confluence = nullptr;
 	struct branch *left = nullptr;
 	struct branch *right = nullptr;
-	int strahler;
+	int streamorder;
 };
 
 struct basin {
@@ -76,12 +76,12 @@ struct basin {
 
 class Worldmap {
 public:
+	struct terraform terra;
 	std::vector<struct tile> tiles;
 	std::vector<struct corner> corners;
 	std::vector<struct border> borders;
 	std::list<struct basin> basins;
 	struct rectangle area;
-	struct byteimage DEBUG;
 	long seed;
 public:
 	Worldmap(long seed, struct rectangle area);
