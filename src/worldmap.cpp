@@ -2,6 +2,7 @@
 #include <vector>
 #include <algorithm>
 #include <random>
+#include <map>
 #include <unordered_map>
 #include <list>
 #include <queue>
@@ -221,10 +222,13 @@ void Worldmap::gen_relief(const struct byteimage *heightmap)
 	for (auto &b : borders) {
 		// use XOR to determine if land is different
 		b.coast = b.t0->land ^ b.t1->land;
-		b.t0->coast = b.coast;
-		b.t1->coast = b.coast;
 		b.c0->coast = b.coast;
 		b.c1->coast = b.coast;
+
+		if (b.coast == true) {
+			b.t0->coast = b.coast;
+			b.t1->coast = b.coast;
+		}
 	}
 }
 
@@ -346,10 +350,18 @@ void Worldmap::gen_rivers(void)
 
 	trim_river_basins();
 
+	// link the borders with the river corners
+	std::map<std::pair<int, int>, struct border*> link;
+	for (auto &b : borders) {
+		b.river = false;
+		link[std::minmax(b.c0->index, b.c1->index)] = &b;
+	}
+
 	// after trimming make sure river properties of corners are correct
 	for (auto &c : corners) {
 		c.river = false;
 	}
+
 	for (const auto &bas : basins) {
 		if (bas.mouth != nullptr) {
 			std::queue<struct branch*> queue;
@@ -359,17 +371,22 @@ void Worldmap::gen_rivers(void)
 				queue.pop();
 				corners[cur->confluence->index].river = true;
 				if (cur->right != nullptr) {
+					struct border *bord = link[std::minmax(cur->confluence->index, cur->right->confluence->index)];
+					bord->river = true;
 					queue.push(cur->right);
 				}
 				if (cur->left != nullptr) {
+					struct border *bord = link[std::minmax(cur->confluence->index, cur->left->confluence->index)];
+					bord->river = true;
 					queue.push(cur->left);
 				}
 			}
 		}
 	}
-	for (auto &c : corners) {
-		for (auto &t : c.touches) {
-			t->river = c.river;
+	for (auto &b : borders) {
+		if (b.river) {
+			b.t0->river = b.river;
+			b.t1->river = b.river;
 		}
 	}
 }

@@ -71,6 +71,7 @@ void print_image(const Worldmap *worldmap)
 		color[0] = 255 * base * rgb.x;
 		color[1] = 255 * base * rgb.y;
 		color[2] = 255 * base * rgb.z;
+
 		for (const auto &bord : t.borders) {
 			// round points to rasterize properly
 			glm::vec2 a = {round(t.center.x), round(t.center.y)};
@@ -80,28 +81,9 @@ void print_image(const Worldmap *worldmap)
 		}
 	}
 
-	std::mt19937 gen(worldmap->seed);
-	std::uniform_real_distribution<float> dist(0.5f, 1.f);
-	unsigned char basincolor[] = {255, 255, 255};
-	for (const auto &b : worldmap->basins) {
-		if (b.mouth != nullptr) {
-			basincolor[0] = 55 * dist(gen);
-			basincolor[1] = 55 * dist(gen);
-			basincolor[2] = 255 * dist(gen);
-			std::queue<struct branch*> queue;
-			queue.push(b.mouth);
-			while (!queue.empty()) {
-				struct branch *cur = queue.front();
-				queue.pop();
-				if (cur->right != nullptr) {
-					draw_line(cur->confluence->position.x, cur->confluence->position.y, cur->right->confluence->position.x, cur->right->confluence->position.y, image.data, image.width, image.height, image.nchannels, basincolor);
-					queue.push(cur->right);
-				}
-				if (cur->left != nullptr) {
-					draw_line(cur->confluence->position.x, cur->confluence->position.y, cur->left->confluence->position.x, cur->left->confluence->position.y, image.data, image.width, image.height, image.nchannels, basincolor);
-					queue.push(cur->left);
-				}
-			}
+	for (const auto &b : worldmap->borders) {
+		if (b.river) {
+			draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, blu);
 		}
 	}
 
