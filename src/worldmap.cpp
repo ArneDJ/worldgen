@@ -127,6 +127,11 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 			.neighbors = tneighbors,
 			.corners = tcorners,
 			.borders = tborders,
+			.land = false,
+			.coast = false,
+			.river = false,
+			.relief = SEABED,
+			.biome = SEA
 		};
 
 		tiles[cell.index] = t;
@@ -161,6 +166,9 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 		int index = edge.index;
 		borders[index].c0 = &corners[edge.v0->index];
 		borders[index].c1 = &corners[edge.v1->index];
+		borders[index].coast = false;
+		borders[index].river = false;
+		borders[index].frontier = false;
 		if (edge.c0 != nullptr) {
 			borders[index].t0 = &tiles[edge.c0->index];
 		} else {
@@ -372,12 +380,12 @@ void Worldmap::gen_rivers(void)
 				corners[cur->confluence->index].river = true;
 				if (cur->right != nullptr) {
 					struct border *bord = link[std::minmax(cur->confluence->index, cur->right->confluence->index)];
-					bord->river = true;
+					if (bord) { bord->river = true; }
 					queue.push(cur->right);
 				}
 				if (cur->left != nullptr) {
 					struct border *bord = link[std::minmax(cur->confluence->index, cur->left->confluence->index)];
-					bord->river = true;
+					if (bord) { bord->river = true; }
 					queue.push(cur->left);
 				}
 			}
