@@ -28,7 +28,6 @@ static void delete_basin(struct basin *tree);
 static void prune_branches(struct branch *root);
 static void stream_postorder(struct basin *tree);
 static enum TEMPERATURE pick_temperature(float warmth);
-static enum VEGETATION pick_vegetation(float rainfall);
 static enum BIOME pick_biome(enum RELIEF relief, enum TEMPERATURE temper, enum VEGETATION veg);
 
 static const size_t DIM = 256;
@@ -190,13 +189,21 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 
 void Worldmap::gen_biomes(void)
 {
+	std::mt19937 gen(seed);
 	const float scale_x = float(TERRA_IMAGE_RES) / area.max.x;
 	const float scale_y = float(TERRA_IMAGE_RES) / area.max.y;
 	for (struct tile &t : tiles) {
 		float warmth = sample_byteimage(scale_x*t.center.x, scale_y*t.center.y, RED, &terra.tempmap);
 		float rain = sample_byteimage(scale_x*t.center.x, scale_y*t.center.y, RED, &terra.rainmap);
 		enum TEMPERATURE temper = pick_temperature(warmth);
-		enum VEGETATION veg = pick_vegetation(rain);
+		enum VEGETATION veg;
+		if (rain < 0.25f) {
+			veg = ARID;
+		} else {
+			float p = glm::smoothstep(0.25f, 0.6f, rain);
+			std::bernoulli_distribution d(p);
+			veg = d(gen) ? HUMID : DRY;
+		}
 		t.biome = pick_biome(t.relief, temper, veg);
 		if (t.biome == DESERT && t.relief == LOWLAND && t.river == true) {
 			t.biome = FLOODPLAIN;
@@ -656,27 +663,6 @@ static enum TEMPERATURE pick_temperature(float warmth)
 
 	return temperature;
 }
-
-static enum VEGETATION pick_vegetation(float rainfall)
-{
-	enum VEGETATION vegetation = ARID;
-
-	if (rainfall < 0.25f) {
-		vegetation = ARID;
-	} else {
-		std::random_device rd;
-		std::mt19937 gen(rd());
-		float p = glm::smoothstep(0.2f, 0.7f, rainfall);
-		std::bernoulli_distribution d(p);
-		if (d(gen) == false) {
-			vegetation = DRY;
-		} else {
-			vegetation = HUMID;
-		}
-	}
-
-	return vegetation;
-};
 
 static enum BIOME pick_biome(enum RELIEF relief, enum TEMPERATURE temper, enum VEGETATION veg)
 {

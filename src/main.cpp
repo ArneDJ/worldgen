@@ -29,6 +29,7 @@ void print_image(const Worldmap *worldmap)
 	struct byteimage image = blank_byteimage(3, 2048, 2048);
 	unsigned char blu[] = {0, 0, 255};
 	unsigned char wit[] = {255, 255, 255};
+	unsigned char ora[] = {255, 155, 0};
 	glm::vec3 red = {1.f, 0.f, 0.f};
 	glm::vec3 sea = {0.2f, 0.5f, 0.95f};
 	glm::vec3 grassland = {0.2f, 1.f, 0.2f};
@@ -49,7 +50,7 @@ void print_image(const Worldmap *worldmap)
 		float base = 0.25f;
 		switch (t.relief) {
 		case SEABED : base = 0.75f; break;
-		case LOWLAND : base = 0.85f; break;
+		case LOWLAND : base = 0.8f; break;
 		case UPLAND : base = 0.9f; break;
 		case HIGHLAND : base = 1.f; break;
 		};
@@ -84,6 +85,8 @@ void print_image(const Worldmap *worldmap)
 	for (const auto &b : worldmap->borders) {
 		if (b.river) {
 			draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, blu);
+		} else {
+			//draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, ora);
 		}
 	}
 
