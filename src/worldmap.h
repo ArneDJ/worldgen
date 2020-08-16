@@ -2,6 +2,8 @@ struct tile;
 struct corner;
 struct border;
 
+enum SITE { VACANT, VILLAGE, TOWN, CASTLE, RUIN };
+
 enum RELIEF {
 	SEABED,
 	LOWLAND,
@@ -61,6 +63,7 @@ struct tile {
 	bool river;
 	enum RELIEF relief;
 	enum BIOME biome;
+	enum SITE site;
 };
 
 struct branch {
@@ -94,6 +97,7 @@ private:
 	void gen_relief(const struct byteimage *heightmap);
 	void gen_rivers(void);
 	void gen_biomes(void);
+	void gen_sites(void);
 	void floodfill_relief(unsigned int minsize, enum RELIEF target, enum RELIEF replacement);
 	void remove_echoriads(void);
 	void gen_drainage_basins(std::vector<const struct corner*> &graph);

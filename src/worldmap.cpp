@@ -72,6 +72,12 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 	gen_rivers();
 
 	gen_biomes();
+
+	auto start = std::chrono::steady_clock::now();
+	gen_sites();
+	auto end = std::chrono::steady_clock::now();
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 };
 
 Worldmap::~Worldmap(void)
@@ -130,7 +136,8 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 			.coast = false,
 			.river = false,
 			.relief = SEABED,
-			.biome = SEA
+			.biome = SEA,
+			.site = VACANT
 		};
 
 		tiles[cell.index] = t;
@@ -537,6 +544,156 @@ void Worldmap::trim_river_basins(void)
 			it = basins.erase(it);
 		} else {
 			++it;
+		}
+	}
+}
+
+void Worldmap::gen_sites(void) 
+{
+	// add candidate tiles that can have a site on them
+	std::unordered_map<const struct tile*, bool> visited;
+	std::unordered_map<const struct tile*, int> depth;
+	std::vector<struct tile*> candidates;
+	for (auto &t : tiles) {
+		visited[&t] = false;
+		depth[&t] = 0;
+		if (t.land == true && t.relief != HIGHLAND) {
+			switch (t.biome) {
+			case STEPPE :
+			case PINE_GRASSLAND :
+			case BROADLEAF_GRASSLAND :
+			case SAVANNA :
+			case SHRUBLAND :
+			case FLOODPLAIN :
+				candidates.push_back(&t);
+			}
+		}
+	}
+
+	// use breadth first search to mark tiles within a certain radius around a site as visited so other sites won't spawn near them
+	// first priority goes to cities near the coast
+	for (auto root : candidates) {
+		if (root->river && root->coast && visited[root] == false) {
+			bool valid = false;
+			for (auto c : root->corners) {
+				if (c->river && c->coast) {
+					valid = true;
+					break;
+				}
+			}
+			if (valid == true) {
+				std::queue<const struct tile*> queue;
+				queue.push(root);
+				while (!queue.empty()) {
+					const struct tile *node = queue.front();
+					queue.pop();
+					int layer = depth[node] + 1;
+					for (auto neighbor : node->neighbors) {
+						if (visited[neighbor] == false) {
+							visited[neighbor] = true;
+							if (layer < 6) {
+								depth[neighbor] = layer;
+								queue.push(neighbor);
+							}
+						}
+					}
+				}
+				root->site = TOWN;
+			}
+		}
+	}
+
+	// second priority goes to cities inland
+	for (auto root : candidates) {
+		if (root->river && visited[root] == false) {
+			bool valid = false;
+			std::queue<const struct tile*> queue;
+			queue.push(root);
+			while (!queue.empty()) {
+				const struct tile *node = queue.front();
+				queue.pop();
+				int layer = depth[node] + 1;
+				for (auto neighbor : node->neighbors) {
+					if (visited[neighbor] == false) {
+						visited[neighbor] = true;
+						if (layer < 6) {
+							depth[neighbor] = layer;
+							queue.push(neighbor);
+						}
+					}
+				}
+			}
+			valid = true;
+
+			if (valid) {
+				root->site = TOWN;
+			}
+		}
+	}
+
+	// third priority goes to castles
+	for (auto root : candidates) {
+		if (visited[root] == false) {
+			std::queue<const struct tile*> queue;
+			queue.push(root);
+			int max = 0;
+			while (!queue.empty()) {
+				const struct tile *node = queue.front();
+				queue.pop();
+				int layer = depth[node] + 1;
+				if (layer > max) { max = layer; }
+				for (auto neighbor : node->neighbors) {
+					if (visited[neighbor] == false) {
+						visited[neighbor] = true;
+						if (layer < 10) {
+							depth[neighbor] = layer;
+							queue.push(neighbor);
+						}
+					}
+				}
+			}
+			if (max >= 10) {
+				root->site = CASTLE;
+			}
+		}
+	}
+
+	// add villages
+	std::mt19937 gen(seed);
+	for (auto root : candidates) {
+		if (root->site == VACANT) {
+			bool valid = true;
+			for (auto neighbor : root->neighbors) {
+				if (neighbor->site != VACANT) {
+					valid = false;
+					break;
+				}
+			}
+			if (valid) {
+				float p = root->relief == LOWLAND ? 0.1f : 0.025f;
+				if (root->biome == FLOODPLAIN) {
+					p *= 2.f;
+				}
+				std::bernoulli_distribution d(p);
+				if (d(gen) == true) {
+					root->site = VILLAGE;
+				}
+			}
+		}
+	}
+
+	// reject sites based on chance if they're in harsh biomes
+	for (auto root : candidates) {
+		if (root->site != VACANT && root->biome == STEPPE) {
+			if (root->site == TOWN) {
+				root->site = VACANT;
+			} else {
+				float p = root->site == VILLAGE ? 0.25f : 0.75f;
+				std::bernoulli_distribution d(p);
+				if (d(gen) == false) {
+					root->site = VACANT;
+				}
+			}
 		}
 	}
 }

@@ -29,7 +29,8 @@ void print_image(const Worldmap *worldmap)
 	struct byteimage image = blank_byteimage(3, 2048, 2048);
 	unsigned char blu[] = {0, 0, 255};
 	unsigned char wit[] = {255, 255, 255};
-	unsigned char ora[] = {255, 155, 0};
+	unsigned char ora[] = {255, 0, 0};
+	unsigned char pur[] = {255, 0, 255};
 	glm::vec3 red = {1.f, 0.f, 0.f};
 	glm::vec3 sea = {0.2f, 0.5f, 0.95f};
 	glm::vec3 grassland = {0.2f, 1.f, 0.2f};
@@ -73,12 +74,27 @@ void print_image(const Worldmap *worldmap)
 		color[1] = 255 * base * rgb.y;
 		color[2] = 255 * base * rgb.z;
 
+		glm::vec2 a = {round(t.center.x), round(t.center.y)};
 		for (const auto &bord : t.borders) {
 			// round points to rasterize properly
-			glm::vec2 a = {round(t.center.x), round(t.center.y)};
 			glm::vec2 b = {round(bord->c0->position.x), round(bord->c0->position.y)};
 			glm::vec2 c = {round(bord->c1->position.x), round(bord->c1->position.y)};
 			draw_triangle(a, b, c, image.data, image.width, image.height, image.nchannels, color);
+		}
+		if (t.site == TOWN) {
+			plot(a.x, a.y, image.data, image.width, image.height, image.nchannels, pur);
+			plot(a.x+1, a.y+1, image.data, image.width, image.height, image.nchannels, pur);
+			plot(a.x+1, a.y-1, image.data, image.width, image.height, image.nchannels, pur);
+			plot(a.x-1, a.y+1, image.data, image.width, image.height, image.nchannels, pur);
+			plot(a.x-1, a.y-1, image.data, image.width, image.height, image.nchannels, pur);
+		} else if (t.site == CASTLE) {
+			plot(a.x, a.y, image.data, image.width, image.height, image.nchannels, blu);
+			plot(a.x+1, a.y, image.data, image.width, image.height, image.nchannels, blu);
+			plot(a.x, a.y+1, image.data, image.width, image.height, image.nchannels, blu);
+			plot(a.x-1, a.y, image.data, image.width, image.height, image.nchannels, blu);
+			plot(a.x, a.y-1, image.data, image.width, image.height, image.nchannels, blu);
+		} else if (t.site == VILLAGE) {
+			plot(a.x, a.y, image.data, image.width, image.height, image.nchannels, ora);
 		}
 	}
 
