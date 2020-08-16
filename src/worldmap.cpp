@@ -36,6 +36,8 @@ static const int MIN_STREAM_ORDER = 4;
 static const size_t TERRA_IMAGE_RES = 512;
 static const size_t MIN_WATER_BODY = 1024;
 static const size_t MIN_MOUNTAIN_BODY = 128;
+static const int TOWN_RADIUS = 6;
+static const int CASTLE_RADIUS = 10;
 static const char *WORLDGEN_INI_FPATH = "worldgen.ini";
 
 // default values in case values from the ini file are invalid
@@ -73,8 +75,10 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	gen_biomes();
 
-	auto start = std::chrono::steady_clock::now();
 	gen_sites();
+
+	auto start = std::chrono::steady_clock::now();
+	gen_holds(); 
 	auto end = std::chrono::steady_clock::now();
 	std::chrono::duration<double> elapsed_seconds = end-start;
 	std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
@@ -591,7 +595,7 @@ void Worldmap::gen_sites(void)
 					for (auto neighbor : node->neighbors) {
 						if (visited[neighbor] == false) {
 							visited[neighbor] = true;
-							if (layer < 6) {
+							if (layer < TOWN_RADIUS) {
 								depth[neighbor] = layer;
 								queue.push(neighbor);
 							}
@@ -616,7 +620,7 @@ void Worldmap::gen_sites(void)
 				for (auto neighbor : node->neighbors) {
 					if (visited[neighbor] == false) {
 						visited[neighbor] = true;
-						if (layer < 6) {
+						if (layer < TOWN_RADIUS) {
 							depth[neighbor] = layer;
 							queue.push(neighbor);
 						}
@@ -645,14 +649,14 @@ void Worldmap::gen_sites(void)
 				for (auto neighbor : node->neighbors) {
 					if (visited[neighbor] == false) {
 						visited[neighbor] = true;
-						if (layer < 10) {
+						if (layer < CASTLE_RADIUS) {
 							depth[neighbor] = layer;
 							queue.push(neighbor);
 						}
 					}
 				}
 			}
-			if (max >= 10) {
+			if (max >= CASTLE_RADIUS) {
 				root->site = CASTLE;
 			}
 		}
@@ -694,6 +698,57 @@ void Worldmap::gen_sites(void)
 					root->site = VACANT;
 				}
 			}
+		}
+	}
+}
+
+void Worldmap::gen_holds(void) 
+{
+	std::vector<struct tile*> candidates;
+	std::unordered_map<const struct tile*, bool> visited;
+	std::unordered_map<const struct tile*, int> depth;
+	for (auto &t : tiles) {
+		visited[&t] = false;
+		depth[&t] = 0;
+		if (t.site == TOWN || t.site == CASTLE) {
+			candidates.push_back(&t);
+			struct holding hold;
+			hold.name = "test";
+			hold.center = &t;
+			holdings.push_back(hold);
+		}
+	}
+
+	// find the nearest hold center for each tile
+	for (auto &hold : holdings) {
+		hold.center->hold = &hold; // mkay
+		std::queue<const struct tile*> queue;
+		queue.push(hold.center);
+		while (!queue.empty()) {
+			const struct tile *node = queue.front();
+			queue.pop();
+			int layer = depth[node] + 1;
+			for (auto neighbor : node->neighbors) {
+				bool valid = neighbor->relief == LOWLAND || neighbor->relief == UPLAND;
+				if ((neighbor->site == VACANT || neighbor->site == VILLAGE) && valid == true) {
+					if (visited[neighbor] == false) {
+						visited[neighbor] = true;
+						depth[neighbor] = layer;
+						queue.push(neighbor);
+						tiles[neighbor->index].hold = &hold;
+					} else if (depth[neighbor] > layer) {
+						depth[neighbor] = layer;
+						queue.push(neighbor);
+						tiles[neighbor->index].hold = &hold;
+					}
+				}
+			}
+		}
+	}
+
+	for (auto &t : tiles) {
+		if (t.hold != nullptr) {
+			t.hold->lands.push_back(&t);
 		}
 	}
 }

@@ -64,6 +64,7 @@ struct tile {
 	enum RELIEF relief;
 	enum BIOME biome;
 	enum SITE site;
+	struct holding *hold = nullptr;
 };
 
 struct branch {
@@ -78,6 +79,12 @@ struct basin {
 	size_t height; // binary tree height
 };
 
+struct holding {
+	std::string name;
+	struct tile *center; // center tile of the hold that contains a fortification
+	std::vector<struct tile*> lands; // tiles that the holding consists of
+};
+
 class Worldmap {
 public:
 	struct terraform terra;
@@ -85,6 +92,7 @@ public:
 	std::vector<struct corner> corners;
 	std::vector<struct border> borders;
 	std::list<struct basin> basins;
+	std::list<struct holding> holdings;
 	struct rectangle area;
 	long seed;
 public:
@@ -98,6 +106,7 @@ private:
 	void gen_rivers(void);
 	void gen_biomes(void);
 	void gen_sites(void);
+	void gen_holds(void);
 	void floodfill_relief(unsigned int minsize, enum RELIEF target, enum RELIEF replacement);
 	void remove_echoriads(void);
 	void gen_drainage_basins(std::vector<const struct corner*> &graph);

@@ -6,4 +6,4 @@ The program outputs an image of the world.
 ## How to build
 Simply run the Makefile
 
-![result](output.png)
+![result](world.png)
