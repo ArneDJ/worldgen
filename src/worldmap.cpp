@@ -510,6 +510,17 @@ void Worldmap::gen_drainage_basins(std::vector<const struct corner*> &graph)
 	}
 }
 
+static bool prunable(const struct branch *node)
+{
+	for (const auto t : node->confluence->touches) {
+		if (t->relief == HIGHLAND) { return true; }
+	}
+
+	if (node->streamorder < MIN_STREAM_ORDER) { return true; }
+
+	return false;
+}
+
 void Worldmap::trim_river_basins(void)
 {
 	// assign stream order numbers
@@ -526,7 +537,7 @@ void Worldmap::trim_river_basins(void)
 			queue.pop();
 
 			if (cur->right != nullptr) {
-				if (cur->right->streamorder < MIN_STREAM_ORDER) {
+				if (prunable(cur->right)) {
 					prune_branches(cur->right);
 					cur->right = nullptr;
 				} else {
@@ -534,7 +545,7 @@ void Worldmap::trim_river_basins(void)
 				}
 			}
 			if (cur->left != nullptr) {
-				if (cur->left->streamorder < MIN_STREAM_ORDER) {
+				if (prunable(cur->left)) {
 					prune_branches(cur->left);
 					cur->left = nullptr;
 				} else {
@@ -728,18 +739,21 @@ void Worldmap::gen_holds(void)
 			const struct tile *node = queue.front();
 			queue.pop();
 			int layer = depth[node] + 1;
-			for (auto neighbor : node->neighbors) {
-				bool valid = neighbor->relief == LOWLAND || neighbor->relief == UPLAND;
-				if ((neighbor->site == VACANT || neighbor->site == VILLAGE) && valid == true) {
-					if (visited[neighbor] == false) {
-						visited[neighbor] = true;
-						depth[neighbor] = layer;
-						queue.push(neighbor);
-						tiles[neighbor->index].hold = &hold;
-					} else if (depth[neighbor] > layer) {
-						depth[neighbor] = layer;
-						queue.push(neighbor);
-						tiles[neighbor->index].hold = &hold;
+			for (auto border : node->borders) {
+				if (border->frontier == false && border->river == false) {
+					const struct tile *neighbor = border->t0 == node ? border->t1 : border->t0;
+					bool valid = neighbor->relief == LOWLAND || neighbor->relief == UPLAND;
+					if ((neighbor->site == VACANT || neighbor->site == VILLAGE) && valid == true) {
+						if (visited[neighbor] == false) {
+							visited[neighbor] = true;
+							depth[neighbor] = layer;
+							queue.push(neighbor);
+							tiles[neighbor->index].hold = &hold;
+						} else if (depth[neighbor] > layer) {
+							depth[neighbor] = layer;
+							queue.push(neighbor);
+							tiles[neighbor->index].hold = &hold;
+						}
 					}
 				}
 			}
