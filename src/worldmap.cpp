@@ -30,6 +30,7 @@ static void prune_branches(struct branch *root);
 static void stream_postorder(struct basin *tree);
 static enum TEMPERATURE pick_temperature(float warmth);
 static enum BIOME pick_biome(enum RELIEF relief, enum TEMPERATURE temper, enum VEGETATION veg);
+static void import_pattern(const char *fpath, std::string &pattern);
 
 static const size_t DIM = 256;
 static const float POISSON_DISK_RADIUS = 8.F;
@@ -81,6 +82,7 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 	auto start = std::chrono::steady_clock::now();
 	gen_holds(); 
 	name_holds();
+	name_sites();
 	auto end = std::chrono::steady_clock::now();
 	std::chrono::duration<double> elapsed_seconds = end-start;
 	std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
@@ -143,7 +145,8 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 			.river = false,
 			.relief = SEABED,
 			.biome = SEA,
-			.site = VACANT
+			.site = VACANT,
+			.name = "unnamed"
 		};
 
 		tiles[cell.index] = t;
@@ -773,23 +776,35 @@ void Worldmap::name_holds(void)
 {
 	std::string pattern;
 
-	FILE *fp = fopen("region.txt", "r");
-	if (!fp) {
-		perror("File opening failed");
-		return;
-	}
-	int c;
-	while ((c = fgetc(fp)) != EOF) {
-		if (c != '\n') {
-			pattern.append(1, c);
-		}
-	}
-	fclose(fp);
+	import_pattern("region.txt", pattern);
 
 	NameGen::Generator generator(pattern.c_str());
 
 	for (auto &hold : holdings) {
 		hold.name = generator.toString();
+	}
+}
+
+void Worldmap::name_sites(void)
+{
+	std::string town;
+	std::string fort;
+	std::string village;
+
+	import_pattern("town.txt", town);
+	import_pattern("fort.txt", fort);
+	import_pattern("village.txt", village);
+
+	NameGen::Generator towngen(town.c_str());
+	NameGen::Generator fortgen(fort.c_str());
+	NameGen::Generator villagegen(village.c_str());
+
+	for (auto &t : tiles) {
+		switch (t.site) {
+		case TOWN : t.name = towngen.toString(); break;
+		case CASTLE : t.name = fortgen.toString(); break;
+		case VILLAGE : t.name = villagegen.toString(); break;
+		}
 	}
 }
 
@@ -1008,3 +1023,21 @@ static struct worldparams import_noiseparams(const char *fpath)
 	return params;
 }
 
+static void import_pattern(const char *fpath, std::string &pattern)
+{
+	FILE *fp = fopen(fpath, "r");
+	if (!fp) {
+		perror("File opening failed");
+		pattern = "failure";
+		return;
+	}
+
+	int c;
+	while ((c = fgetc(fp)) != EOF) {
+		if (c != '\n') {
+			pattern.append(1, c);
+		}
+	}
+
+	fclose(fp);
+}

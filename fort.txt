@@ -1,0 +1,1 @@
+!s<|s><V|(rock|stone|sten|stein|burg|bourg|band|fort|tower|gard|deep|hold|keep|del|wall|kastel|slot)>
