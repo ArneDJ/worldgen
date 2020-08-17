@@ -12,6 +12,7 @@
 
 #include "extern/INIReader.h"
 #include "extern/poisson_disk_sampling.h"
+#include "extern/namegen.h"
 
 #include "geom.h"
 #include "imp.h"
@@ -36,7 +37,7 @@ static const int MIN_STREAM_ORDER = 4;
 static const size_t TERRA_IMAGE_RES = 512;
 static const size_t MIN_WATER_BODY = 1024;
 static const size_t MIN_MOUNTAIN_BODY = 128;
-static const int TOWN_RADIUS = 6;
+static const int TOWN_RADIUS = 8;
 static const int CASTLE_RADIUS = 10;
 static const char *WORLDGEN_INI_FPATH = "worldgen.ini";
 
@@ -79,6 +80,7 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	auto start = std::chrono::steady_clock::now();
 	gen_holds(); 
+	name_holds();
 	auto end = std::chrono::steady_clock::now();
 	std::chrono::duration<double> elapsed_seconds = end-start;
 	std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
@@ -724,7 +726,7 @@ void Worldmap::gen_holds(void)
 		if (t.site == TOWN || t.site == CASTLE) {
 			candidates.push_back(&t);
 			struct holding hold;
-			hold.name = "test";
+			hold.name = "unnamed";
 			hold.center = &t;
 			holdings.push_back(hold);
 		}
@@ -764,6 +766,30 @@ void Worldmap::gen_holds(void)
 		if (t.hold != nullptr) {
 			t.hold->lands.push_back(&t);
 		}
+	}
+}
+
+void Worldmap::name_holds(void)
+{
+	std::string pattern;
+
+	FILE *fp = fopen("region.txt", "r");
+	if (!fp) {
+		perror("File opening failed");
+		return;
+	}
+	int c;
+	while ((c = fgetc(fp)) != EOF) {
+		if (c != '\n') {
+			pattern.append(1, c);
+		}
+	}
+	fclose(fp);
+
+	NameGen::Generator generator(pattern.c_str());
+
+	for (auto &hold : holdings) {
+		hold.name = generator.toString();
 	}
 }
 

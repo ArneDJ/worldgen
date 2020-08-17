@@ -107,6 +107,7 @@ private:
 	void gen_biomes(void);
 	void gen_sites(void);
 	void gen_holds(void);
+	void name_holds(void);
 	void floodfill_relief(unsigned int minsize, enum RELIEF target, enum RELIEF replacement);
 	void remove_echoriads(void);
 	void gen_drainage_basins(std::vector<const struct corner*> &graph);
