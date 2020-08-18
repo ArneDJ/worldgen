@@ -81,9 +81,11 @@ struct basin {
 };
 
 struct holding {
+	int index;
 	std::string name;
 	struct tile *center; // center tile of the hold that contains a fortification
 	std::vector<struct tile*> lands; // tiles that the holding consists of
+	std::vector<const struct holding*> neighbors; // neighbouring holds
 };
 
 class Worldmap {

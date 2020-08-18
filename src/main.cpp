@@ -208,11 +208,39 @@ void print_cultures(const Worldmap *worldmap)
 			plot(a.x, a.y, image.data, image.width, image.height, image.nchannels, ora);
 		}
 	}
+	for (auto &bord : worldmap->borders) {
+		if (bord.t0->hold != bord.t1->hold) {
+			glm::vec2 b = {round(bord.c0->position.x), round(bord.c0->position.y)};
+			glm::vec2 c = {round(bord.c1->position.x), round(bord.c1->position.y)};
+			draw_line(b.x, b.y, c.x, c.y, image.data, image.width, image.height, image.nchannels, ora);
+		}
+	}
 
 	stbi_flip_vertically_on_write(true);
 	stbi_write_png("holdings.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
 
 	delete_byteimage(&image);
+}
+
+void print_hold(const struct holding *hold)
+{
+	printf("The name of the hold is %s\n", hold->name.c_str());
+	if (hold->center->site == TOWN) {
+		printf("Its capital is the town of %s located at %f, %f\n", hold->center->name.c_str(), hold->center->center.x, hold->center->center.y);
+	}
+	if (hold->center->site == CASTLE) {
+		printf("Its capital is the castle of %s located at %f, %f\n", hold->center->name.c_str(), hold->center->center.x, hold->center->center.y);
+	}
+	printf("The villages of %s are\n", hold->name.c_str());
+	for (const auto fief : hold->lands) {
+		if (fief->site == VILLAGE) {
+			printf("%s\n", fief->name.c_str());
+		}
+	}
+	printf("The neighboring holds are\n");
+	for (const auto neighbor : hold->neighbors) {
+		printf("%s\n", neighbor->name.c_str());
+	}
 }
 
 int main(int argc, char *argv[])
@@ -228,6 +256,7 @@ int main(int argc, char *argv[])
 
 	Worldmap worldmap = {seed, MAP_AREA};
 
+	print_hold(&worldmap.holdings.front());
 	print_image(&worldmap);
 	print_cultures(&worldmap);
 

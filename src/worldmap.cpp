@@ -628,6 +628,7 @@ void Worldmap::gen_sites(void)
 
 void Worldmap::gen_holds(void) 
 {
+	int index = 0;
 	std::vector<struct tile*> candidates;
 	std::unordered_map<const struct tile*, bool> visited;
 	std::unordered_map<const struct tile*, int> depth;
@@ -637,6 +638,7 @@ void Worldmap::gen_holds(void)
 		if (t.site == TOWN || t.site == CASTLE) {
 			candidates.push_back(&t);
 			struct holding hold;
+			hold.index = index++;
 			hold.name = "unnamed";
 			hold.center = &t;
 			holdings.push_back(hold);
@@ -676,6 +678,20 @@ void Worldmap::gen_holds(void)
 	for (auto &t : tiles) {
 		if (t.hold != nullptr) {
 			t.hold->lands.push_back(&t);
+		}
+	}
+
+	// find neighbors
+	std::map<std::pair<int, int>, bool> link;
+	for (auto &bord : borders) {
+		if (bord.t0->hold != nullptr && bord.t1->hold != nullptr) {
+			if (bord.t0->hold != bord.t1->hold) {
+				if (link[std::minmax(bord.t0->hold->index, bord.t1->hold->index)] == false) {
+					link[std::minmax(bord.t0->hold->index, bord.t1->hold->index)] = true;
+					bord.t0->hold->neighbors.push_back(bord.t1->hold);
+					bord.t1->hold->neighbors.push_back(bord.t0->hold);
+				}
+			}
 		}
 	}
 }
