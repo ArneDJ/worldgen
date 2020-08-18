@@ -30,6 +30,9 @@ static void prune_branches(struct branch *root);
 static void stream_postorder(struct basin *tree);
 static enum TEMPERATURE pick_temperature(float warmth);
 static enum BIOME pick_biome(enum RELIEF relief, enum TEMPERATURE temper, enum VEGETATION veg);
+static void spawn_towns(std::vector<struct tile*> &candidates, std::unordered_map<const struct tile*, bool> &visited, std::unordered_map<const struct tile*, int> &depth);
+static void spawn_castles(std::vector<struct tile*> &candidates, std::unordered_map<const struct tile*, bool> &visited, std::unordered_map<const struct tile*, int> &depth);
+static void spawn_villages(std::vector<struct tile*> &candidates, std::unordered_map<const struct tile*, bool> &visited, std::unordered_map<const struct tile*, int> &depth, long seed);
 static void import_pattern(const char *fpath, std::string &pattern);
 
 static const size_t DIM = 256;
@@ -81,6 +84,13 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	auto start = std::chrono::steady_clock::now();
 	gen_holds(); 
+	// villages always have to be part of a hold
+	// we can't let the peasants be independent
+	for (auto &t : tiles) {
+		if (t.site == VILLAGE && t.hold == nullptr) {
+			t.site = VACANT;
+		}
+	}
 	name_holds();
 	name_sites();
 	auto end = std::chrono::steady_clock::now();
@@ -590,119 +600,17 @@ void Worldmap::gen_sites(void)
 		}
 	}
 
-	// use breadth first search to mark tiles within a certain radius around a site as visited so other sites won't spawn near them
-	// first priority goes to cities near the coast
-	for (auto root : candidates) {
-		if (root->river && root->coast && visited[root] == false) {
-			bool valid = false;
-			for (auto c : root->corners) {
-				if (c->river && c->coast) {
-					valid = true;
-					break;
-				}
-			}
-			if (valid == true) {
-				std::queue<const struct tile*> queue;
-				queue.push(root);
-				while (!queue.empty()) {
-					const struct tile *node = queue.front();
-					queue.pop();
-					int layer = depth[node] + 1;
-					for (auto neighbor : node->neighbors) {
-						if (visited[neighbor] == false) {
-							visited[neighbor] = true;
-							if (layer < TOWN_RADIUS) {
-								depth[neighbor] = layer;
-								queue.push(neighbor);
-							}
-						}
-					}
-				}
-				root->site = TOWN;
-			}
-		}
-	}
+	// first priority goes to castles
+	spawn_towns(candidates, visited, depth);
 
-	// second priority goes to cities inland
-	for (auto root : candidates) {
-		if (root->river && visited[root] == false) {
-			bool valid = false;
-			std::queue<const struct tile*> queue;
-			queue.push(root);
-			while (!queue.empty()) {
-				const struct tile *node = queue.front();
-				queue.pop();
-				int layer = depth[node] + 1;
-				for (auto neighbor : node->neighbors) {
-					if (visited[neighbor] == false) {
-						visited[neighbor] = true;
-						if (layer < TOWN_RADIUS) {
-							depth[neighbor] = layer;
-							queue.push(neighbor);
-						}
-					}
-				}
-			}
-			valid = true;
+	// second priority goes to castles
+	spawn_castles(candidates, visited, depth);
 
-			if (valid) {
-				root->site = TOWN;
-			}
-		}
-	}
-
-	// third priority goes to castles
-	for (auto root : candidates) {
-		if (visited[root] == false) {
-			std::queue<const struct tile*> queue;
-			queue.push(root);
-			int max = 0;
-			while (!queue.empty()) {
-				const struct tile *node = queue.front();
-				queue.pop();
-				int layer = depth[node] + 1;
-				if (layer > max) { max = layer; }
-				for (auto neighbor : node->neighbors) {
-					if (visited[neighbor] == false) {
-						visited[neighbor] = true;
-						if (layer < CASTLE_RADIUS) {
-							depth[neighbor] = layer;
-							queue.push(neighbor);
-						}
-					}
-				}
-			}
-			if (max >= CASTLE_RADIUS) {
-				root->site = CASTLE;
-			}
-		}
-	}
-
-	// add villages
-	std::mt19937 gen(seed);
-	for (auto root : candidates) {
-		if (root->site == VACANT) {
-			bool valid = true;
-			for (auto neighbor : root->neighbors) {
-				if (neighbor->site != VACANT) {
-					valid = false;
-					break;
-				}
-			}
-			if (valid) {
-				float p = root->relief == LOWLAND ? 0.1f : 0.025f;
-				if (root->biome == FLOODPLAIN) {
-					p *= 2.f;
-				}
-				std::bernoulli_distribution d(p);
-				if (d(gen) == true) {
-					root->site = VILLAGE;
-				}
-			}
-		}
-	}
+	// third priority to villages
+	spawn_villages(candidates, visited, depth, seed);
 
 	// reject sites based on chance if they're in harsh biomes
+	std::mt19937 gen(seed);
 	for (auto root : candidates) {
 		if (root->site != VACANT && root->biome == STEPPE) {
 			if (root->site == TOWN) {
@@ -776,7 +684,7 @@ void Worldmap::name_holds(void)
 {
 	std::string pattern;
 
-	import_pattern("region.txt", pattern);
+	import_pattern("names/region.txt", pattern);
 
 	NameGen::Generator generator(pattern.c_str());
 
@@ -791,9 +699,9 @@ void Worldmap::name_sites(void)
 	std::string fort;
 	std::string village;
 
-	import_pattern("town.txt", town);
-	import_pattern("fort.txt", fort);
-	import_pattern("village.txt", village);
+	import_pattern("names/town.txt", town);
+	import_pattern("names/fort.txt", fort);
+	import_pattern("names/village.txt", village);
 
 	NameGen::Generator towngen(town.c_str());
 	NameGen::Generator fortgen(fort.c_str());
@@ -1021,6 +929,125 @@ static struct worldparams import_noiseparams(const char *fpath)
 	params.highland = s[2];
 
 	return params;
+}
+
+static void spawn_towns(std::vector<struct tile*> &candidates, std::unordered_map<const struct tile*, bool> &visited, std::unordered_map<const struct tile*, int> &depth)
+{
+	// use breadth first search to mark tiles within a certain radius around a site as visited so other sites won't spawn near them
+	// first priority goes to cities near the coast
+	for (auto root : candidates) {
+		if (root->river && root->coast && visited[root] == false) {
+			bool valid = false;
+			for (auto c : root->corners) {
+				if (c->river && c->coast) {
+					valid = true;
+					break;
+				}
+			}
+			if (valid == true) {
+				std::queue<const struct tile*> queue;
+				queue.push(root);
+				while (!queue.empty()) {
+					const struct tile *node = queue.front();
+					queue.pop();
+					int layer = depth[node] + 1;
+					for (auto neighbor : node->neighbors) {
+						if (visited[neighbor] == false) {
+							visited[neighbor] = true;
+							if (layer < TOWN_RADIUS) {
+								depth[neighbor] = layer;
+								queue.push(neighbor);
+							}
+						}
+					}
+				}
+				root->site = TOWN;
+			}
+		}
+	}
+
+	// second priority goes to cities inland
+	for (auto root : candidates) {
+		if (root->river && visited[root] == false) {
+			bool valid = false;
+			std::queue<const struct tile*> queue;
+			queue.push(root);
+			while (!queue.empty()) {
+				const struct tile *node = queue.front();
+				queue.pop();
+				int layer = depth[node] + 1;
+				for (auto neighbor : node->neighbors) {
+					if (visited[neighbor] == false) {
+						visited[neighbor] = true;
+						if (layer < TOWN_RADIUS) {
+							depth[neighbor] = layer;
+							queue.push(neighbor);
+						}
+					}
+				}
+			}
+			valid = true;
+
+			if (valid) {
+				root->site = TOWN;
+			}
+		}
+	}
+}
+
+static void spawn_castles(std::vector<struct tile*> &candidates, std::unordered_map<const struct tile*, bool> &visited, std::unordered_map<const struct tile*, int> &depth)
+{
+	for (auto root : candidates) {
+		if (visited[root] == false) {
+			std::queue<const struct tile*> queue;
+			queue.push(root);
+			int max = 0;
+			while (!queue.empty()) {
+				const struct tile *node = queue.front();
+				queue.pop();
+				int layer = depth[node] + 1;
+				if (layer > max) { max = layer; }
+				for (auto neighbor : node->neighbors) {
+					if (visited[neighbor] == false) {
+						visited[neighbor] = true;
+						if (layer < CASTLE_RADIUS) {
+							depth[neighbor] = layer;
+							queue.push(neighbor);
+						}
+					}
+				}
+			}
+			if (max >= CASTLE_RADIUS) {
+				root->site = CASTLE;
+			}
+		}
+	}
+}
+
+static void spawn_villages(std::vector<struct tile*> &candidates, std::unordered_map<const struct tile*, bool> &visited, std::unordered_map<const struct tile*, int> &depth, long seed)
+{
+	std::mt19937 gen(seed);
+	for (auto root : candidates) {
+		if (root->site == VACANT) {
+			bool valid = true;
+			for (auto neighbor : root->neighbors) {
+				if (neighbor->site != VACANT) {
+					valid = false;
+					break;
+				}
+			}
+			if (valid) {
+				float p = root->relief == LOWLAND ? 0.1f : 0.025f;
+				if (root->biome == FLOODPLAIN) {
+					p *= 2.f;
+				}
+				std::bernoulli_distribution d(p);
+				if (d(gen) == true) {
+					root->site = VILLAGE;
+				}
+			}
+		}
+	}
 }
 
 static void import_pattern(const char *fpath, std::string &pattern)
