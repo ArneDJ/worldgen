@@ -58,6 +58,7 @@ struct tile {
 	std::vector<const struct corner*> corners;
 	std::vector<const struct border*> borders;
 	// world data
+	bool frontier;
 	bool land;
 	bool coast;
 	bool river;
@@ -96,13 +97,13 @@ public:
 	std::vector<struct border> borders;
 	std::list<struct basin> basins;
 	std::list<struct holding> holdings;
-	struct rectangle area;
 	long seed;
 public:
 	Worldmap(long seed, struct rectangle area);
 	~Worldmap(void);
 private:
 	struct worldparams params;
+	struct rectangle area;
 private:
 	void gen_diagram(unsigned int maxcandidates);
 	void gen_relief(const struct byteimage *heightmap);

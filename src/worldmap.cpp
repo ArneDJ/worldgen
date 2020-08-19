@@ -41,8 +41,8 @@ static const int MIN_STREAM_ORDER = 4;
 static const size_t TERRA_IMAGE_RES = 512;
 static const size_t MIN_WATER_BODY = 1024;
 static const size_t MIN_MOUNTAIN_BODY = 128;
-static const int TOWN_RADIUS = 8;
-static const int CASTLE_RADIUS = 10;
+static const int TOWN_SPAWN_RADIUS = 8;
+static const int CASTLE_SPAWN_RADIUS = 10;
 static const char *WORLDGEN_INI_FPATH = "worldgen.ini";
 
 // default values in case values from the ini file are invalid
@@ -150,6 +150,7 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 			.neighbors = tneighbors,
 			.corners = tcorners,
 			.borders = tborders,
+			.frontier = false,
 			.land = false,
 			.coast = false,
 			.river = false,
@@ -198,6 +199,7 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 			borders[index].t0 = &tiles[edge.c0->index];
 		} else {
 			borders[index].t0 = &tiles[edge.c1->index];
+			borders[index].t0->frontier = true;
 			borders[index].frontier = true;
 			borders[index].c0->frontier = true;
 			borders[index].c1->frontier = true;
@@ -206,6 +208,7 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 			borders[index].t1 = &tiles[edge.c1->index];
 		} else {
 			borders[index].t1 = &tiles[edge.c0->index];
+			borders[index].t1->frontier = true;
 			borders[index].frontier = true;
 			borders[index].c0->frontier = true;
 			borders[index].c1->frontier = true;
@@ -587,7 +590,7 @@ void Worldmap::gen_sites(void)
 	for (auto &t : tiles) {
 		visited[&t] = false;
 		depth[&t] = 0;
-		if (t.land == true && t.relief != HIGHLAND) {
+		if (t.land == true && t.frontier == false && t.relief != HIGHLAND) {
 			switch (t.biome) {
 			case STEPPE :
 			case PINE_GRASSLAND :
@@ -702,6 +705,7 @@ void Worldmap::name_holds(void)
 
 	import_pattern("names/region.txt", pattern);
 
+	// valgrind detects a small memory leak here
 	NameGen::Generator generator(pattern.c_str());
 
 	for (auto &hold : holdings) {
@@ -970,7 +974,7 @@ static void spawn_towns(std::vector<struct tile*> &candidates, std::unordered_ma
 					for (auto neighbor : node->neighbors) {
 						if (visited[neighbor] == false) {
 							visited[neighbor] = true;
-							if (layer < TOWN_RADIUS) {
+							if (layer < TOWN_SPAWN_RADIUS) {
 								depth[neighbor] = layer;
 								queue.push(neighbor);
 							}
@@ -995,7 +999,7 @@ static void spawn_towns(std::vector<struct tile*> &candidates, std::unordered_ma
 				for (auto neighbor : node->neighbors) {
 					if (visited[neighbor] == false) {
 						visited[neighbor] = true;
-						if (layer < TOWN_RADIUS) {
+						if (layer < TOWN_SPAWN_RADIUS) {
 							depth[neighbor] = layer;
 							queue.push(neighbor);
 						}
@@ -1026,14 +1030,14 @@ static void spawn_castles(std::vector<struct tile*> &candidates, std::unordered_
 				for (auto neighbor : node->neighbors) {
 					if (visited[neighbor] == false) {
 						visited[neighbor] = true;
-						if (layer < CASTLE_RADIUS) {
+						if (layer < CASTLE_SPAWN_RADIUS) {
 							depth[neighbor] = layer;
 							queue.push(neighbor);
 						}
 					}
 				}
 			}
-			if (max >= CASTLE_RADIUS) {
+			if (max >= CASTLE_SPAWN_RADIUS) {
 				root->site = CASTLE;
 			}
 		}
