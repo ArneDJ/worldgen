@@ -46,3 +46,4 @@ struct floatimage gen_normalmap(const struct floatimage *heightmap);
 
 void draw_thick_line(int x0, int y0, int x1, int y1, int radius, unsigned char *image, int width, int height, int nchannels, unsigned char *color);
 
+void draw_filled_circle(int x0, int y0, int radius, unsigned char *image, int width, int height, int nchannels, unsigned char *color);

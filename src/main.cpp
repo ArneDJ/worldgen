@@ -117,6 +117,13 @@ void print_image(const Worldmap *worldmap)
 			//draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, red);
 		}
 	}
+	/*
+	for (const auto &c : worldmap->corners) {
+		if (c.river) {
+			draw_filled_circle(c.position.x, c.position.y, 0.5*c.depth, image.data, image.width, image.height, image.nchannels, red);
+		}
+	}
+	*/
 
 	stbi_flip_vertically_on_write(true);
 	stbi_write_png("world.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);

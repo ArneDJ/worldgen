@@ -44,6 +44,7 @@ static const size_t MIN_MOUNTAIN_BODY = 128;
 static const int TOWN_SPAWN_RADIUS = 8;
 static const int CASTLE_SPAWN_RADIUS = 10;
 static const char *WORLDGEN_INI_FPATH = "worldgen.ini";
+static const float MIN_RIVER_DIST = 10.F;
 
 // default values in case values from the ini file are invalid
 static const struct worldparams DEFAULT_WORLD_PARAMETERS = {
@@ -181,7 +182,8 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 			.touches = touches,
 			.frontier = false,
 			.coast = false,
-			.river = false
+			.river = false,
+			.depth = 0
 		};
 
 		corners[vertex.index] = c;
@@ -365,6 +367,39 @@ void Worldmap::remove_echoriads(void)
 	}
 }
 
+void Worldmap::correct_border_rivers(void)
+{
+	// link the borders with the river corners
+	std::map<std::pair<int, int>, struct border*> link;
+	for (auto &b : borders) {
+		b.river = false;
+		link[std::minmax(b.c0->index, b.c1->index)] = &b;
+	}
+
+	for (const auto &bas : basins) {
+		if (bas.mouth != nullptr) {
+			std::queue<struct branch*> queue;
+			queue.push(bas.mouth);
+			while (!queue.empty()) {
+				struct branch *cur = queue.front();
+				queue.pop();
+				corners[cur->confluence->index].river = true;
+				corners[cur->confluence->index].depth = cur->depth;
+				if (cur->right != nullptr) {
+					struct border *bord = link[std::minmax(cur->confluence->index, cur->right->confluence->index)];
+					if (bord) { bord->river = true; }
+					queue.push(cur->right);
+				}
+				if (cur->left != nullptr) {
+					struct border *bord = link[std::minmax(cur->confluence->index, cur->left->confluence->index)];
+					if (bord) { bord->river = true; }
+					queue.push(cur->left);
+				}
+			}
+		}
+	}
+}
+
 void Worldmap::gen_rivers(void)
 {
 	// construct the drainage basin candidate graph
@@ -393,46 +428,26 @@ void Worldmap::gen_rivers(void)
 
 	trim_river_basins();
 
-	// link the borders with the river corners
-	std::map<std::pair<int, int>, struct border*> link;
-	for (auto &b : borders) {
-		b.river = false;
-		link[std::minmax(b.c0->index, b.c1->index)] = &b;
-	}
-
 	// after trimming make sure river properties of corners are correct
 	for (auto &c : corners) {
 		c.river = false;
 	}
 
-	for (const auto &bas : basins) {
-		if (bas.mouth != nullptr) {
-			std::queue<struct branch*> queue;
-			queue.push(bas.mouth);
-			while (!queue.empty()) {
-				struct branch *cur = queue.front();
-				queue.pop();
-				corners[cur->confluence->index].river = true;
-				if (cur->right != nullptr) {
-					struct border *bord = link[std::minmax(cur->confluence->index, cur->right->confluence->index)];
-					if (bord) { bord->river = true; }
-					queue.push(cur->right);
-				}
-				if (cur->left != nullptr) {
-					struct border *bord = link[std::minmax(cur->confluence->index, cur->left->confluence->index)];
-					if (bord) { bord->river = true; }
-					queue.push(cur->left);
-				}
-			}
-		}
-	}
+	correct_border_rivers();
 
 	// remove rivers too close to each other
 	for (auto &b : borders) {
 		if (b.river == false && b.coast == false) {
-			if (b.c0->river == true && b.c1->river == true) {
+			float d = glm::distance(b.c0->position, b.c1->position);
+			// river with the smallest stream order is trimmed
+			// if they have the same stream order do a coin flip
+			if (b.c0->river == true && b.c1->river == true && d < MIN_RIVER_DIST) {
 				// TODO coin flip
-				b.c0->river = false;
+				if (b.c0->depth > b.c1->depth) {
+					b.c1->river = false;
+				} else {
+					b.c0->river = false;
+				}
 			}
 		}
 		b.river = false;
@@ -470,27 +485,8 @@ void Worldmap::gen_rivers(void)
 			++it;
 		}
 	}
-	for (const auto &bas : basins) {
-		if (bas.mouth != nullptr) {
-			std::queue<struct branch*> queue;
-			queue.push(bas.mouth);
-			while (!queue.empty()) {
-				struct branch *cur = queue.front();
-				queue.pop();
-				corners[cur->confluence->index].river = true;
-				if (cur->right != nullptr) {
-					struct border *bord = link[std::minmax(cur->confluence->index, cur->right->confluence->index)];
-					if (bord) { bord->river = true; }
-					queue.push(cur->right);
-				}
-				if (cur->left != nullptr) {
-					struct border *bord = link[std::minmax(cur->confluence->index, cur->left->confluence->index)];
-					if (bord) { bord->river = true; }
-					queue.push(cur->left);
-				}
-			}
-		}
-	}
+
+	correct_border_rivers();
 
 	for (auto &b : borders) {
 		if (b.river) {
@@ -598,8 +594,6 @@ static bool prunable(const struct branch *node)
 	for (const auto t : node->confluence->touches) {
 		if (t->relief == HIGHLAND) { return true; }
 	}
-
-	if (node->confluence->river == false) { return true; }
 
 	if (node->streamorder < MIN_STREAM_ORDER) { return true; }
 
@@ -848,6 +842,26 @@ static inline int shreve(const struct branch *node)
 	return left + right;
 }
 
+static inline int postorder_level(struct branch *node)
+{
+	if (node->left == nullptr && node->right == nullptr) {
+		return 0;
+	}
+
+	if (node->left != nullptr && node->right != nullptr) {
+		return std::max(node->left->depth, node->right->depth) + 1;
+	}
+
+	if (node->left) {
+		return node->left->depth + 1;
+	}
+	if (node->right) {
+		return node->right->depth + 1;
+	}
+
+	return 0;
+}
+
 // post order tree traversal
 static void stream_postorder(struct basin *tree)
 {
@@ -865,6 +879,7 @@ static void stream_postorder(struct basin *tree)
 				stack.push_back(current->right);
 			} else {
 				current->streamorder = strahler(current);
+				current->depth = postorder_level(current);
 				stack.pop_back();
 			}
 		} else if (current->left == prev) {
@@ -872,10 +887,12 @@ static void stream_postorder(struct basin *tree)
 				stack.push_back(current->right);
 			} else {
 				current->streamorder = strahler(current);
+				current->depth = postorder_level(current);
 				stack.pop_back();
 			}
 		} else if (current->right == prev) {
 			current->streamorder = strahler(current);
+			current->depth = postorder_level(current);
 			stack.pop_back();
 		}
 

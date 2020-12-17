@@ -48,6 +48,7 @@ struct corner {
 	bool frontier;
 	bool coast;
 	bool river;
+	int depth;
 };
 
 struct tile {
@@ -74,6 +75,7 @@ struct branch {
 	struct branch *left = nullptr;
 	struct branch *right = nullptr;
 	int streamorder;
+	int depth;
 };
 
 struct basin {
@@ -117,4 +119,5 @@ private:
 	void remove_echoriads(void);
 	void gen_drainage_basins(std::vector<const struct corner*> &graph);
 	void trim_river_basins(void);
+	void correct_border_rivers(void);
 };
