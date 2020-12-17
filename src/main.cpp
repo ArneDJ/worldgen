@@ -89,6 +89,7 @@ static void fill_image_tiles(const Worldmap *worldmap, int start, int end, struc
 void print_image(const Worldmap *worldmap)
 {
 	unsigned char blu[] = {0, 0, 255};
+	unsigned char red[] = {255, 0, 0};
 	struct byteimage image = blank_byteimage(3, 2048, 2048);
 
 	auto start = std::chrono::steady_clock::now();
@@ -111,7 +112,9 @@ void print_image(const Worldmap *worldmap)
 
 	for (const auto &b : worldmap->borders) {
 		if (b.river) {
-			draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, blu);
+			draw_thick_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, 2, image.data, image.width, image.height, image.nchannels, blu);
+		} else {
+			//draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, red);
 		}
 	}
 

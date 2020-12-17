@@ -369,7 +369,6 @@ void Worldmap::gen_rivers(void)
 {
 	// construct the drainage basin candidate graph
 	// only land and coast corners not on the edge of the map can be candidates for the graph
-	// TODO only add nodes that are above a minimum rainfall in the graph
 	std::vector<const struct corner*> graph;
 	for (auto &c : corners) {
 		if (c.coast && c.frontier == false) {
@@ -427,6 +426,72 @@ void Worldmap::gen_rivers(void)
 			}
 		}
 	}
+
+	// remove rivers too close to each other
+	for (auto &b : borders) {
+		if (b.river == false && b.coast == false) {
+			if (b.c0->river == true && b.c1->river == true) {
+				// TODO coin flip
+				b.c0->river = false;
+			}
+		}
+		b.river = false;
+	}
+	for (auto it = basins.begin(); it != basins.end(); ) {
+		struct basin &bas = *it;
+		std::queue<struct branch*> queue;
+		queue.push(bas.mouth);
+		while (!queue.empty()) {
+			struct branch *cur = queue.front();
+			queue.pop();
+
+			if (cur->right != nullptr) {
+				if (cur->right->confluence->river == false) {
+					prune_branches(cur->right);
+					cur->right = nullptr;
+				} else {
+					queue.push(cur->right);
+				}
+			}
+			if (cur->left != nullptr) {
+				if (cur->left->confluence->river == false) {
+					prune_branches(cur->left);
+					cur->left = nullptr;
+				} else {
+					queue.push(cur->left);
+				}
+			}
+		}
+		if (bas.mouth->right == nullptr && bas.mouth->left == nullptr) {
+			delete bas.mouth;
+			bas.mouth = nullptr;
+			it = basins.erase(it);
+		} else {
+			++it;
+		}
+	}
+	for (const auto &bas : basins) {
+		if (bas.mouth != nullptr) {
+			std::queue<struct branch*> queue;
+			queue.push(bas.mouth);
+			while (!queue.empty()) {
+				struct branch *cur = queue.front();
+				queue.pop();
+				corners[cur->confluence->index].river = true;
+				if (cur->right != nullptr) {
+					struct border *bord = link[std::minmax(cur->confluence->index, cur->right->confluence->index)];
+					if (bord) { bord->river = true; }
+					queue.push(cur->right);
+				}
+				if (cur->left != nullptr) {
+					struct border *bord = link[std::minmax(cur->confluence->index, cur->left->confluence->index)];
+					if (bord) { bord->river = true; }
+					queue.push(cur->left);
+				}
+			}
+		}
+	}
+
 	for (auto &b : borders) {
 		if (b.river) {
 			b.t0->river = b.river;
@@ -533,6 +598,8 @@ static bool prunable(const struct branch *node)
 	for (const auto t : node->confluence->touches) {
 		if (t->relief == HIGHLAND) { return true; }
 	}
+
+	if (node->confluence->river == false) { return true; }
 
 	if (node->streamorder < MIN_STREAM_ORDER) { return true; }
 

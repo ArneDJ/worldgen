@@ -43,3 +43,6 @@ void gauss_blur_image(struct byteimage *image, float sigma);
 float sample_floatimage(int x, int y, enum channel chan, const struct floatimage *image);
 
 struct floatimage gen_normalmap(const struct floatimage *heightmap);
+
+void draw_thick_line(int x0, int y0, int x1, int y1, int radius, unsigned char *image, int width, int height, int nchannels, unsigned char *color);
+

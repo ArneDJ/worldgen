@@ -360,3 +360,49 @@ struct floatimage gen_normalmap(const struct floatimage *heightmap)
 
 	return normalmap;
 }
+
+void draw_filled_circle(int x0, int y0, int radius, unsigned char *image, int width, int height, int nchannels, unsigned char *color)
+{
+	int x = radius;
+	int y = 0;
+	int xchange = 1 - (radius << 1);
+	int ychange = 0;
+	int err = 0;
+
+	while (x >= y) {
+		for (int i = x0 - x; i <= x0 + x; i++) {
+			plot(i, y0 + y, image, width, height, nchannels, color);
+			plot(i, y0 - y, image, width, height, nchannels, color);
+		}
+		for (int i = x0 - y; i <= x0 + y; i++) {
+			plot(i, y0 + x, image, width, height, nchannels, color);
+			plot(i, y0 - x, image, width, height, nchannels, color);
+		}
+
+		y++;
+		err += ychange;
+		ychange += 2;
+		if (((err << 1) + xchange) > 0) {
+		x--;
+		err += xchange;
+		xchange += 2;
+		}
+	}
+}
+
+
+void draw_thick_line(int x0, int y0, int x1, int y1, int radius, unsigned char *image, int width, int height, int nchannels, unsigned char *color)
+{
+	int dx =  abs(x1-x0), sx = x0<x1 ? 1 : -1;
+	int dy = -abs(y1-y0), sy = y0<y1 ? 1 : -1;
+	int err = dx+dy, e2; // error value e_xy
+
+	for(;;) {
+		draw_filled_circle(x0,y0, radius, image, width, height, nchannels, color);
+		if (x0==x1 && y0==y1) { break; }
+		e2 = 2*err;
+		if (e2 >= dy) { err += dy; x0 += sx; } // e_xy+e_x > 0
+		if (e2 <= dx) { err += dx; y0 += sy; } // e_xy+e_y < 0
+	}
+}
+
