@@ -66,6 +66,7 @@ static const struct worldparams DEFAULT_WORLD_PARAMETERS = {
 
 Worldmap::Worldmap(long seed, struct rectangle area) 
 {
+	auto start = std::chrono::steady_clock::now();
 	this->seed = seed;
 	this->area = area;
 	this->params = import_noiseparams(WORLDGEN_INI_FPATH);
@@ -82,7 +83,6 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 
 	gen_sites();
 
-	auto start = std::chrono::steady_clock::now();
 	gen_holds(); 
 	// villages always have to be part of a hold
 	// we can't let the peasants be independent
@@ -95,7 +95,7 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 	name_sites();
 	auto end = std::chrono::steady_clock::now();
 	std::chrono::duration<double> elapsed_seconds = end-start;
-	std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
+	std::cout << "worldgen elapsed time: " << elapsed_seconds.count() << "s\n";
 };
 
 Worldmap::~Worldmap(void)
