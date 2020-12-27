@@ -67,23 +67,47 @@ static const struct worldparams DEFAULT_WORLD_PARAMETERS = {
 
 Worldmap::Worldmap(long seed, struct rectangle area) 
 {
-	auto start = std::chrono::steady_clock::now();
 	this->seed = seed;
 	this->area = area;
 	this->params = import_noiseparams(WORLDGEN_INI_FPATH);
 
+auto start = std::chrono::steady_clock::now();
 	terra = form_terra(TERRA_IMAGE_RES, this->seed, this->params);
+auto end = std::chrono::steady_clock::now();
+std::chrono::duration<double> elapsed_seconds = end-start;
+std::cout << "terra elapsed time: " << elapsed_seconds.count() << "s\n";
 
+start = std::chrono::steady_clock::now();
 	gen_diagram(DIM*DIM);
+end = std::chrono::steady_clock::now();
+elapsed_seconds = end-start;
+std::cout << "diagram elapsed time: " << elapsed_seconds.count() << "s\n";
 
+start = std::chrono::steady_clock::now();
 	gen_relief(&terra.heightmap);
+end = std::chrono::steady_clock::now();
+elapsed_seconds = end-start;
+std::cout << "relief elapsed time: " << elapsed_seconds.count() << "s\n";
 
+start = std::chrono::steady_clock::now();
 	gen_rivers();
+end = std::chrono::steady_clock::now();
+elapsed_seconds = end-start;
+std::cout << "rivers elapsed time: " << elapsed_seconds.count() << "s\n";
 
+start = std::chrono::steady_clock::now();
 	gen_biomes();
+end = std::chrono::steady_clock::now();
+elapsed_seconds = end-start;
+std::cout << "biomes elapsed time: " << elapsed_seconds.count() << "s\n";
 
+start = std::chrono::steady_clock::now();
 	gen_sites();
+end = std::chrono::steady_clock::now();
+elapsed_seconds = end-start;
+std::cout << "gen sites elapsed time: " << elapsed_seconds.count() << "s\n";
 
+start = std::chrono::steady_clock::now();
 	gen_holds(); 
 	// villages always have to be part of a hold
 	// we can't let the peasants be independent
@@ -92,11 +116,16 @@ Worldmap::Worldmap(long seed, struct rectangle area)
 			t.site = VACANT;
 		}
 	}
+end = std::chrono::steady_clock::now();
+elapsed_seconds = end-start;
+std::cout << "gen holds elapsed time: " << elapsed_seconds.count() << "s\n";
+
+start = std::chrono::steady_clock::now();
 	name_holds();
 	name_sites();
-	auto end = std::chrono::steady_clock::now();
-	std::chrono::duration<double> elapsed_seconds = end-start;
-	std::cout << "worldgen elapsed time: " << elapsed_seconds.count() << "s\n";
+end = std::chrono::steady_clock::now();
+elapsed_seconds = end-start;
+std::cout << "names elapsed time: " << elapsed_seconds.count() << "s\n";
 };
 
 Worldmap::~Worldmap(void)
@@ -442,7 +471,6 @@ void Worldmap::gen_rivers(void)
 			// river with the smallest stream order is trimmed
 			// if they have the same stream order do a coin flip
 			if (b.c0->river == true && b.c1->river == true && d < MIN_RIVER_DIST) {
-				// TODO coin flip
 				if (b.c0->depth > b.c1->depth) {
 					b.c1->river = false;
 				} else {
@@ -486,6 +514,10 @@ void Worldmap::gen_rivers(void)
 		}
 	}
 
+	// after trimming correct rivers again
+	for (auto &c : corners) {
+		c.river = false;
+	}
 	correct_border_rivers();
 
 	for (auto &b : borders) {

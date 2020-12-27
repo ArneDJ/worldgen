@@ -15,6 +15,8 @@
 #include "extern/FastNoise.h"
 #include "extern/INIReader.h"
 
+#include "extern/CDT.h"
+
 #include "geom.h"
 #include "imp.h"
 #include "voronoi.h"
@@ -223,6 +225,12 @@ void print_hold(const struct holding *hold)
 	}
 }
 
+// use BFS to find landmasses
+// find the vertices that define borders (rivers, water, mountains)
+// add borders as constrain edges
+// triangulate using CDT library
+
+// TODO checkout seed: sdsd
 int main(int argc, char *argv[])
 {
 	printf("Name thy world: ");
@@ -234,11 +242,70 @@ int main(int argc, char *argv[])
 		seed = 1337;
 	}
 
+	auto start = std::chrono::steady_clock::now();
 	Worldmap worldmap = {seed, MAP_AREA};
+	auto end = std::chrono::steady_clock::now();
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	std::cout << "worldgen time: " << elapsed_seconds.count() << "s\n";
 
 	print_hold(&worldmap.holdings.front());
 	print_image(&worldmap);
 	print_cultures(&worldmap);
+
+	// triangulate worldmap
+	std::random_device rd;
+	std::mt19937 gen(44);
+
+	using Triangulation = CDT::Triangulation<float>;
+	Triangulation cdt = Triangulation(CDT::FindingClosestPoint::ClosestRandom, 10);
+
+	std::vector<glm::vec2> points;
+	for (const auto &c : worldmap.corners) {
+		if (c.coast == true || c.frontier == true) {
+			points.push_back(c.position);
+		}
+	}
+	/*
+	std::uniform_real_distribution<float> d(0.f, 512.f);
+	for (int i = 0; i < 10; i++) {
+		points.push_back(glm::vec2(d(gen), d(gen)));
+	}
+	*/
+
+	cdt.insertVertices(
+		points.begin(),
+		points.end(),
+		[](const glm::vec2& p){ return p[0]; },
+		[](const glm::vec2& p){ return p[1]; }
+	);
+	cdt.eraseSuperTriangle();
+
+	struct byteimage image = blank_byteimage(3, 2048, 2048);
+
+	unsigned char color[3];
+
+	for (const auto &triangle : cdt.triangles) {
+	std::uniform_real_distribution<float> distrib(0.5f, 1.f);
+	color[0] = distrib(gen) * 255;
+	color[1] = distrib(gen) * 255;
+	color[2] = distrib(gen) * 255;
+	glm::vec2 vertices[3];
+	for (int i = 0; i < 3; i++) {
+	//printf("%d\n", triangle.vertices[i]);
+	size_t index = triangle.vertices[i];
+	const auto pos = cdt.vertices[index].pos;
+	vertices[i].x = pos.x;
+	vertices[i].y = pos.y;
+	//printf("%f, %f\n", pos.x, pos.y);
+	}
+	draw_triangle(vertices[0], vertices[1], vertices[2], image.data, image.width, image.height, image.nchannels, color);
+	}
+
+	stbi_flip_vertically_on_write(true);
+	stbi_write_png("triangles.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
+
+	delete_byteimage(&image);
+
 
 	return 0;
 }
