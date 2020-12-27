@@ -212,6 +212,7 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 			.frontier = false,
 			.coast = false,
 			.river = false,
+			.wall = false,
 			.depth = 0
 		};
 
@@ -226,6 +227,7 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 		borders[index].coast = false;
 		borders[index].river = false;
 		borders[index].frontier = false;
+		borders[index].wall = false;
 		if (edge.c0 != nullptr) {
 			borders[index].t0 = &tiles[edge.c0->index];
 		} else {
@@ -297,12 +299,25 @@ void Worldmap::gen_relief(const struct byteimage *heightmap)
 	for (auto &b : borders) {
 		// use XOR to determine if land is different
 		b.coast = b.t0->land ^ b.t1->land;
-		b.c0->coast = b.coast;
-		b.c1->coast = b.coast;
 
 		if (b.coast == true) {
+			b.c0->coast = b.coast;
+			b.c1->coast = b.coast;
 			b.t0->coast = b.coast;
 			b.t1->coast = b.coast;
+		}
+	}
+
+	// find mountain borders
+	for (auto &b : borders) {
+		if (b.frontier && (b.t0->relief == HIGHLAND || b.t1->relief == HIGHLAND)) {
+			b.wall = true;
+		} else {
+			b.wall = (b.t0->relief == HIGHLAND) ^ (b.t1->relief == HIGHLAND);
+		}
+		if (b.wall) {
+			if (b.c0->wall == false) { b.c0->wall = true; }
+			if (b.c1->wall == false) { b.c1->wall = true; }
 		}
 	}
 }

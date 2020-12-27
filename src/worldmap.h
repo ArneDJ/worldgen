@@ -36,6 +36,7 @@ struct border {
 	bool frontier;
 	bool coast;
 	bool river;
+	bool wall;
 };
 
 struct corner {
@@ -48,6 +49,7 @@ struct corner {
 	bool frontier;
 	bool coast;
 	bool river;
+	bool wall;
 	int depth;
 };
 

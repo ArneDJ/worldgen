@@ -233,6 +233,10 @@ void print_hold(const struct holding *hold)
 // TODO checkout seed: sdsd
 int main(int argc, char *argv[])
 {
+	struct CustomEdge {
+		std::pair<size_t, size_t> vertices;
+	};
+
 	printf("Name thy world: ");
 	std::string name;
 	std::cin >> name;
@@ -253,24 +257,70 @@ int main(int argc, char *argv[])
 	print_cultures(&worldmap);
 
 	// triangulate worldmap
+	struct byteimage image = blank_byteimage(3, 2048, 2048);
 	std::random_device rd;
 	std::mt19937 gen(44);
 
 	using Triangulation = CDT::Triangulation<float>;
 	Triangulation cdt = Triangulation(CDT::FindingClosestPoint::ClosestRandom, 10);
 
+	unsigned char red[] = {255, 0, 0};
 	std::vector<glm::vec2> points;
+	std::unordered_map<uint32_t, size_t> umap;
+	std::unordered_map<uint32_t, bool> marked;
+	size_t index = 0;
 	for (const auto &c : worldmap.corners) {
-		if (c.coast == true || c.frontier == true) {
+		bool notfrontier = false;
+		for (const auto &adj : c.adjacent) {
+			if (adj->wall == false && adj->frontier == true) { notfrontier = true; }
+		}
+		marked[c.index] = false;
+		if (c.coast == true) {
 			points.push_back(c.position);
+			umap[c.index] = index++;
+			marked[c.index] = true;
+		} else if (c.frontier == true) {
+			bool land = false;
+			for (const auto &t : c.touches) {
+				if (t->land) { land = true; }
+			}
+			if (land == true && c.wall == false) {
+				points.push_back(c.position);
+				umap[c.index] = index++;
+				marked[c.index] = true;
+			}
+		} else if (c.wall == true) {
+			points.push_back(c.position);
+			umap[c.index] = index++;
+			marked[c.index] = true;
+		}
+		if (marked[c.index] == false && c.frontier == true && c.wall == true && notfrontier == true) {
+			points.push_back(c.position);
+			umap[c.index] = index++;
+			marked[c.index] = true;
 		}
 	}
-	/*
-	std::uniform_real_distribution<float> d(0.f, 512.f);
-	for (int i = 0; i < 10; i++) {
-		points.push_back(glm::vec2(d(gen), d(gen)));
+
+	std::vector<CustomEdge> edges;
+	for (const auto &b : worldmap.borders) {
+		size_t left = umap[b.c0->index];
+		size_t right = umap[b.c1->index];
+		if (marked[b.c0->index] == true && marked[b.c1->index] == true) {
+		if (b.coast == true || b.wall == true) {
+			struct CustomEdge edge;
+			edge.vertices = std::make_pair(left, right);
+			edges.push_back(edge);
+			draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, red);
+		} else if (b.frontier == true) {
+			if (b.t0->land == true && b.t1->land == true) {
+				struct CustomEdge edge;
+				edge.vertices = std::make_pair(left, right);
+				edges.push_back(edge);
+				draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, red);
+			}
+		}
+		}
 	}
-	*/
 
 	cdt.insertVertices(
 		points.begin(),
@@ -278,9 +328,16 @@ int main(int argc, char *argv[])
 		[](const glm::vec2& p){ return p[0]; },
 		[](const glm::vec2& p){ return p[1]; }
 	);
-	cdt.eraseSuperTriangle();
+	cdt.insertEdges(
+		edges.begin(),
+		edges.end(),
+		[](const CustomEdge& e){ return e.vertices.first; },
+		[](const CustomEdge& e){ return e.vertices.second; }
+	);
+	//cdt.eraseSuperTriangle();
+	cdt.eraseOuterTrianglesAndHoles();
+	//cdt.eraseOuterTriangles();
 
-	struct byteimage image = blank_byteimage(3, 2048, 2048);
 
 	unsigned char color[3];
 
