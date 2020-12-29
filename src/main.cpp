@@ -230,7 +230,7 @@ void print_hold(const struct holding *hold)
 // add borders as constrain edges
 // triangulate using CDT library
 
-// TODO checkout seed: sdsd
+// TODO checkout seed: sdsd, weeew, 404, 121
 int main(int argc, char *argv[])
 {
 	struct CustomEdge {
@@ -330,29 +330,23 @@ int main(int argc, char *argv[])
 	std::unordered_map<uint32_t, bool> marked_edges;
 	std::unordered_map<uint32_t, size_t> edge_vertices;
 	for (const auto &b : worldmap.borders) {
-		//if (b.coast == false) {
-			//printf("%d\n", b.index);
-		//marked_edges[b.index] = false;
 		bool half_river = b.c0->river ^ b.c1->river;
 		marked_edges[b.index] = half_river;
 		if (half_river) {
-			//marked_edges[b.index] = true;
 			glm::vec2 vertex = segment_midpoint(b.c0->position, b.c1->position);
 			points.push_back(vertex);
 			edge_vertices[b.index] = index++;
-		} else if (b.coast && b.c0->river && b.c1->river) {
+		} else if (b.river == false && b.c0->river && b.c1->river) {
 			glm::vec2 vertex = segment_midpoint(b.c0->position, b.c1->position);
 			points.push_back(vertex);
 			edge_vertices[b.index] = index++;
 			marked_edges[b.index] = true;
 		}
-		//}
 	}
 	for (const auto &t : worldmap.tiles) {
 		if (t.land) {
 		for (const auto &b : t.borders) {
 			if (marked_edges[b->index] == true) {
-				//uint32_t index = (b->c0->river == true) ? b->c0->index : b->c1->index; 
 				if (b->c0->river) {
 					size_t left = tilevertex[std::minmax(t.index, b->c0->index)];
 					size_t right = edge_vertices[b->index];
@@ -393,13 +387,11 @@ int main(int argc, char *argv[])
 			struct CustomEdge edge;
 			edge.vertices = std::make_pair(left, right);
 			edges.push_back(edge);
-			//draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, red);
 		} else if (b.frontier == true) {
 			if (b.t0->land == true && b.t1->land == true) {
 				struct CustomEdge edge;
 				edge.vertices = std::make_pair(left, right);
 				edges.push_back(edge);
-				//draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, red);
 			}
 		}
 		}
