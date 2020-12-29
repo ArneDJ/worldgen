@@ -222,6 +222,7 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 	// adapt edge structures
 	for (const auto &edge : voronoi.edges) {
 		int index = edge.index;
+		borders[index].index = index;
 		borders[index].c0 = &corners[edge.v0->index];
 		borders[index].c1 = &corners[edge.v1->index];
 		borders[index].coast = false;

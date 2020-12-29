@@ -275,7 +275,7 @@ int main(int argc, char *argv[])
 			if (adj->wall == false && adj->frontier == true) { notfrontier = true; }
 		}
 		marked[c.index] = false;
-		if (c.coast == true) {
+		if (c.coast == true && c.river == false) {
 			points.push_back(c.position);
 			umap[c.index] = index++;
 			marked[c.index] = true;
@@ -302,6 +302,89 @@ int main(int argc, char *argv[])
 	}
 
 	std::vector<CustomEdge> edges;
+	// make river polygons
+	//std::pair<uint32_t, uint32_t> tilevertex;
+	std::map<std::pair<uint32_t, uint32_t>, size_t> tilevertex;
+	for (const auto &t : worldmap.tiles) {
+		for (const auto &c : t.corners) {
+			if (c->river) {
+				glm::vec2 vertex = segment_midpoint(t.center, c->position);
+				points.push_back(vertex);
+				tilevertex[std::minmax(t.index, c->index)] = index++;
+			}
+		}
+	}
+	for (const auto &b : worldmap.borders) {
+		if (b.river) {
+			size_t left_t0 = tilevertex[std::minmax(b.t0->index, b.c0->index)];
+			size_t right_t0 = tilevertex[std::minmax(b.t0->index, b.c1->index)];
+			size_t left_t1 = tilevertex[std::minmax(b.t1->index, b.c0->index)];
+			size_t right_t1 = tilevertex[std::minmax(b.t1->index, b.c1->index)];
+			struct CustomEdge edge;
+			edge.vertices = std::make_pair(left_t0, right_t0);
+			edges.push_back(edge);
+			edge.vertices = std::make_pair(left_t1, right_t1);
+			edges.push_back(edge);
+		}
+	}
+	std::unordered_map<uint32_t, bool> marked_edges;
+	std::unordered_map<uint32_t, size_t> edge_vertices;
+	for (const auto &b : worldmap.borders) {
+		//if (b.coast == false) {
+			//printf("%d\n", b.index);
+		//marked_edges[b.index] = false;
+		bool half_river = b.c0->river ^ b.c1->river;
+		marked_edges[b.index] = half_river;
+		if (half_river) {
+			//marked_edges[b.index] = true;
+			glm::vec2 vertex = segment_midpoint(b.c0->position, b.c1->position);
+			points.push_back(vertex);
+			edge_vertices[b.index] = index++;
+		} else if (b.coast && b.c0->river && b.c1->river) {
+			glm::vec2 vertex = segment_midpoint(b.c0->position, b.c1->position);
+			points.push_back(vertex);
+			edge_vertices[b.index] = index++;
+			marked_edges[b.index] = true;
+		}
+		//}
+	}
+	for (const auto &t : worldmap.tiles) {
+		if (t.land) {
+		for (const auto &b : t.borders) {
+			if (marked_edges[b->index] == true) {
+				//uint32_t index = (b->c0->river == true) ? b->c0->index : b->c1->index; 
+				if (b->c0->river) {
+					size_t left = tilevertex[std::minmax(t.index, b->c0->index)];
+					size_t right = edge_vertices[b->index];
+					struct CustomEdge edge;
+					edge.vertices = std::make_pair(left, right);
+					edges.push_back(edge);
+				}
+				if (b->c1->river) {
+					size_t left = tilevertex[std::minmax(t.index, b->c1->index)];
+					size_t right = edge_vertices[b->index];
+					struct CustomEdge edge;
+					edge.vertices = std::make_pair(left, right);
+					edges.push_back(edge);
+				}
+			}
+		}
+		}
+	}
+	for (const auto &b : worldmap.borders) {
+		if (b.coast) {
+			bool half_river = b.c0->river ^ b.c1->river;
+			if (half_river) {
+				uint32_t index = (b.c0->river == false) ? b.c0->index : b.c1->index; 
+				size_t left = umap[index];
+				size_t right = edge_vertices[b.index];
+				struct CustomEdge edge;
+				edge.vertices = std::make_pair(left, right);
+				edges.push_back(edge);
+			}
+		}
+	}
+
 	for (const auto &b : worldmap.borders) {
 		size_t left = umap[b.c0->index];
 		size_t right = umap[b.c1->index];
@@ -310,16 +393,22 @@ int main(int argc, char *argv[])
 			struct CustomEdge edge;
 			edge.vertices = std::make_pair(left, right);
 			edges.push_back(edge);
-			draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, red);
+			//draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, red);
 		} else if (b.frontier == true) {
 			if (b.t0->land == true && b.t1->land == true) {
 				struct CustomEdge edge;
 				edge.vertices = std::make_pair(left, right);
 				edges.push_back(edge);
-				draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, red);
+				//draw_line(b.c0->position.x, b.c0->position.y, b.c1->position.x, b.c1->position.y, image.data, image.width, image.height, image.nchannels, red);
 			}
 		}
 		}
+	}
+
+	for (const auto &edge : edges) {
+		glm::vec2 a = points[edge.vertices.first];
+		glm::vec2 b = points[edge.vertices.second];
+		draw_line(a.x, a.y, b.x, b.y, image.data, image.width, image.height, image.nchannels, red);
 	}
 
 	cdt.insertVertices(
