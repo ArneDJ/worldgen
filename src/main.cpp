@@ -23,6 +23,10 @@
 #include "terra.h"
 #include "worldmap.h"
 
+struct customedge {
+	std::pair<size_t, size_t> vertices;
+};
+
 static const struct rectangle MAP_AREA = { 
 	.min = {0.f, 0.f}, 
 	.max = {2048.f, 2048.f}
@@ -225,51 +229,21 @@ void print_hold(const struct holding *hold)
 	}
 }
 
-// use BFS to find landmasses
-// find the vertices that define borders (rivers, water, mountains)
-// add borders as constrain edges
-// triangulate using CDT library
-
-// TODO checkout seed: sdsd, weeew, 404, 121
-int main(int argc, char *argv[])
+void land_navmesh(const Worldmap *worldmap)
 {
-	struct CustomEdge {
-		std::pair<size_t, size_t> vertices;
-	};
-
-	printf("Name thy world: ");
-	std::string name;
-	std::cin >> name;
-	long seed = std::hash<std::string>()(name);
-
-	if (name == "1337") {
-		seed = 1337;
-	}
-
-	auto start = std::chrono::steady_clock::now();
-	Worldmap worldmap = {seed, MAP_AREA};
-	auto end = std::chrono::steady_clock::now();
-	std::chrono::duration<double> elapsed_seconds = end-start;
-	std::cout << "worldgen time: " << elapsed_seconds.count() << "s\n";
-
-	print_hold(&worldmap.holdings.front());
-	print_image(&worldmap);
-	print_cultures(&worldmap);
-
-	// triangulate worldmap
 	struct byteimage image = blank_byteimage(3, 2048, 2048);
-	std::random_device rd;
-	std::mt19937 gen(44);
 
 	using Triangulation = CDT::Triangulation<float>;
 	Triangulation cdt = Triangulation(CDT::FindingClosestPoint::ClosestRandom, 10);
 
-	unsigned char red[] = {255, 0, 0};
 	std::vector<glm::vec2> points;
+	std::vector<struct customedge> edges;
+
+	// add polygon points for  triangulation
 	std::unordered_map<uint32_t, size_t> umap;
 	std::unordered_map<uint32_t, bool> marked;
 	size_t index = 0;
-	for (const auto &c : worldmap.corners) {
+	for (const auto &c : worldmap->corners) {
 		bool notfrontier = false;
 		for (const auto &adj : c.adjacent) {
 			if (adj->wall == false && adj->frontier == true) { notfrontier = true; }
@@ -301,11 +275,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	std::vector<CustomEdge> edges;
 	// make river polygons
-	//std::pair<uint32_t, uint32_t> tilevertex;
 	std::map<std::pair<uint32_t, uint32_t>, size_t> tilevertex;
-	for (const auto &t : worldmap.tiles) {
+	for (const auto &t : worldmap->tiles) {
 		for (const auto &c : t.corners) {
 			if (c->river) {
 				glm::vec2 vertex = segment_midpoint(t.center, c->position);
@@ -314,13 +286,13 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
-	for (const auto &b : worldmap.borders) {
+	for (const auto &b : worldmap->borders) {
 		if (b.river) {
 			size_t left_t0 = tilevertex[std::minmax(b.t0->index, b.c0->index)];
 			size_t right_t0 = tilevertex[std::minmax(b.t0->index, b.c1->index)];
 			size_t left_t1 = tilevertex[std::minmax(b.t1->index, b.c0->index)];
 			size_t right_t1 = tilevertex[std::minmax(b.t1->index, b.c1->index)];
-			struct CustomEdge edge;
+			struct customedge edge;
 			edge.vertices = std::make_pair(left_t0, right_t0);
 			edges.push_back(edge);
 			edge.vertices = std::make_pair(left_t1, right_t1);
@@ -329,7 +301,7 @@ int main(int argc, char *argv[])
 	}
 	std::unordered_map<uint32_t, bool> marked_edges;
 	std::unordered_map<uint32_t, size_t> edge_vertices;
-	for (const auto &b : worldmap.borders) {
+	for (const auto &b : worldmap->borders) {
 		bool half_river = b.c0->river ^ b.c1->river;
 		marked_edges[b.index] = half_river;
 		if (half_river) {
@@ -343,21 +315,21 @@ int main(int argc, char *argv[])
 			marked_edges[b.index] = true;
 		}
 	}
-	for (const auto &t : worldmap.tiles) {
+	for (const auto &t : worldmap->tiles) {
 		if (t.land) {
 		for (const auto &b : t.borders) {
 			if (marked_edges[b->index] == true) {
 				if (b->c0->river) {
 					size_t left = tilevertex[std::minmax(t.index, b->c0->index)];
 					size_t right = edge_vertices[b->index];
-					struct CustomEdge edge;
+					struct customedge edge;
 					edge.vertices = std::make_pair(left, right);
 					edges.push_back(edge);
 				}
 				if (b->c1->river) {
 					size_t left = tilevertex[std::minmax(t.index, b->c1->index)];
 					size_t right = edge_vertices[b->index];
-					struct CustomEdge edge;
+					struct customedge edge;
 					edge.vertices = std::make_pair(left, right);
 					edges.push_back(edge);
 				}
@@ -365,31 +337,32 @@ int main(int argc, char *argv[])
 		}
 		}
 	}
-	for (const auto &b : worldmap.borders) {
+	for (const auto &b : worldmap->borders) {
 		if (b.coast) {
 			bool half_river = b.c0->river ^ b.c1->river;
 			if (half_river) {
 				uint32_t index = (b.c0->river == false) ? b.c0->index : b.c1->index; 
 				size_t left = umap[index];
 				size_t right = edge_vertices[b.index];
-				struct CustomEdge edge;
+				struct customedge edge;
 				edge.vertices = std::make_pair(left, right);
 				edges.push_back(edge);
 			}
 		}
 	}
 
-	for (const auto &b : worldmap.borders) {
+	// add coast and mountain edges
+	for (const auto &b : worldmap->borders) {
 		size_t left = umap[b.c0->index];
 		size_t right = umap[b.c1->index];
 		if (marked[b.c0->index] == true && marked[b.c1->index] == true) {
 		if (b.coast == true || b.wall == true) {
-			struct CustomEdge edge;
+			struct customedge edge;
 			edge.vertices = std::make_pair(left, right);
 			edges.push_back(edge);
 		} else if (b.frontier == true) {
 			if (b.t0->land == true && b.t1->land == true) {
-				struct CustomEdge edge;
+				struct customedge edge;
 				edge.vertices = std::make_pair(left, right);
 				edges.push_back(edge);
 			}
@@ -397,12 +370,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	unsigned char red[] = {255, 0, 0};
 	for (const auto &edge : edges) {
 		glm::vec2 a = points[edge.vertices.first];
 		glm::vec2 b = points[edge.vertices.second];
 		draw_line(a.x, a.y, b.x, b.y, image.data, image.width, image.height, image.nchannels, red);
 	}
 
+	// deluanay triangulation
 	cdt.insertVertices(
 		points.begin(),
 		points.end(),
@@ -412,38 +387,58 @@ int main(int argc, char *argv[])
 	cdt.insertEdges(
 		edges.begin(),
 		edges.end(),
-		[](const CustomEdge& e){ return e.vertices.first; },
-		[](const CustomEdge& e){ return e.vertices.second; }
+		[](const customedge& e){ return e.vertices.first; },
+		[](const customedge& e){ return e.vertices.second; }
 	);
-	//cdt.eraseSuperTriangle();
 	cdt.eraseOuterTrianglesAndHoles();
-	//cdt.eraseOuterTriangles();
-
 
 	unsigned char color[3];
-
+	std::random_device rd;
+	std::mt19937 gen(44);
 	for (const auto &triangle : cdt.triangles) {
-	std::uniform_real_distribution<float> distrib(0.5f, 1.f);
-	color[0] = distrib(gen) * 255;
-	color[1] = distrib(gen) * 255;
-	color[2] = distrib(gen) * 255;
-	glm::vec2 vertices[3];
-	for (int i = 0; i < 3; i++) {
-	//printf("%d\n", triangle.vertices[i]);
-	size_t index = triangle.vertices[i];
-	const auto pos = cdt.vertices[index].pos;
-	vertices[i].x = pos.x;
-	vertices[i].y = pos.y;
-	//printf("%f, %f\n", pos.x, pos.y);
-	}
-	draw_triangle(vertices[0], vertices[1], vertices[2], image.data, image.width, image.height, image.nchannels, color);
+		std::uniform_real_distribution<float> distrib(0.5f, 1.f);
+		color[0] = distrib(gen) * 255;
+		color[1] = distrib(gen) * 255;
+		color[2] = distrib(gen) * 255;
+		glm::vec2 vertices[3];
+		for (int i = 0; i < 3; i++) {
+			//printf("%d\n", triangle.vertices[i]);
+			size_t index = triangle.vertices[i];
+			const auto pos = cdt.vertices[index].pos;
+			vertices[i].x = pos.x;
+			vertices[i].y = pos.y;
+			//printf("%f, %f\n", pos.x, pos.y);
+		}
+		draw_triangle(vertices[0], vertices[1], vertices[2], image.data, image.width, image.height, image.nchannels, color);
 	}
 
 	stbi_flip_vertically_on_write(true);
-	stbi_write_png("triangles.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
+	stbi_write_png("landnavigation.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
 
 	delete_byteimage(&image);
+}
 
+// TODO checkout seed: sdsd, weeew, 404, 121
+int main(int argc, char *argv[])
+{
+	printf("Name thy world: ");
+	std::string name;
+	std::cin >> name;
+	long seed = std::hash<std::string>()(name);
+
+	if (name == "1337") { seed = 1337; }
+
+	auto start = std::chrono::steady_clock::now();
+	Worldmap worldmap = {seed, MAP_AREA};
+	auto end = std::chrono::steady_clock::now();
+	std::chrono::duration<double> elapsed_seconds = end-start;
+	std::cout << "worldgen time: " << elapsed_seconds.count() << "s\n";
+
+	print_hold(&worldmap.holdings.front());
+	print_image(&worldmap);
+	print_cultures(&worldmap);
+
+	land_navmesh(&worldmap);
 
 	return 0;
 }
