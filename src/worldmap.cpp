@@ -36,6 +36,7 @@ static void spawn_villages(std::vector<struct tile*> &candidates, std::unordered
 static void import_pattern(const char *fpath, std::string &pattern);
 
 static const size_t DIM = 256;
+static const float SPACE_CORRECTION = 0.99F;
 static const float POISSON_DISK_RADIUS = 8.F;
 static const int MIN_STREAM_ORDER = 4;
 static const size_t TERRA_IMAGE_RES = 512;
@@ -142,8 +143,10 @@ Worldmap::~Worldmap(void)
 void Worldmap::gen_diagram(unsigned int maxcandidates)
 {
 	float radius = POISSON_DISK_RADIUS;
-	auto mmin = std::array<float, 2>{{area.min.x, area.min.y}};
-	auto mmax = std::array<float, 2>{{area.max.x, area.max.y}};
+	glm::vec2 max = SPACE_CORRECTION * area.max;
+	glm::vec2 min = area.max - max;
+	auto mmin = std::array<float, 2>{{min.x, min.y}};
+	auto mmax = std::array<float, 2>{{max.x, max.y}};
 
 	std::vector<std::array<float, 2>> candidates = thinks::PoissonDiskSampling(radius, mmin, mmax, 30, seed);
 	std::vector<glm::vec2> locations;
@@ -369,6 +372,24 @@ void Worldmap::floodfill_relief(unsigned int minsize, enum RELIEF target, enum R
 // uses a slightly different version of the floodfill algorithm
 void Worldmap::remove_echoriads(void)
 {
+	// add extra mountains to borders of the map
+	std::unordered_map<const struct tile*, bool> marked;
+	for (struct tile &t : tiles) {
+		marked[&t] = false;
+		if (t.frontier && (t.relief == LOWLAND || t.relief == UPLAND)) {
+			for (const auto neighbor : t.neighbors) {
+				if (neighbor->relief == HIGHLAND) {
+					marked[&t] = true;
+				}
+			}
+		}
+	}
+	for (struct tile &t : tiles) {
+		if (marked[&t]) {
+			t.relief = HIGHLAND;
+		}
+	}
+
 	std::unordered_map<const struct tile*, bool> umap;
 	for (struct tile &t : tiles) {
 		umap[&t] = false;
