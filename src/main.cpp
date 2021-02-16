@@ -29,7 +29,7 @@ struct customedge {
 
 static const struct rectangle MAP_AREA = { 
 	.min = {0.f, 0.f}, 
-	.max = {2048.f, 2048.f}
+	.max = {4096.f, 4096.f}
 };
 
 static void fill_image_tiles(const Worldmap *worldmap, int start, int end, struct byteimage *image)
@@ -96,7 +96,7 @@ void print_image(const Worldmap *worldmap)
 {
 	unsigned char blu[] = {0, 0, 255};
 	unsigned char red[] = {255, 0, 0};
-	struct byteimage image = blank_byteimage(3, 2048, 2048);
+	struct byteimage image = blank_byteimage(3, 4096, 4096);
 
 	auto start = std::chrono::steady_clock::now();
 	//fill_image_tiles(worldmap, 0, worldmap->tiles.size(), &image);
@@ -139,7 +139,7 @@ void print_image(const Worldmap *worldmap)
 
 void print_cultures(const Worldmap *worldmap)
 {
-	struct byteimage image = blank_byteimage(3, 2048, 2048);
+	struct byteimage image = blank_byteimage(3, 4096, 4096);
 	unsigned char color[] = {255, 255, 255};
 	unsigned char blu[] = {0, 0, 255};
 	unsigned char wit[] = {255, 255, 255};
@@ -231,7 +231,7 @@ void print_hold(const struct holding *hold)
 
 void land_navmesh(const Worldmap *worldmap)
 {
-	struct byteimage image = blank_byteimage(3, 2048, 2048);
+	struct byteimage image = blank_byteimage(3, 4096, 4096);
 
 	using Triangulation = CDT::Triangulation<float>;
 	Triangulation cdt = Triangulation(CDT::FindingClosestPoint::ClosestRandom, 10);
@@ -425,6 +425,10 @@ int main(int argc, char *argv[])
 	std::string name;
 	std::cin >> name;
 	long seed = std::hash<std::string>()(name);
+	//seed = 4793484633365182717;
+	// seed = 2780477564746865058; // TODO assertion internal->numsites == 1 failed
+	//seed = 5024993554385253264; // TODO assertion internal->numsites == 1 failed
+	// seed = 5773876715065797841; // TODO Could not find vertex triangle intersected by edge. Note: can be caused by duplicate points
 
 	if (name == "1337") { seed = 1337; }
 

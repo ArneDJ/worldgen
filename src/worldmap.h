@@ -122,4 +122,6 @@ private:
 	void gen_drainage_basins(std::vector<const struct corner*> &graph);
 	void trim_river_basins(void);
 	void correct_border_rivers(void);
+	void erode_mountains(void);
+	void correct_walls(void);
 };

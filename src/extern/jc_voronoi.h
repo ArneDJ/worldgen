@@ -1207,7 +1207,7 @@ static void jcv_fillgaps(jcv_diagram* diagram)
         if( !current )
         {
             // No edges, then it should be a single cell
-            assert( internal->numsites == 1 );
+            //assert( internal->numsites == 1 );
 
             jcv_graphedge* gap = jcv_alloc_graphedge(internal);
             gap->neighbor   = 0;

@@ -36,8 +36,8 @@ static void spawn_villages(std::vector<struct tile*> &candidates, std::unordered
 static void import_pattern(const char *fpath, std::string &pattern);
 
 static const size_t DIM = 256;
-static const float SPACE_CORRECTION = 0.99F;
-static const float POISSON_DISK_RADIUS = 8.F;
+static const float SPACE_CORRECTION = 0.98F;
+static const float POISSON_DISK_RADIUS = 16.F;
 static const int MIN_STREAM_ORDER = 4;
 static const size_t TERRA_IMAGE_RES = 512;
 static const size_t MIN_WATER_BODY = 1024;
@@ -46,6 +46,7 @@ static const int TOWN_SPAWN_RADIUS = 8;
 static const int CASTLE_SPAWN_RADIUS = 10;
 static const char *WORLDGEN_INI_FPATH = "worldgen.ini";
 static const float MIN_RIVER_DIST = 10.F;
+static const bool ERODABLE_MOUNTAINS = true;
 
 // default values in case values from the ini file are invalid
 static const struct worldparams DEFAULT_WORLD_PARAMETERS = {
@@ -95,6 +96,10 @@ start = std::chrono::steady_clock::now();
 end = std::chrono::steady_clock::now();
 elapsed_seconds = end-start;
 std::cout << "rivers elapsed time: " << elapsed_seconds.count() << "s\n";
+	
+	// relief has been altered by rivers, remove small mountain chains
+	floodfill_relief(MIN_MOUNTAIN_BODY, HIGHLAND, UPLAND);
+	correct_walls();
 
 start = std::chrono::steady_clock::now();
 	gen_biomes();
@@ -313,15 +318,34 @@ void Worldmap::gen_relief(const struct byteimage *heightmap)
 	}
 
 	// find mountain borders
+	correct_walls();
+}
+
+void Worldmap::correct_walls(void)
+{
+	for (auto &c : corners) {
+		c.wall = false;
+		bool walkable = false;
+		bool nearmountain = false;
+		for (const auto &t : c.touches) {
+			if (t->relief == HIGHLAND)  {
+				nearmountain = true;
+			} else if (t->relief == UPLAND || t->relief == LOWLAND) {
+				walkable = true;
+			}
+		}
+		if (nearmountain == true && walkable == true) {
+			c.wall = true;
+		}
+		if (nearmountain == true && c.frontier == true) {
+			c.wall = true;
+		}
+	}
 	for (auto &b : borders) {
 		if (b.frontier && (b.t0->relief == HIGHLAND || b.t1->relief == HIGHLAND)) {
 			b.wall = true;
 		} else {
 			b.wall = (b.t0->relief == HIGHLAND) ^ (b.t1->relief == HIGHLAND);
-		}
-		if (b.wall) {
-			if (b.c0->wall == false) { b.c0->wall = true; }
-			if (b.c1->wall == false) { b.c1->wall = true; }
 		}
 	}
 }
@@ -492,6 +516,15 @@ void Worldmap::gen_rivers(void)
 
 	gen_drainage_basins(graph);
 
+	// assign stream order numbers
+	for (auto &bas : basins) {
+		stream_postorder(&bas);
+	}
+
+	if (params.erodmountains == true) {
+		erode_mountains();
+	}
+
 	trim_river_basins();
 
 	// after trimming make sure river properties of corners are correct
@@ -516,6 +549,15 @@ void Worldmap::gen_rivers(void)
 			}
 		}
 		b.river = false;
+	}
+	// remove rivers too close to map edges
+	for (auto &c : corners) {
+		for (const auto &adj : c.adjacent) {
+			if (adj->frontier == true || adj->wall == true) {
+				c.river = false;
+				break;
+			}
+		}
 	}
 	for (auto it = basins.begin(); it != basins.end(); ) {
 		struct basin &bas = *it;
@@ -660,21 +702,40 @@ void Worldmap::gen_drainage_basins(std::vector<const struct corner*> &graph)
 
 static bool prunable(const struct branch *node)
 {
-	for (const auto t : node->confluence->touches) {
-		if (t->relief == HIGHLAND) { return true; }
-	}
-
 	if (node->streamorder < MIN_STREAM_ORDER) { return true; }
 
 	return false;
 }
 
+void Worldmap::erode_mountains(void)
+{
+	for (auto it = basins.begin(); it != basins.end(); ) {
+		struct basin &bas = *it;
+		std::queue<struct branch*> queue;
+		queue.push(bas.mouth);
+		while (!queue.empty()) {
+			struct branch *cur = queue.front();
+			queue.pop();
+
+			for (const auto t : cur->confluence->touches) {
+				if (t->relief == HIGHLAND && cur->streamorder > 2) { 
+					t->relief = UPLAND; 
+				}
+			}
+
+			if (cur->right != nullptr) {
+				queue.push(cur->right);
+			}
+			if (cur->left != nullptr) {
+				queue.push(cur->left);
+			}
+		}
+		++it;
+	}
+}
+
 void Worldmap::trim_river_basins(void)
 {
-	// assign stream order numbers
-	for (auto &bas : basins) {
-		stream_postorder(&bas);
-	}
 	// prune binary tree branch if the stream order is too low
 	for (auto it = basins.begin(); it != basins.end(); ) {
 		struct basin &bas = *it;
@@ -683,6 +744,14 @@ void Worldmap::trim_river_basins(void)
 		while (!queue.empty()) {
 			struct branch *cur = queue.front();
 			queue.pop();
+
+			if (params.erodmountains == true) {
+				for (const auto t : cur->confluence->touches) {
+					if (t->relief == HIGHLAND) { 
+						t->relief = UPLAND; 
+					}
+				}
+			}
 
 			if (cur->right != nullptr) {
 				if (prunable(cur->right)) {
@@ -1092,6 +1161,8 @@ static struct worldparams import_noiseparams(const char *fpath)
 
 	float highland = reader.GetReal("", "ELEVATION_HIGHLAND", -1.f);
 	if (highland > 0.f && highland < 1.f) { params.highland = highland; }
+
+	params.erodmountains = reader.GetBoolean("", "ERODABLE_MOUNTAINS", false);
 
 	// lowland can't be higher than upland
 	// upland can't be higher than highland

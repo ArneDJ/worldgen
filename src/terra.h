@@ -14,6 +14,7 @@ struct worldparams {
 	float lowland;
 	float upland;
 	float highland;
+	bool erodmountains;
 };
 
 struct terraform {
