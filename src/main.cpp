@@ -356,17 +356,23 @@ void land_navmesh(const Worldmap *worldmap)
 		size_t left = umap[b.c0->index];
 		size_t right = umap[b.c1->index];
 		if (marked[b.c0->index] == true && marked[b.c1->index] == true) {
-		if (b.coast == true || b.wall == true) {
-			struct customedge edge;
-			edge.vertices = std::make_pair(left, right);
-			edges.push_back(edge);
-		} else if (b.frontier == true) {
-			if (b.t0->land == true && b.t1->land == true) {
+			if (b.coast == true) {
 				struct customedge edge;
 				edge.vertices = std::make_pair(left, right);
 				edges.push_back(edge);
+			} else if (b.wall == true) {
+				if (b.t0->relief == HIGHLAND ^ b.t1->relief == HIGHLAND) {
+					struct customedge edge;
+					edge.vertices = std::make_pair(left, right);
+					edges.push_back(edge);
+				}
+			} else if (b.frontier == true) {
+				if (b.t0->land == true && b.t1->land == true) {
+					struct customedge edge;
+					edge.vertices = std::make_pair(left, right);
+					edges.push_back(edge);
+				}
 			}
-		}
 		}
 	}
 
@@ -425,6 +431,7 @@ int main(int argc, char *argv[])
 	std::string name;
 	std::cin >> name;
 	long seed = std::hash<std::string>()(name);
+	// seed = 1280787302573849419;
 	//seed = 4793484633365182717;
 	// seed = 2780477564746865058; // TODO assertion internal->numsites == 1 failed
 	//seed = 5024993554385253264; // TODO assertion internal->numsites == 1 failed
