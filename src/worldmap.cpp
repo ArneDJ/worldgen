@@ -36,8 +36,9 @@ static void spawn_villages(std::vector<struct tile*> &candidates, std::unordered
 static void import_pattern(const char *fpath, std::string &pattern);
 
 static const size_t DIM = 256;
-static const float SPACE_CORRECTION = 0.999F;
-static const float POISSON_DISK_RADIUS = 16.F;
+static const float SPACE_CORRECTION = 0.75F;
+static const float SPACE_RESCALE = 2.F;
+static const float POISSON_DISK_RADIUS = 8.F;
 static const int MIN_STREAM_ORDER = 4;
 static const size_t TERRA_IMAGE_RES = 512;
 static const size_t MIN_WATER_BODY = 1024;
@@ -148,20 +149,28 @@ Worldmap::~Worldmap(void)
 void Worldmap::gen_diagram(unsigned int maxcandidates)
 {
 	float radius = POISSON_DISK_RADIUS;
-	auto mmin = std::array<float, 2>{{area.min.x, area.min.y}};
-	auto mmax = std::array<float, 2>{{area.max.x, area.max.y}};
+	glm::vec2 max = SPACE_CORRECTION * area.max;
+	glm::vec2 min = area.max - max;
+	struct rectangle bounds = {
+		.min = min,
+		.max = max
+	};
+
+	auto mmin = std::array<float, 2>{{bounds.min.x+1.f, bounds.min.y+1.f}};
+	auto mmax = std::array<float, 2>{{bounds.max.x-1.f, bounds.max.y-1.f}};
 
 	std::vector<std::array<float, 2>> candidates = thinks::PoissonDiskSampling(radius, mmin, mmax, 30, seed);
 	std::vector<glm::vec2> locations;
 	for (const auto &point : candidates) {
-		locations.push_back(glm::vec2(point[0], point[1]));
+		glm::vec2 p = {point[0], point[1]};
+		if (point_in_rectangle(p, bounds)) {
+			locations.push_back(glm::vec2(point[0], point[1]));
+		}
 	}
 
 	// copy voronoi graph
 	Voronoi voronoi;
-	glm::vec2 max = SPACE_CORRECTION * area.max;
-	glm::vec2 min = area.max - max;
-	voronoi.gen_diagram(locations, min, max, true);
+	voronoi.gen_diagram(locations, bounds.min, bounds.max, true);
 
 	tiles.resize(voronoi.cells.size());
 	corners.resize(voronoi.vertices.size());
@@ -184,7 +193,7 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 
 		struct tile t = {
 			.index = cell.index,
-			.center = cell.center,
+			.center = SPACE_RESCALE * (cell.center - bounds.min), // restore to original scale
 			.neighbors = tneighbors,
 			.corners = tcorners,
 			.borders = tborders,
@@ -214,7 +223,7 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 
 		struct corner c = {
 			.index = vertex.index,
-			.position = vertex.position,
+			.position = SPACE_RESCALE * (vertex.position - bounds.min), // restore to original scale
 			.adjacent = adjacent,
 			.touches = touches,
 			.frontier = false,
