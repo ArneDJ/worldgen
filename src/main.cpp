@@ -424,18 +424,18 @@ void land_navmesh(const Worldmap *worldmap)
 	delete_byteimage(&image);
 }
 
-// TODO checkout seed: sdsd, weeew, 404, 121
 int main(int argc, char *argv[])
 {
 	printf("Name thy world: ");
 	std::string name;
 	std::cin >> name;
 	long seed = std::hash<std::string>()(name);
+	// TODO checkout seed: sdsd, weeew, 404, 121
 	// seed = 1280787302573849419;
 	//seed = 4793484633365182717;
 	// seed = 2780477564746865058; // TODO assertion internal->numsites == 1 failed
 	//seed = 5024993554385253264; // TODO assertion internal->numsites == 1 failed
-	// seed = 5773876715065797841; // TODO Could not find vertex triangle intersected by edge. Note: can be caused by duplicate points
+	//seed = 5773876715065797841; // TODO Could not find vertex triangle intersected by edge. Note: can be caused by duplicate points
 
 	if (name == "1337") { seed = 1337; }
 
