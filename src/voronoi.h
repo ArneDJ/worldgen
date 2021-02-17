@@ -31,5 +31,5 @@ public:
 	std::vector<struct vertex> vertices;
 	std::vector<struct edge> edges;
 public:
-	void gen_diagram(std::vector<glm::vec2> &locations, glm::vec2 min, glm::vec2 max, bool relax);
+	void gen_diagram(std::vector<glm::vec2> &locations, glm::vec2 min, glm::vec2 max, uint8_t relaxations);
 };

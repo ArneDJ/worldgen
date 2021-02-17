@@ -161,7 +161,7 @@ static void adapt_edges(const jcv_diagram *diagram, std::vector<struct cell> &ce
 	}
 }
 
-void Voronoi::gen_diagram(std::vector<glm::vec2> &locations, glm::vec2 min, glm::vec2 max, bool relax)
+void Voronoi::gen_diagram(std::vector<glm::vec2> &locations, glm::vec2 min, glm::vec2 max, uint8_t relaxations)
 {
 	std::vector<jcv_point> points;
 	for (auto &location : locations) {
@@ -179,7 +179,7 @@ void Voronoi::gen_diagram(std::vector<glm::vec2> &locations, glm::vec2 min, glm:
 	memset(&diagram, 0, sizeof(jcv_diagram));
 	jcv_diagram_generate(points.size(), points.data(), &rect, &diagram);
 
-	if (relax == true) {
+	for (uint8_t i = 0; i < relaxations; i++) {
 		std::vector<jcv_point> relaxed_points;
 		relax_points(&diagram, relaxed_points);
 		jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), &rect, &diagram);

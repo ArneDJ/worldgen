@@ -471,8 +471,8 @@ void voronoi_diagram(long seed)
 		.max = max-glm::vec2(1.f, 1.f)
 	};
 
-	auto mmin = std::array<float, 2>{{bounds.min.x, bounds.min.y}};
-	auto mmax = std::array<float, 2>{{bounds.max.x, bounds.max.y}};
+	auto mmin = std::array<float, 2>{{bounds.min.x+5.f, bounds.min.y+5.f}};
+	auto mmax = std::array<float, 2>{{bounds.max.x-5.f, bounds.max.y-5.f}};
 
 	std::vector<std::array<float, 2>> candidates = thinks::PoissonDiskSampling(radius, mmin, mmax, 30, seed);
 	std::vector<glm::vec2> locations;
@@ -503,9 +503,11 @@ void voronoi_diagram(long seed)
 	jcv_diagram_generate(points.size(), points.data(), &rect, &diagram);
 
 	if (relax == true) {
-		std::vector<jcv_point> relaxed_points;
-		relax_points(&diagram, relaxed_points);
-		jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), &rect, &diagram);
+		for (int i = 0; i < 2; i++) {
+			std::vector<jcv_point> relaxed_points;
+			relax_points(&diagram, relaxed_points);
+			jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), &rect, &diagram);
+		}
 	}
 
 	jcv_diagram_generate_vertices(&diagram);
@@ -513,6 +515,8 @@ void voronoi_diagram(long seed)
 	// If you want to draw triangles, or relax the diagram,
 	// you can iterate over the sites and get all edges easily
 	unsigned char red[] = {255, 0, 0};
+	unsigned char grn[] = {0, 255, 0};
+	unsigned char blu[] = {0, 0, 255};
 	const jcv_site *sites = jcv_diagram_get_sites(&diagram);
 	for (int i = 0; i < diagram.numsites; ++i) {
 		unsigned char color[3];
@@ -537,13 +541,13 @@ void voronoi_diagram(long seed)
 			glm::vec2 b = {e->pos[0].x, e->pos[0].y};
 			glm::vec2 c = {e->pos[1].x, e->pos[1].y};
 			if (glm::distance(a, b) > 200.f) {
-				draw_thick_line(a.x, a.y, b.x, b.y, 2, image.data, image.width, image.height, image.nchannels, red);
+				draw_thick_line(a.x, a.y, b.x, b.y, 1, image.data, image.width, image.height, image.nchannels, red);
 			}
 			if (glm::distance(b, c) > 200.f) {
-				draw_thick_line(b.x, b.y, c.x, c.y, 2, image.data, image.width, image.height, image.nchannels, red);
+				draw_thick_line(b.x, b.y, c.x, c.y, 1, image.data, image.width, image.height, image.nchannels, grn);
 			}
 			if (glm::distance(a, c) > 200.f) {
-				draw_thick_line(a.x, a.y, c.x, c.y, 2, image.data, image.width, image.height, image.nchannels, red);
+				draw_thick_line(a.x, a.y, c.x, c.y, 1, image.data, image.width, image.height, image.nchannels, blu);
 			}
 			e = e->next;
 		}
@@ -570,6 +574,8 @@ int main(int argc, char *argv[])
 	//seed = 5773876715065797841; // TODO Could not find vertex triangle intersected by edge. Note: can be caused by duplicate points
 	// seed = 6987833362776194688;
 	// seed = 2588817913846809678;
+	// seed = 2018530485265161953;
+	// seed = 8752769058932631570;
 
 	if (name == "1337") { seed = 1337; }
 
