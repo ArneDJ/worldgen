@@ -36,9 +36,8 @@ static void spawn_villages(std::vector<struct tile*> &candidates, std::unordered
 static void import_pattern(const char *fpath, std::string &pattern);
 
 static const size_t DIM = 256;
-//static const float SPACE_CORRECTION = 0.75F;
-//static const float SPACE_RESCALE = 2.F;
-static const uint8_t N_RELAXATIONS = 2;
+static const uint8_t N_RELAXATIONS = 1;
+static const float BOUND_OFFSET = 5.F;
 static const float POISSON_DISK_RADIUS = 16.F;
 static const int MIN_STREAM_ORDER = 4;
 static const size_t TERRA_IMAGE_RES = 512;
@@ -150,25 +149,15 @@ Worldmap::~Worldmap(void)
 void Worldmap::gen_diagram(unsigned int maxcandidates)
 {
 	float radius = POISSON_DISK_RADIUS;
-	/*
-	glm::vec2 max = SPACE_CORRECTION * area.max;
-	glm::vec2 min = area.max - max;
-	struct rectangle bounds = {
-		.min = min,
-		.max = max
-	};
-	*/
 
-	auto mmin = std::array<float, 2>{{area.min.x+5.f, area.min.y+5.f}};
-	auto mmax = std::array<float, 2>{{area.max.x-5.f, area.max.y-5.f}};
+	auto min = std::array<float, 2>{{area.min.x + BOUND_OFFSET, area.min.y + BOUND_OFFSET}};
+	auto max = std::array<float, 2>{{area.max.x - BOUND_OFFSET, area.max.y - BOUND_OFFSET}};
 
-	std::vector<std::array<float, 2>> candidates = thinks::PoissonDiskSampling(radius, mmin, mmax, 30, seed);
+	std::vector<std::array<float, 2>> candidates = thinks::PoissonDiskSampling(radius, min, max, 30, seed);
 	std::vector<glm::vec2> locations;
 	for (const auto &point : candidates) {
 		glm::vec2 p = {point[0], point[1]};
-		if (point_in_rectangle(p, area)) {
-			locations.push_back(glm::vec2(point[0], point[1]));
-		}
+		locations.push_back(glm::vec2(point[0], point[1]));
 	}
 
 	// copy voronoi graph

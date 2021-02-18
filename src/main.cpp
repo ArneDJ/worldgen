@@ -14,8 +14,6 @@
 #include "extern/stb_image_write.h"
 #include "extern/FastNoise.h"
 #include "extern/INIReader.h"
-#include "extern/poisson_disk_sampling.h"
-#include "extern/jc_voronoi.h"
 
 #include "extern/CDT.h"
 
@@ -426,140 +424,6 @@ void land_navmesh(const Worldmap *worldmap)
 	delete_byteimage(&image);
 }
 
-static void relax_points(const jcv_diagram *diagram, std::vector<jcv_point> &points)
-{
-	const jcv_site* sites = jcv_diagram_get_sites(diagram);
-	for( int i = 0; i < diagram->numsites; ++i ) {
-		const jcv_site* site = &sites[i];
-		jcv_point sum = site->p;
-		int count = 1;
-
-		const jcv_graphedge* edge = site->edges;
-
-		while (edge) {
-			sum.x += edge->pos[0].x;
-			sum.y += edge->pos[0].y;
-			++count;
-			edge = edge->next;
-		}
-
-		jcv_point point;
-		point.x = sum.x / count;
-		point.y = sum.y / count;
-		points.push_back(point);
-	}
-}
-
-void voronoi_diagram(long seed) 
-{
-	std::mt19937 gen(seed); //Standard mersenne_twister_engine seeded with rd()
-	std::uniform_real_distribution<> distrib(0.5f, 1.f);
-
-	struct byteimage image = blank_byteimage(3, 4096, 4096);
-
-	bool relax = true;
-
-	float radius = 8.f;
-	glm::vec2 max = 0.75f * MAP_AREA.max;
-	glm::vec2 min = MAP_AREA.max - max;
-	struct rectangle bounds = {
-		.min = min,
-		.max = max
-	};
-	struct rectangle rebounds = {
-		.min = min+glm::vec2(1.f, 1.f),
-		.max = max-glm::vec2(1.f, 1.f)
-	};
-
-	auto mmin = std::array<float, 2>{{bounds.min.x+5.f, bounds.min.y+5.f}};
-	auto mmax = std::array<float, 2>{{bounds.max.x-5.f, bounds.max.y-5.f}};
-
-	std::vector<std::array<float, 2>> candidates = thinks::PoissonDiskSampling(radius, mmin, mmax, 30, seed);
-	std::vector<glm::vec2> locations;
-	for (const auto &point : candidates) {
-		glm::vec2 p = {point[0], point[1]};
-		if (point_in_rectangle(p, rebounds)) {
-			locations.push_back(glm::vec2(point[0], point[1]));
-		} else {
-			puts("WWTFS");
-		}
-	}
-
-	///
-	std::vector<jcv_point> points;
-	for (auto &location : locations) {
-		jcv_point point;
-		point.x = location.x;
-		point.y = location.y;
-		points.push_back(point);
-	}
-
-	const jcv_rect rect = {
-		{bounds.min.x, bounds.min.y},
-		{bounds.max.x, bounds.max.y},
-	};
-	jcv_diagram diagram;
-	memset(&diagram, 0, sizeof(jcv_diagram));
-	jcv_diagram_generate(points.size(), points.data(), &rect, &diagram);
-
-	if (relax == true) {
-		for (int i = 0; i < 2; i++) {
-			std::vector<jcv_point> relaxed_points;
-			relax_points(&diagram, relaxed_points);
-			jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), &rect, &diagram);
-		}
-	}
-
-	jcv_diagram_generate_vertices(&diagram);
-
-	// If you want to draw triangles, or relax the diagram,
-	// you can iterate over the sites and get all edges easily
-	unsigned char red[] = {255, 0, 0};
-	unsigned char grn[] = {0, 255, 0};
-	unsigned char blu[] = {0, 0, 255};
-	const jcv_site *sites = jcv_diagram_get_sites(&diagram);
-	for (int i = 0; i < diagram.numsites; ++i) {
-		unsigned char color[3];
-		color[0] = 255*distrib(gen);
-		color[1] = 255*distrib(gen);
-		color[2] = 255*distrib(gen);
-		const jcv_site *site = &sites[i];
-		const jcv_graphedge *e = site->edges;
-		glm::vec2 a = {site->p.x, site->p.y};
-		while (e) {
-			glm::vec2 b = {e->pos[0].x, e->pos[0].y};
-			glm::vec2 c = {e->pos[1].x, e->pos[1].y};
-			draw_triangle(a, b, c, image.data, image.width, image.height, image.nchannels, color);
-			e = e->next;
-		}
-	}
-	for (int i = 0; i < diagram.numsites; ++i) {
-		const jcv_site *site = &sites[i];
-		const jcv_graphedge *e = site->edges;
-		glm::vec2 a = {site->p.x, site->p.y};
-		while (e) {
-			glm::vec2 b = {e->pos[0].x, e->pos[0].y};
-			glm::vec2 c = {e->pos[1].x, e->pos[1].y};
-			if (glm::distance(a, b) > 200.f) {
-				draw_thick_line(a.x, a.y, b.x, b.y, 1, image.data, image.width, image.height, image.nchannels, red);
-			}
-			if (glm::distance(b, c) > 200.f) {
-				draw_thick_line(b.x, b.y, c.x, c.y, 1, image.data, image.width, image.height, image.nchannels, grn);
-			}
-			if (glm::distance(a, c) > 200.f) {
-				draw_thick_line(a.x, a.y, c.x, c.y, 1, image.data, image.width, image.height, image.nchannels, blu);
-			}
-			e = e->next;
-		}
-	}
-
-	stbi_flip_vertically_on_write(true);
-	stbi_write_png("voronoi.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
-
-	jcv_diagram_free(&diagram);
-	delete_byteimage(&image);
-}
-
 int main(int argc, char *argv[])
 {
 	printf("Name thy world: ");
@@ -567,19 +431,9 @@ int main(int argc, char *argv[])
 	std::cin >> name;
 	long seed = std::hash<std::string>()(name);
 	// TODO checkout seed: sdsd, weeew, 404, 121
-	// seed = 1280787302573849419;
-	//seed = 4793484633365182717;
-	// seed = 2780477564746865058; // TODO assertion internal->numsites == 1 failed
-	//seed = 5024993554385253264; // TODO assertion internal->numsites == 1 failed
-	//seed = 5773876715065797841; // TODO Could not find vertex triangle intersected by edge. Note: can be caused by duplicate points
-	// seed = 6987833362776194688;
-	// seed = 2588817913846809678;
-	// seed = 2018530485265161953;
-	// seed = 8752769058932631570;
 
 	if (name == "1337") { seed = 1337; }
 
-	//voronoi_diagram(seed);
 	auto start = std::chrono::steady_clock::now();
 	Worldmap worldmap = {seed, MAP_AREA};
 	auto end = std::chrono::steady_clock::now();

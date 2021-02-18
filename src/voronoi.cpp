@@ -7,6 +7,11 @@
 #include <glm/vec3.hpp>
 
 #define JC_VORONOI_IMPLEMENTATION
+#define JCV_REAL_TYPE double
+#define JCV_ATAN2 atan2
+#define JCV_SQRT sqrt
+#define JCV_FLT_MAX DBL_MAX
+#define JCV_PI 3.141592653589793115997963468544185161590576171875
 #include "extern/jc_voronoi.h"
 
 #include "voronoi.h"
@@ -41,17 +46,33 @@ static void relax_points(const jcv_diagram *diagram, std::vector<jcv_point> &poi
 
 		const jcv_graphedge* edge = site->edges;
 
+		glm::vec2 center = {site->p.x, site->p.y};
+		bool valid = true;
+
 		while (edge) {
+			glm::vec2 a = {edge->pos[0].x, edge->pos[0].y};
+			glm::vec2 b = {edge->pos[1].x, edge->pos[1].y};
+			if (glm::distance(center, a) > 200.f) {
+				valid = false;
+			}
+			if (glm::distance(center, b) > 200.f) {
+				valid = false;
+			}
+			if (glm::distance(a, b) > 200.f) {
+				valid = false;
+			}
 			sum.x += edge->pos[0].x;
 			sum.y += edge->pos[0].y;
 			++count;
 			edge = edge->next;
 		}
 
+		if (valid) {
 		jcv_point point;
 		point.x = sum.x / count;
 		point.y = sum.y / count;
 		points.push_back(point);
+		}
 	}
 }
 
@@ -177,15 +198,15 @@ void Voronoi::gen_diagram(std::vector<glm::vec2> &locations, glm::vec2 min, glm:
 	};
 	jcv_diagram diagram;
 	memset(&diagram, 0, sizeof(jcv_diagram));
-	jcv_diagram_generate(points.size(), points.data(), &rect, &diagram);
+	jcv_diagram_generate(points.size(), points.data(), &rect, 0, &diagram);
+	jcv_diagram_generate_vertices(&diagram);
 
 	for (uint8_t i = 0; i < relaxations; i++) {
 		std::vector<jcv_point> relaxed_points;
 		relax_points(&diagram, relaxed_points);
-		jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), &rect, &diagram);
+		jcv_diagram_generate(relaxed_points.size(), relaxed_points.data(), &rect, 0, &diagram);
+		jcv_diagram_generate_vertices(&diagram);
 	}
-
-	jcv_diagram_generate_vertices(&diagram);
 
 	cells.resize(diagram.numsites);
 	vertices.resize(diagram.internal->numvertices);
