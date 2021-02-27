@@ -37,7 +37,7 @@ static void import_pattern(const char *fpath, std::string &pattern);
 
 static const size_t DIM = 256;
 static const uint8_t N_RELAXATIONS = 1;
-static const float BOUND_OFFSET = 5.F;
+static const float BOUND_OFFSET = 10.F;
 static const float POISSON_DISK_RADIUS = 16.F;
 static const int MIN_STREAM_ORDER = 4;
 static const size_t TERRA_IMAGE_RES = 512;
@@ -46,7 +46,7 @@ static const size_t MIN_MOUNTAIN_BODY = 128;
 static const int TOWN_SPAWN_RADIUS = 8;
 static const int CASTLE_SPAWN_RADIUS = 10;
 static const char *WORLDGEN_INI_FPATH = "worldgen.ini";
-static const float MIN_RIVER_DIST = 10.F;
+static const float MIN_RIVER_DIST = 40.F;
 static const bool ERODABLE_MOUNTAINS = true;
 
 // default values in case values from the ini file are invalid
@@ -128,8 +128,8 @@ elapsed_seconds = end-start;
 std::cout << "gen holds elapsed time: " << elapsed_seconds.count() << "s\n";
 
 start = std::chrono::steady_clock::now();
-	name_holds();
-	name_sites();
+	//name_holds();
+	//name_sites();
 end = std::chrono::steady_clock::now();
 elapsed_seconds = end-start;
 std::cout << "names elapsed time: " << elapsed_seconds.count() << "s\n";
@@ -156,7 +156,6 @@ void Worldmap::gen_diagram(unsigned int maxcandidates)
 	std::vector<std::array<float, 2>> candidates = thinks::PoissonDiskSampling(radius, min, max, 30, seed);
 	std::vector<glm::vec2> locations;
 	for (const auto &point : candidates) {
-		glm::vec2 p = {point[0], point[1]};
 		locations.push_back(glm::vec2(point[0], point[1]));
 	}
 
@@ -560,6 +559,7 @@ void Worldmap::gen_rivers(void)
 			}
 		}
 	}
+	// trim basin
 	for (auto it = basins.begin(); it != basins.end(); ) {
 		struct basin &bas = *it;
 		std::queue<struct branch*> queue;
@@ -593,6 +593,8 @@ void Worldmap::gen_rivers(void)
 			++it;
 		}
 	}
+
+	trim_stubby_rivers();
 
 	// after trimming correct rivers again
 	for (auto &c : corners) {
@@ -777,6 +779,85 @@ void Worldmap::trim_river_basins(void)
 			it = basins.erase(it);
 		} else {
 			++it;
+		}
+	}
+}
+
+void Worldmap::trim_stubby_rivers(void)
+{
+	std::unordered_map<const struct branch*, int> depth;
+	std::unordered_map<const struct branch*, bool> removable;
+	std::unordered_map<struct branch*, struct branch*> parents;
+	std::vector<struct branch*> endnodes;
+
+	// find river end nodes
+	for (auto it = basins.begin(); it != basins.end(); ) {
+		struct basin &bas = *it;
+		std::queue<struct branch*> queue;
+		queue.push(bas.mouth);
+		parents[bas.mouth] = nullptr;
+		removable[bas.mouth] = false;
+		while (!queue.empty()) {
+			struct branch *cur = queue.front();
+			depth[cur] = -1;
+			queue.pop();
+			if (cur->right == nullptr && cur->left == nullptr) {
+				endnodes.push_back(cur);
+				depth[cur] = 0;
+			} else {
+				if (cur->right != nullptr) { 
+					queue.push(cur->right); 
+					parents[cur->right] = cur;
+				}
+				if (cur->left != nullptr) { 
+					queue.push(cur->left); 
+					parents[cur->left] = cur;
+				}
+			}
+
+		}
+		++it;
+	}
+
+	// starting from end nodes assign depth to nodes until they reach a branch
+	for (auto &node : endnodes) {
+		std::queue<struct branch*> queue;
+		queue.push(node);
+		while (!queue.empty()) {
+			struct branch *cur = queue.front();
+			queue.pop();
+			struct branch *parent = parents[cur];
+			if (parent) {
+				depth[parent] = depth[cur] + 1;
+				if (parent->left != nullptr && parent->right != nullptr) { 
+				// reached a branch
+					if (depth[cur] > -1 && depth[cur] < 2) {
+						prune_branches(cur);
+						if (cur == parent->left) {
+							parent->left = nullptr;
+						} else if (cur == parent->right) {
+							parent->right = nullptr;
+						}
+					}
+				} else {
+					queue.push(parent); 
+				}
+			} else if (depth[cur] < 4) { 
+			// reached the river mouth
+			// river is simply too small so mark it for deletion
+				removable[cur] = true;
+			}
+		}
+	}
+
+	// remove river basins if they are too small
+	for (auto it = basins.begin(); it != basins.end(); ) {
+		struct basin &bas = *it;
+		if (removable[bas.mouth]) {
+			delete_basin(&bas);
+			it = basins.erase(it);
+		} else {
+			it++;
 		}
 	}
 }

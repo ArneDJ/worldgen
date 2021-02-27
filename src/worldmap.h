@@ -124,4 +124,5 @@ private:
 	void correct_border_rivers(void);
 	void erode_mountains(void);
 	void correct_walls(void);
+	void trim_stubby_rivers(void);
 };

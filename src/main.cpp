@@ -231,7 +231,7 @@ void print_hold(const struct holding *hold)
 
 void land_navmesh(const Worldmap *worldmap)
 {
-	struct byteimage image = blank_byteimage(3, 4096, 4096);
+	struct byteimage image = blank_byteimage(3, 4097, 4097);
 
 	using Triangulation = CDT::Triangulation<float>;
 	Triangulation cdt = Triangulation(CDT::FindingClosestPoint::ClosestRandom, 10);
@@ -244,9 +244,13 @@ void land_navmesh(const Worldmap *worldmap)
 	std::unordered_map<uint32_t, bool> marked;
 	size_t index = 0;
 	for (const auto &c : worldmap->corners) {
-		bool notfrontier = false;
-		for (const auto &adj : c.adjacent) {
-			if (adj->wall == false && adj->frontier == true) { notfrontier = true; }
+		bool walkable = false;
+		if (c.wall) {
+			for (const auto &t : c.touches) {
+				if (t->relief == LOWLAND || t->relief == HIGHLAND) {
+					walkable = true;
+				}
+			}
 		}
 		marked[c.index] = false;
 		if (c.coast == true && c.river == false) {
@@ -268,7 +272,7 @@ void land_navmesh(const Worldmap *worldmap)
 			umap[c.index] = index++;
 			marked[c.index] = true;
 		}
-		if (marked[c.index] == false && c.frontier == true && c.wall == true && notfrontier == true) {
+		if (marked[c.index] == false && c.frontier == true && c.wall == true && walkable == true) {
 			points.push_back(c.position);
 			umap[c.index] = index++;
 			marked[c.index] = true;
