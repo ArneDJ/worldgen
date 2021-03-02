@@ -279,6 +279,19 @@ void Worldmap::gen_biomes(void)
 		if (t.biome == DESERT && t.relief == LOWLAND && t.river == true) {
 			t.biome = FLOODPLAIN;
 		}
+		// alpine biomes
+		if (t.relief == UPLAND) {
+			for (const auto &neighbor : t.neighbors) {
+				if (neighbor->relief == HIGHLAND) {
+					if (veg == DRY) {
+						t.biome = PINE_GRASSLAND;
+					} else if (veg == HUMID) {
+						t.biome = PINE_FOREST;
+					}
+					break;
+				}
+			}
+		}
 	}
 }
 
