@@ -68,10 +68,14 @@ static const struct worldparams DEFAULT_WORLD_PARAMETERS = {
 	.highland = 0.66f,
 };
 
-Worldmap::Worldmap(long seed, struct rectangle area) 
+Worldmap::Worldmap(struct rectangle area)
+{
+	this->area = area;
+}
+
+void Worldmap::generate(long seed) 
 {
 	this->seed = seed;
-	this->area = area;
 	this->params = import_noiseparams(WORLDGEN_INI_FPATH);
 
 auto start = std::chrono::steady_clock::now();

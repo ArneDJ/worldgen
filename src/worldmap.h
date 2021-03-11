@@ -2,16 +2,16 @@ struct tile;
 struct corner;
 struct border;
 
-enum SITE { VACANT, VILLAGE, TOWN, CASTLE, RUIN };
+enum SITE : uint8_t { VACANT, VILLAGE, TOWN, CASTLE, RUIN };
 
-enum RELIEF {
+enum RELIEF : uint8_t {
 	SEABED,
 	LOWLAND,
 	UPLAND,
 	HIGHLAND
 };
 
-enum BIOME {
+enum BIOME : uint8_t {
 	SEA,
 	GLACIER,
 	DESERT,
@@ -102,12 +102,14 @@ public:
 	std::list<struct basin> basins;
 	std::list<struct holding> holdings;
 	long seed;
+	struct rectangle area;
 public:
-	Worldmap(long seed, struct rectangle area);
+	//Worldmap(long seed, struct rectangle area);
+	Worldmap(struct rectangle area);
+	void generate(long seed);
 	~Worldmap(void);
 private:
 	struct worldparams params;
-	struct rectangle area;
 private:
 	void gen_diagram(unsigned int maxcandidates);
 	void gen_relief(const struct byteimage *heightmap);

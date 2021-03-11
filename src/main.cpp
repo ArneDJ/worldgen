@@ -22,6 +22,7 @@
 #include "voronoi.h"
 #include "terra.h"
 #include "worldmap.h"
+#include "saver.h"
 
 struct customedge {
 	std::pair<size_t, size_t> vertices;
@@ -132,7 +133,7 @@ void print_image(const Worldmap *worldmap)
 	*/
 
 	stbi_flip_vertically_on_write(true);
-	stbi_write_png("world.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
+	stbi_write_png("saves/world.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
 
 	delete_byteimage(&image);
 }
@@ -203,7 +204,7 @@ void print_cultures(const Worldmap *worldmap)
 	}
 
 	stbi_flip_vertically_on_write(true);
-	stbi_write_png("holdings.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
+	stbi_write_png("saves/holdings.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
 
 	delete_byteimage(&image);
 }
@@ -423,7 +424,7 @@ void land_navmesh(const Worldmap *worldmap)
 	}
 
 	stbi_flip_vertically_on_write(true);
-	stbi_write_png("landnavigation.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
+	stbi_write_png("saves/landnavigation.png", image.width, image.height, image.nchannels, image.data, image.width*image.nchannels);
 
 	delete_byteimage(&image);
 }
@@ -439,15 +440,29 @@ int main(int argc, char *argv[])
 	if (name == "1337") { seed = 1337; }
 
 	auto start = std::chrono::steady_clock::now();
-	Worldmap worldmap = {seed, MAP_AREA};
+
+	std::string filepath = "saves/world.cereal";
+	WorldSerializer serializer;
+
+	Worldmap worldmap = {MAP_AREA};
+	worldmap.generate(seed);
+	printf("saving world\n");
+	serializer.save(&worldmap, filepath);
+
+	/*
+	serializer.load(filepath);
+	worldmap.tiles = serializer.tiles;
+	worldmap.corners = serializer.corners;
+	worldmap.borders = serializer.borders;
+	*/
+
 	auto end = std::chrono::steady_clock::now();
 	std::chrono::duration<double> elapsed_seconds = end-start;
-	std::cout << "worldgen time: " << elapsed_seconds.count() << "s\n";
+	std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
-	//print_hold(&worldmap.holdings.front());
 	print_image(&worldmap);
-	print_cultures(&worldmap);
-
+	//print_hold(&worldmap.holdings.front());
+	//print_cultures(&worldmap);
 	land_navmesh(&worldmap);
 
 	return 0;
